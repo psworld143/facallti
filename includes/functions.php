@@ -154,4 +154,3 @@ function is_head_evaluation_active() {
     $result = mysqli_query($conn, $query);
     return $result && mysqli_num_rows($result) > 0;
 }
-?>

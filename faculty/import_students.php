@@ -67,8 +67,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             
             // Validate header
             $expected_headers = ['ID Number', 'Firstname', 'Lastname'];
-            if (count(array_intersect($header, $expected_headers)) !== count($expected_headers)) {
-                $response['message'] = 'Invalid file format. Please use the provided template.';
+            $debug = [];
+            $debug['header'] = $header;
+            $debug['expected_headers'] = $expected_headers;
+            $debug['file_extension'] = $file_extension;
+            if (
+                count($header) < 3 ||
+                $header[0] !== $expected_headers[0] ||
+                $header[1] !== $expected_headers[1] ||
+                $header[2] !== $expected_headers[2]
+            ) {
+                $response['message'] = 'Invalid file format. The first three columns must be: ID Number, Firstname, Lastname.';
+                $response['debug'] = $debug;
                 echo json_encode($response);
                 exit();
             }
@@ -129,7 +139,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         } else {
                             // Enroll existing student
                             $student_data = mysqli_fetch_assoc($check_result);
-                            $enroll_query = "INSERT INTO class_enrollments (student_id, class_id, enrollment_date, status) VALUES (?, ?, NOW(), 'active')";
+                            $enroll_query = "INSERT INTO class_enrollments (student_id, class_id, status) VALUES (?, ?, 'enrolled')";
                             $enroll_stmt = mysqli_prepare($conn, $enroll_query);
                             mysqli_stmt_bind_param($enroll_stmt, "ii", $student_data['id'], $class_id);
                             
@@ -143,7 +153,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     } else {
                         // Create new student
                         $default_password = password_hash('Seait123', PASSWORD_DEFAULT);
-                        $email = strtolower($firstname . '.' . $lastname . '@seait.edu.ph');
+                        // Remove spaces from firstname and lastname for email
+                        $email_firstname = str_replace(' ', '', strtolower($firstname));
+                        $email_lastname = str_replace(' ', '', strtolower($lastname));
+                        $email = $email_firstname . '.' . $email_lastname . '@seait.edu.ph';
                         
                         // Check if email already exists
                         $email_check = "SELECT id FROM students WHERE email = ?";
@@ -156,7 +169,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                             // Generate unique email
                             $counter = 1;
                             do {
-                                $email = strtolower($firstname . '.' . $lastname . $counter . '@seait.edu.ph');
+                                $email = $email_firstname . '.' . $email_lastname . $counter . '@seait.edu.ph';
                                 $email_stmt = mysqli_prepare($conn, $email_check);
                                 mysqli_stmt_bind_param($email_stmt, "s", $email);
                                 mysqli_stmt_execute($email_stmt);
@@ -173,7 +186,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                             $new_student_id = mysqli_insert_id($conn);
                             
                             // Enroll the new student
-                            $enroll_query = "INSERT INTO class_enrollments (student_id, class_id, enrollment_date, status) VALUES (?, ?, NOW(), 'active')";
+                            $enroll_query = "INSERT INTO class_enrollments (student_id, class_id, status) VALUES (?, ?, 'enrolled')";
                             $enroll_stmt = mysqli_prepare($conn, $enroll_query);
                             mysqli_stmt_bind_param($enroll_stmt, "ii", $new_student_id, $class_id);
                             
@@ -196,11 +209,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 }
                 
                 // Send progress update every batch
-                if ($batch_index % 2 == 0) {
-                    echo json_encode($response);
-                    ob_flush();
-                    flush();
-                }
+                // if ($batch_index % 2 == 0) {
+                //     echo json_encode($response);
+                //     ob_flush();
+                //     flush();
+                // }
             }
             
             // Final response
@@ -211,15 +224,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $response['message'] .= " with $error_count errors";
             }
             $response['errors'] = array_slice($errors, 0, 20); // Limit errors to first 20
-            
+            $response['debug'] = $debug;
             echo json_encode($response);
             
         } catch (Exception $e) {
             $response['message'] = 'Error processing file: ' . $e->getMessage();
+            $response['debug'] = $debug;
             echo json_encode($response);
         }
     } else {
         $response['message'] = 'Please select a file to upload';
+        $response['debug'] = $debug;
         echo json_encode($response);
     }
     exit();
@@ -398,7 +413,6 @@ include 'includes/lms_header.php';
 <script>
 document.getElementById('importForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    
     const formData = new FormData(this);
     const importBtn = document.getElementById('importBtn');
     const progressSection = document.getElementById('progressSection');
@@ -410,12 +424,10 @@ document.getElementById('importForm').addEventListener('submit', function(e) {
     const errorCount = document.getElementById('errorCount');
     const errorDetails = document.getElementById('errorDetails');
     const errorList = document.getElementById('errorList');
-    
     // Show progress section and disable button
     progressSection.classList.remove('hidden');
     importBtn.disabled = true;
     importBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Importing...';
-    
     // Reset progress
     progressBar.style.width = '0%';
     progressPercent.textContent = '0%';
@@ -424,16 +436,25 @@ document.getElementById('importForm').addEventListener('submit', function(e) {
     errorCount.textContent = '0';
     errorDetails.classList.add('hidden');
     errorList.innerHTML = '';
-    
     // Scroll to progress section
     progressSection.scrollIntoView({ behavior: 'smooth' });
-    
     fetch(window.location.href, {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
-    .then(data => {
+    .then(response => response.text())
+    .then(text => {
+        console.log('Raw response:', text);
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            console.error('JSON parse error:', e);
+            showImportStatusModal('Import failed: Invalid server response. See console for details.', false);
+            importBtn.disabled = false;
+            importBtn.innerHTML = '<i class="fas fa-upload mr-2"></i>Import Students';
+            return;
+        }
         if (data.success) {
             // Update progress
             progressBar.style.width = data.progress + '%';
@@ -441,22 +462,25 @@ document.getElementById('importForm').addEventListener('submit', function(e) {
             totalRecords.textContent = data.total;
             successCount.textContent = data.success_count;
             errorCount.textContent = data.error_count;
-            
             if (data.progress === 100) {
                 progressText.textContent = 'Import completed!';
                 importBtn.innerHTML = '<i class="fas fa-check mr-2"></i>Import Complete';
-                
                 // Show errors if any
                 if (data.errors && data.errors.length > 0) {
                     errorDetails.classList.remove('hidden');
                     errorList.innerHTML = data.errors.map(error => `<div class="mb-1">• ${error}</div>`).join('');
+                    // Log all errors to the console
+                    console.error('Import errors:', data.errors);
                 }
-                
-                // Show success message
+                // Show success message in modal (with error count if any)
+                let msg = 'Import completed successfully!\n\n' + data.message;
+                if (data.errors && data.errors.length > 0) {
+                    msg += '\n\nSome records could not be imported. See error details below.';
+                }
+                showImportStatusModal(msg, true);
                 setTimeout(() => {
-                    alert('Import completed successfully!\n\n' + data.message);
                     window.location.reload();
-                }, 1000);
+                }, 1500);
             } else {
                 progressText.textContent = `Processing ${data.processed} of ${data.total} records...`;
             }
@@ -464,7 +488,18 @@ document.getElementById('importForm').addEventListener('submit', function(e) {
             progressText.textContent = 'Error: ' + data.message;
             importBtn.disabled = false;
             importBtn.innerHTML = '<i class="fas fa-upload mr-2"></i>Import Students';
-            alert('Import failed: ' + data.message);
+            console.error('Import error:', data);
+            if (data.errors && data.errors.length > 0) {
+                console.error('Import errors:', data.errors);
+            }
+            if (data.debug) {
+                console.error('Debug info:', data.debug);
+            }
+            let msg = 'Import failed: ' + data.message;
+            if (data.errors && data.errors.length > 0) {
+                msg += '\n\nSome records could not be imported. See error details below.';
+            }
+            showImportStatusModal(msg, false);
         }
     })
     .catch(error => {
@@ -472,10 +507,71 @@ document.getElementById('importForm').addEventListener('submit', function(e) {
         progressText.textContent = 'Error occurred during import';
         importBtn.disabled = false;
         importBtn.innerHTML = '<i class="fas fa-upload mr-2"></i>Import Students';
-        alert('An error occurred during import. Please try again.');
+        showImportStatusModal('An error occurred during import. Please try again.', false);
     });
 });
+
+// Custom Import Status Modal
+function showImportStatusModal(message, isSuccess = true) {
+    let modal = document.getElementById('importStatusModal');
+    let modalContent = document.getElementById('importStatusModalContent');
+    let title = document.getElementById('importStatusTitle');
+    let msg = document.getElementById('importStatusMessage');
+    title.textContent = isSuccess ? 'Import Successful' : 'Import Failed';
+    msg.textContent = message;
+    // Change icon and color based on success or error
+    let icon = modalContent.querySelector('i');
+    icon.className = isSuccess ? 'fas fa-check-circle text-green-600' : 'fas fa-times-circle text-red-600';
+    // Animate in
+    modalContent.classList.remove('scale-95', 'opacity-0');
+    modalContent.classList.add('scale-100', 'opacity-100');
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+function closeImportStatusModal() {
+    let modal = document.getElementById('importStatusModal');
+    let modalContent = document.getElementById('importStatusModalContent');
+    // Animate out
+    modalContent.classList.remove('scale-100', 'opacity-100');
+    modalContent.classList.add('scale-95', 'opacity-0');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+    }, 300);
+}
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeImportStatusModal();
+    }
+});
 </script>
+
+<!-- Import Status Modal -->
+<div id="importStatusModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-2xl max-w-md w-full transform transition-all duration-300 scale-95 opacity-0" id="importStatusModalContent">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-green-100">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-check-circle text-green-600"></i>
+                    </div>
+                </div>
+                <div class="ml-4">
+                    <h3 class="text-lg font-semibold text-gray-900" id="importStatusTitle">Import Status</h3>
+                </div>
+            </div>
+        </div>
+        <div class="px-6 py-6">
+            <p class="text-gray-700 mb-3" id="importStatusMessage"></p>
+        </div>
+        <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-lg flex justify-end">
+            <button type="button" onclick="closeImportStatusModal()"
+                class="px-4 py-2 bg-seait-orange text-white rounded-lg hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105">
+                <i class="fas fa-times mr-2"></i>Close
+            </button>
+        </div>
+    </div>
+</div>
 
 <?php
 // Include the unified footer

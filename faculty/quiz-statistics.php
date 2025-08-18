@@ -1,4 +1,7 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
@@ -101,17 +104,18 @@ while ($row = mysqli_fetch_assoc($score_distribution_result)) {
 
 // Get recent submissions
 $recent_submissions_query = "SELECT 
-                              u.first_name, u.last_name, u.student_id,
-                              qs.score, qs.status, qs.time_taken, qs.start_time, qs.end_time,
-                              tc.section, cc.subject_title
-                             FROM quiz_submissions qs
-                             JOIN users u ON qs.student_id = u.id
-                             JOIN quiz_class_assignments qca ON qs.assignment_id = qca.id
-                             JOIN teacher_classes tc ON qca.class_id = tc.id
-                             JOIN course_curriculum cc ON tc.subject_id = cc.id
-                             WHERE qca.quiz_id = ?
-                             ORDER BY qs.created_at DESC
-                             LIMIT 10";
+  u.first_name, u.last_name, s.student_id,
+  qs.score, qs.status, qs.time_taken, qs.start_time, qs.end_time,
+  tc.section, cc.subject_title
+ FROM quiz_submissions qs
+ JOIN users u ON qs.student_id = u.id
+ LEFT JOIN students s ON qs.student_id = s.id
+ JOIN quiz_class_assignments qca ON qs.assignment_id = qca.id
+ JOIN teacher_classes tc ON qca.class_id = tc.id
+ JOIN course_curriculum cc ON tc.subject_id = cc.id
+ WHERE qca.quiz_id = ?
+ ORDER BY qs.created_at DESC
+ LIMIT 10";
 $recent_stmt = mysqli_prepare($conn, $recent_submissions_query);
 mysqli_stmt_bind_param($recent_stmt, "i", $quiz_id);
 mysqli_stmt_execute($recent_stmt);
@@ -428,3 +432,32 @@ include 'includes/unified-header.php';
     <h3 class="text-lg font-semibold text-gray-900 mb-4">Question Performance Analysis</h3>
     <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Question</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Points</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attempts</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Correct</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Success Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <?php $qnum = 1; while ($question = mysqli_fetch_assoc($question_performance_result)): ?>
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"><?php echo $qnum++; ?></td>
+                            <td class="px-6 py-4 whitespace-normal text-sm text-gray-900"><?php echo htmlspecialchars($question['question_text']); ?></td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $question['question_type']))); ?></td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"><?php echo $question['points']; ?></td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"><?php echo $question['total_attempts']; ?></td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"><?php echo $question['correct_attempts']; ?></td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"><?php echo $question['success_rate'] !== null ? $question['success_rate'] . '%' : 'N/A'; ?></td>
+                        </tr>
+                        <?php endwhile; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+<?php endif; ?>
