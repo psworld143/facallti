@@ -738,7 +738,68 @@
     height: 3rem;
 }
 
+.w-full {
+    width: 100%;
+}
+
 /* Transitions */
 .transition {
     transition: all 0.2s ease-in-out;
+}
+
+/* Accordion Styles */
+.accordion-trigger {
+    cursor: pointer;
+    outline: none;
+}
+
+.accordion-trigger:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: -2px;
+}
+
+.accordion-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-in-out;
+}
+
+.accordion-content.show {
+    max-height: 1000px;
+}
+
+.accordion-icon {
+    transition: transform 0.3s ease-in-out;
+}
+
+/* Hidden utility */
+.hidden {
+    display: none;
+}
+
+/* Dropdown Styles */
+.dropdown {
+    position: relative;
+}
+
+.dropdown-menu {
+    min-width: 200px;
+}
+
+.dropdown-toggle {
+    display: inline-flex;
+    align-items: center;
+}
+
+/* SEAIT Orange color */
+.bg-seait-orange {
+    background-color: #FF6B35;
+}
+
+.hover\:bg-orange-600:hover {
+    background-color: #EA580C;
+}
+
+.focus\:ring-seait-orange:focus {
+    --tw-ring-color: #FF6B35;
 } 

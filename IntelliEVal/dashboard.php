@@ -3,9 +3,9 @@ session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
 
-// Check if user is logged in and has guidance_officer role
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'guidance_officer') {
-    header('Location: ../login.php');
+// Check if user is logged in and has guidance_officer or head role
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['guidance_officer', 'head'])) {
+    header('Location: ../index.php');
     exit();
 }
 
@@ -155,16 +155,33 @@ $completion_rate = $stats['total_evaluations'] > 0 ? round(($stats['completed_ev
 
 // Get recent evaluations (excluding drafts)
 $recent_evaluations_query = "SELECT es.*,
-    COALESCE(evaluator_f.first_name, evaluator_u.first_name) as evaluator_first_name,
-    COALESCE(evaluator_f.last_name, evaluator_u.last_name) as evaluator_last_name,
-    COALESCE(evaluatee_f.first_name, evaluatee_u.first_name) as evaluatee_first_name,
-    COALESCE(evaluatee_f.last_name, evaluatee_u.last_name) as evaluatee_last_name,
+    CASE
+        WHEN es.evaluator_type = 'student' THEN evaluator_s.first_name
+        WHEN es.evaluator_type = 'teacher' THEN evaluator_f.first_name
+        WHEN es.evaluator_type = 'head' THEN evaluator_u.first_name
+        ELSE 'Unknown'
+    END as evaluator_first_name,
+    CASE
+        WHEN es.evaluator_type = 'student' THEN evaluator_s.last_name
+        WHEN es.evaluator_type = 'teacher' THEN evaluator_f.last_name
+        WHEN es.evaluator_type = 'head' THEN evaluator_u.last_name
+        ELSE 'Unknown'
+    END as evaluator_last_name,
+    CASE
+        WHEN es.evaluatee_type = 'teacher' THEN evaluatee_f.first_name
+        ELSE 'Unknown'
+    END as evaluatee_first_name,
+    CASE
+        WHEN es.evaluatee_type = 'teacher' THEN evaluatee_f.last_name
+        ELSE 'Unknown'
+    END as evaluatee_last_name,
     mec.name as category_name
     FROM evaluation_sessions es
-    LEFT JOIN faculty evaluator_f ON es.evaluator_id = evaluator_f.id
-    LEFT JOIN users evaluator_u ON es.evaluator_id = evaluator_u.id
-    LEFT JOIN faculty evaluatee_f ON es.evaluatee_id = evaluatee_f.id
-    LEFT JOIN users evaluatee_u ON es.evaluatee_id = evaluatee_u.id
+    LEFT JOIN students evaluator_s ON es.evaluator_id = evaluator_s.id AND es.evaluator_type = 'student'
+    LEFT JOIN faculty evaluator_f ON es.evaluator_id = evaluator_f.id AND es.evaluator_type = 'teacher'
+    LEFT JOIN users evaluator_u ON es.evaluator_id = evaluator_u.id AND es.evaluator_type = 'head'
+    LEFT JOIN faculty evaluatee_f ON es.evaluatee_id = evaluatee_f.id AND es.evaluatee_type = 'teacher'
+    LEFT JOIN users evaluatee_u ON es.evaluatee_id = evaluatee_u.id AND es.evaluatee_type != 'teacher'
     JOIN main_evaluation_categories mec ON es.main_category_id = mec.id
     WHERE es.status != 'draft'
     ORDER BY es.created_at DESC LIMIT 5";

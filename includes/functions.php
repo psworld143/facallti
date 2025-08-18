@@ -147,4 +147,11 @@ function get_student_id($conn, $user_email) {
 
     return $student_data ? $student_data['student_id'] : null;
 }
+
+function is_head_evaluation_active() {
+    global $conn;
+    $query = "SELECT 1 FROM evaluation_schedules WHERE evaluation_type = 'head_to_teacher' AND status = 'active' AND NOW() BETWEEN start_date AND end_date LIMIT 1";
+    $result = mysqli_query($conn, $query);
+    return $result && mysqli_num_rows($result) > 0;
+}
 ?>

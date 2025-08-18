@@ -3,9 +3,9 @@ session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
 
-// Check if user is logged in and has guidance_officer role
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'guidance_officer') {
-    header('Location: ../login.php');
+// Check if user is logged in and has guidance_officer or head role
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['guidance_officer', 'head'])) {
+    header('Location: ../index.php');
     exit();
 }
 

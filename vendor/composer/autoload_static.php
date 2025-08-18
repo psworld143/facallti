@@ -4,7 +4,7 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit0e4f73a4e1b4dc3234bcb9b956d47a0a
+class ComposerStaticInit9def32c8d800862890c481e011097ece
 {
     public static $files = array (
         '2cffec82183ee1cea088009cef9a6fc3' => __DIR__ . '/..' . '/ezyang/htmlpurifier/library/HTMLPurifier.composer.php',
@@ -13,16 +13,16 @@ class ComposerStaticInit0e4f73a4e1b4dc3234bcb9b956d47a0a
     );
 
     public static $prefixLengthsPsr4 = array (
-        'Z' =>
+        'Z' => 
         array (
             'ZipStream\\' => 10,
         ),
-        'S' =>
+        'S' => 
         array (
             'SEAIT\\Tests\\' => 12,
             'SEAIT\\' => 6,
         ),
-        'P' =>
+        'P' => 
         array (
             'Psr\\SimpleCache\\' => 16,
             'Psr\\Http\\Message\\' => 17,
@@ -30,16 +30,16 @@ class ComposerStaticInit0e4f73a4e1b4dc3234bcb9b956d47a0a
             'PhpParser\\' => 10,
             'PhpOffice\\PhpSpreadsheet\\' => 25,
         ),
-        'M' =>
+        'M' => 
         array (
             'Matrix\\' => 7,
         ),
-        'D' =>
+        'D' => 
         array (
             'Doctrine\\Instantiator\\' => 22,
             'DeepCopy\\' => 9,
         ),
-        'C' =>
+        'C' => 
         array (
             'Composer\\Pcre\\' => 14,
             'Complex\\' => 8,
@@ -47,65 +47,65 @@ class ComposerStaticInit0e4f73a4e1b4dc3234bcb9b956d47a0a
     );
 
     public static $prefixDirsPsr4 = array (
-        'ZipStream\\' =>
+        'ZipStream\\' => 
         array (
             0 => __DIR__ . '/..' . '/maennchen/zipstream-php/src',
         ),
-        'SEAIT\\Tests\\' =>
+        'SEAIT\\Tests\\' => 
         array (
             0 => __DIR__ . '/../..' . '/tests',
         ),
-        'SEAIT\\' =>
+        'SEAIT\\' => 
         array (
             0 => __DIR__ . '/../..' . '/src',
         ),
-        'Psr\\SimpleCache\\' =>
+        'Psr\\SimpleCache\\' => 
         array (
             0 => __DIR__ . '/..' . '/psr/simple-cache/src',
         ),
-        'Psr\\Http\\Message\\' =>
+        'Psr\\Http\\Message\\' => 
         array (
             0 => __DIR__ . '/..' . '/psr/http-factory/src',
             1 => __DIR__ . '/..' . '/psr/http-message/src',
         ),
-        'Psr\\Http\\Client\\' =>
+        'Psr\\Http\\Client\\' => 
         array (
             0 => __DIR__ . '/..' . '/psr/http-client/src',
         ),
-        'PhpParser\\' =>
+        'PhpParser\\' => 
         array (
             0 => __DIR__ . '/..' . '/nikic/php-parser/lib/PhpParser',
         ),
-        'PhpOffice\\PhpSpreadsheet\\' =>
+        'PhpOffice\\PhpSpreadsheet\\' => 
         array (
             0 => __DIR__ . '/..' . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet',
         ),
-        'Matrix\\' =>
+        'Matrix\\' => 
         array (
             0 => __DIR__ . '/..' . '/markbaker/matrix/classes/src',
         ),
-        'Doctrine\\Instantiator\\' =>
+        'Doctrine\\Instantiator\\' => 
         array (
             0 => __DIR__ . '/..' . '/doctrine/instantiator/src/Doctrine/Instantiator',
         ),
-        'DeepCopy\\' =>
+        'DeepCopy\\' => 
         array (
             0 => __DIR__ . '/..' . '/myclabs/deep-copy/src/DeepCopy',
         ),
-        'Composer\\Pcre\\' =>
+        'Composer\\Pcre\\' => 
         array (
             0 => __DIR__ . '/..' . '/composer/pcre/src',
         ),
-        'Complex\\' =>
+        'Complex\\' => 
         array (
             0 => __DIR__ . '/..' . '/markbaker/complex/classes/src',
         ),
     );
 
     public static $prefixesPsr0 = array (
-        'H' =>
+        'H' => 
         array (
-            'HTMLPurifier' =>
+            'HTMLPurifier' => 
             array (
                 0 => __DIR__ . '/..' . '/ezyang/htmlpurifier/library',
             ),
@@ -1868,10 +1868,10 @@ class ComposerStaticInit0e4f73a4e1b4dc3234bcb9b956d47a0a
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit0e4f73a4e1b4dc3234bcb9b956d47a0a::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit0e4f73a4e1b4dc3234bcb9b956d47a0a::$prefixDirsPsr4;
-            $loader->prefixesPsr0 = ComposerStaticInit0e4f73a4e1b4dc3234bcb9b956d47a0a::$prefixesPsr0;
-            $loader->classMap = ComposerStaticInit0e4f73a4e1b4dc3234bcb9b956d47a0a::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInit9def32c8d800862890c481e011097ece::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInit9def32c8d800862890c481e011097ece::$prefixDirsPsr4;
+            $loader->prefixesPsr0 = ComposerStaticInit9def32c8d800862890c481e011097ece::$prefixesPsr0;
+            $loader->classMap = ComposerStaticInit9def32c8d800862890c481e011097ece::$classMap;
 
         }, null, ClassLoader::class);
     }

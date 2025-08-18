@@ -68,7 +68,9 @@ $evaluations_query = "SELECT es.*, mec.name as category_name, mec.evaluation_typ
                       CASE
                           WHEN es.evaluatee_type = 'teacher' THEN f.email
                           ELSE u.email
-                      END as teacher_email
+                      END as teacher_email,
+                      es.evaluatee_type as evaluatee_type,
+                      f.id as faculty_id
                       FROM evaluation_sessions es
                       JOIN main_evaluation_categories mec ON es.main_category_id = mec.id
                       LEFT JOIN faculty f ON es.evaluatee_id = f.id AND es.evaluatee_type = 'teacher'
@@ -285,7 +287,7 @@ include 'includes/header.php';
                                 <td class="px-3 sm:px-6 py-4 text-sm font-medium">
                                     <div class="flex space-x-2">
                                         <?php if ($evaluation['status'] === 'completed'): ?>
-                                        <a href="view-evaluation.php?id=<?php echo $evaluation['evaluatee_id']; ?>"
+                                        <a href="view-evaluation.php?<?php echo $evaluation['evaluatee_type'] === 'teacher' && $evaluation['faculty_id'] ? 'faculty_id=' . $evaluation['faculty_id'] : 'id=' . $evaluation['evaluatee_id']; ?>"
                                            class="text-blue-600 hover:text-blue-900 p-1 rounded" title="View Results">
                                             <i class="fas fa-eye"></i>
                                         </a>

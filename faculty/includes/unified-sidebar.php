@@ -176,6 +176,10 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     <a href="class_students.php?class_id=<?php echo $class_id; ?>" class="flex items-center <?php echo $current_page === 'class_students.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
                         <i class="fas fa-users mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Students
                     </a>
+                    
+                    <a href="import_students.php?class_id=<?php echo $class_id; ?>" class="flex items-center <?php echo $current_page === 'import_students.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                        <i class="fas fa-file-import mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Import Students
+                    </a>
                 </div>
             </div>
 

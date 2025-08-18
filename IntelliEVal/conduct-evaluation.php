@@ -3,9 +3,9 @@ session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
 
-// Check if user is logged in and has guidance_officer role
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'guidance_officer') {
-    header('Location: ../login.php');
+// Check if user is logged in and has guidance_officer or head role
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['guidance_officer', 'head'])) {
+    header('Location: ../index.php');
     exit();
 }
 
@@ -18,6 +18,37 @@ function mapEvaluationType($mainCategoryType) {
     ];
 
     return $mapping[$mainCategoryType] ?? $mainCategoryType;
+}
+
+// Function to normalize department names for comparison
+function normalizeDepartment($department) {
+    if (empty($department)) return '';
+    
+    $dept = strtolower(trim($department));
+    
+    // Remove common prefixes and suffixes
+    $dept = preg_replace('/^(department of|college of|school of)\s+/i', '', $dept);
+    $dept = preg_replace('/\s+(department|college|school)$/i', '', $dept);
+    
+    // Normalize common variations
+    $normalizations = [
+        'computer science' => 'computer science',
+        'information technology' => 'information technology',
+        'information and communication technology' => 'information technology',
+        'ict' => 'information technology',
+        'business' => 'business',
+        'business and good governance' => 'business',
+        'engineering' => 'engineering',
+        'electronics engineering' => 'electronics engineering',
+        'information systems' => 'information systems',
+        'mathematics' => 'mathematics',
+        'math' => 'mathematics',
+        'english' => 'english',
+        'history' => 'history',
+        'science' => 'science'
+    ];
+    
+    return $normalizations[$dept] ?? $dept;
 }
 
 // Function to calculate actual evaluation sessions for display
@@ -33,8 +64,8 @@ function calculateActualSessions($evaluators, $evaluatees, $evaluation_type) {
 
             // For Peer to Peer evaluations, check department matching
             if ($evaluation_type === 'peer_to_peer') {
-                $evaluator_department = isset($evaluator['department']) ? trim(strtolower($evaluator['department'])) : '';
-                $evaluatee_department = isset($evaluatee['department']) ? trim(strtolower($evaluatee['department'])) : '';
+                $evaluator_department = normalizeDepartment($evaluator['department'] ?? '');
+                $evaluatee_department = normalizeDepartment($evaluatee['department'] ?? '');
 
                 if (empty($evaluator_department) || empty($evaluatee_department) ||
                     $evaluator_department !== $evaluatee_department) {
@@ -154,6 +185,15 @@ if (!$main_category) {
                 $evaluators[] = $row;
             }
         }
+
+        // Debug logging for evaluators
+        if ($main_category['evaluation_type'] === 'head_to_teacher') {
+            error_log("Loaded " . count($evaluators) . " heads as evaluators:");
+            foreach ($evaluators as $evaluator) {
+                $normalized_dept = normalizeDepartment($evaluator['department'] ?? '');
+                error_log("  - {$evaluator['first_name']} {$evaluator['last_name']} (Original Dept: '{$evaluator['department']}', Normalized: '{$normalized_dept}')");
+            }
+        }
     }
 
     // Get available evaluatees based on evaluation type
@@ -169,7 +209,7 @@ if (!$main_category) {
                 break;
             case 'head_to_teacher':
                 // Heads evaluate teachers from faculty table
-                $evaluatees_query = "SELECT f.id, f.first_name, f.last_name, f.email, 'teacher' as role
+                $evaluatees_query = "SELECT f.id, f.first_name, f.last_name, f.email, f.department, 'teacher' as role
                                     FROM faculty f
                                     WHERE f.is_active = 1
                                     ORDER BY f.last_name, f.first_name";
@@ -195,6 +235,15 @@ if (!$main_category) {
         } else {
             while ($row = mysqli_fetch_assoc($evaluatees_result)) {
                 $evaluatees[] = $row;
+            }
+        }
+
+        // Debug logging for evaluatees
+        if ($main_category['evaluation_type'] === 'head_to_teacher') {
+            error_log("Loaded " . count($evaluatees) . " teachers as evaluatees:");
+            foreach ($evaluatees as $evaluatee) {
+                $normalized_dept = normalizeDepartment($evaluatee['department'] ?? '');
+                error_log("  - {$evaluatee['first_name']} {$evaluatee['last_name']} (Original Dept: '{$evaluatee['department']}', Normalized: '{$normalized_dept}')");
             }
         }
     }
@@ -354,11 +403,18 @@ if (!$main_category) {
                                 continue;
                             }
 
+                            // Debug logging for head to teacher evaluations
+                            if ($main_category['evaluation_type'] === 'head_to_teacher') {
+                                $normalized_evaluator_dept = normalizeDepartment($evaluator['department'] ?? '');
+                                $normalized_evaluatee_dept = normalizeDepartment($evaluatee['department'] ?? '');
+                                error_log("Checking combination: Head {$evaluator['first_name']} {$evaluator['last_name']} (ID: {$evaluator['id']}, Original Dept: '{$evaluator['department']}', Normalized: '{$normalized_evaluator_dept}') evaluating Teacher {$evaluatee['first_name']} {$evaluatee['last_name']} (ID: {$evaluatee['id']}, Original Dept: '{$evaluatee['department']}', Normalized: '{$normalized_evaluatee_dept}')");
+                            }
+
                             // For Peer to Peer evaluations, check if both are from the same department
                             if ($main_category['evaluation_type'] === 'peer_to_peer') {
                                 // Since we now include department in the queries, we can check directly
-                                $evaluator_department = isset($evaluator['department']) ? trim(strtolower($evaluator['department'])) : '';
-                                $evaluatee_department = isset($evaluatee['department']) ? trim(strtolower($evaluatee['department'])) : '';
+                                $evaluator_department = normalizeDepartment($evaluator['department'] ?? '');
+                                $evaluatee_department = normalizeDepartment($evaluatee['department'] ?? '');
 
                                 // Skip if departments don't match or if either doesn't have a department
                                 if (empty($evaluator_department) || empty($evaluatee_department) ||
@@ -391,14 +447,19 @@ if (!$main_category) {
 
                             // For Head to Teacher evaluations, check if head's department matches evaluatee's department
                             if ($main_category['evaluation_type'] === 'head_to_teacher') {
-                                $evaluator_department = isset($evaluator['department']) ? trim(strtolower($evaluator['department'])) : '';
-                                $evaluatee_department = isset($evaluatee['department']) ? trim(strtolower($evaluatee['department'])) : '';
+                                $evaluator_department = normalizeDepartment($evaluator['department'] ?? '');
+                                $evaluatee_department = normalizeDepartment($evaluatee['department'] ?? '');
+
+                                error_log("Head to Teacher department check - Head: {$evaluator['first_name']} {$evaluator['last_name']} (Original Dept: '{$evaluator['department']}', Normalized: '{$evaluator_department}') evaluating Teacher: {$evaluatee['first_name']} {$evaluatee['last_name']} (Original Dept: '{$evaluatee['department']}', Normalized: '{$evaluatee_department}')");
 
                                 if (empty($evaluator_department) || empty($evaluatee_department) ||
                                     $evaluator_department !== $evaluatee_department) {
                                     $skipped_combinations++;
+                                    error_log("Skipped: Department mismatch or empty - Head dept: '{$evaluator_department}', Teacher dept: '{$evaluatee_department}'");
                                     continue;
                                 }
+                                
+                                error_log("Department match found: '{$evaluator_department}'");
                             }
 
                             // Create new evaluation session (no need to check for existing ones since we deleted them)

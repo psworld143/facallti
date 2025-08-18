@@ -3,9 +3,9 @@ session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
 
-// Check if user is logged in and has guidance_officer role
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'guidance_officer') {
-    header('Location: ../login.php');
+// Check if user is logged in and has guidance_officer or head role
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['guidance_officer', 'head'])) {
+    header('Location: ../index.php');
     exit();
 }
 
@@ -76,19 +76,40 @@ $where_clause = implode(" AND ", $where_conditions);
 $evaluations_query = "SELECT es.*,
                      s.name as semester_name,
                      sub.name as subject_name,
-                     COALESCE(evaluator_f.first_name, evaluator_u.first_name) as evaluator_first_name,
-                     COALESCE(evaluator_f.last_name, evaluator_u.last_name) as evaluator_last_name,
-                     COALESCE('teacher', evaluator_u.role) as evaluator_role,
-                     COALESCE(evaluatee_f.first_name, evaluatee_u.first_name) as evaluatee_first_name,
-                     COALESCE(evaluatee_f.last_name, evaluatee_u.last_name) as evaluatee_last_name,
-                     COALESCE(evaluatee_f.email, evaluatee_u.email) as evaluatee_email
+                     CASE
+                         WHEN es.evaluator_type = 'student' THEN evaluator_s.first_name
+                         WHEN es.evaluator_type = 'teacher' THEN evaluator_f.first_name
+                         WHEN es.evaluator_type = 'head' THEN evaluator_u.first_name
+                         ELSE 'Unknown'
+                     END as evaluator_first_name,
+                     CASE
+                         WHEN es.evaluator_type = 'student' THEN evaluator_s.last_name
+                         WHEN es.evaluator_type = 'teacher' THEN evaluator_f.last_name
+                         WHEN es.evaluator_type = 'head' THEN evaluator_u.last_name
+                         ELSE 'Unknown'
+                     END as evaluator_last_name,
+                     es.evaluator_type as evaluator_role,
+                     CASE
+                         WHEN es.evaluatee_type = 'teacher' THEN evaluatee_f.first_name
+                         ELSE 'Unknown'
+                     END as evaluatee_first_name,
+                     CASE
+                         WHEN es.evaluatee_type = 'teacher' THEN evaluatee_f.last_name
+                         ELSE 'Unknown'
+                     END as evaluatee_last_name,
+                     CASE
+                         WHEN es.evaluatee_type = 'teacher' THEN evaluatee_f.email
+                         ELSE 'Unknown'
+                     END as evaluatee_email,
+                     es.evaluatee_type as evaluatee_type,
+                     evaluatee_f.id as faculty_id
                      FROM evaluation_sessions es
                      LEFT JOIN semesters s ON es.semester_id = s.id
                      LEFT JOIN subjects sub ON es.subject_id = sub.id
-                     LEFT JOIN faculty evaluator_f ON es.evaluator_id = evaluator_f.id
-                     LEFT JOIN users evaluator_u ON es.evaluator_id = evaluator_u.id
-                     LEFT JOIN faculty evaluatee_f ON es.evaluatee_id = evaluatee_f.id
-                     LEFT JOIN users evaluatee_u ON es.evaluatee_id = evaluatee_u.id
+                     LEFT JOIN students evaluator_s ON es.evaluator_id = evaluator_s.id AND es.evaluator_type = 'student'
+                     LEFT JOIN faculty evaluator_f ON es.evaluator_id = evaluator_f.id AND es.evaluator_type = 'teacher'
+                     LEFT JOIN users evaluator_u ON es.evaluator_id = evaluator_u.id AND es.evaluator_type = 'head'
+                     LEFT JOIN faculty evaluatee_f ON es.evaluatee_id = evaluatee_f.id AND es.evaluatee_type = 'teacher'
                      WHERE $where_clause
                      ORDER BY es.evaluation_date DESC, es.created_at DESC";
 
@@ -123,20 +144,20 @@ $stats = mysqli_fetch_assoc($stats_result);
 // Get top evaluated teachers
 $top_teachers_query = "SELECT
                       es.evaluatee_id,
-                      u.first_name,
-                      u.last_name,
-                      u.email,
+                      f.first_name,
+                      f.last_name,
+                      f.email,
                       COUNT(*) as evaluation_count,
                       COUNT(CASE WHEN es.status = 'completed' THEN 1 END) as completed_count
                       FROM evaluation_sessions es
-                      LEFT JOIN users u ON es.evaluatee_id = u.id
+                      LEFT JOIN faculty f ON es.evaluatee_id = f.id AND es.evaluatee_type = 'teacher'
                       WHERE es.evaluatee_type = 'teacher'";
 
 if ($selected_semester > 0) {
     $top_teachers_query .= " AND es.semester_id = $selected_semester";
 }
 
-$top_teachers_query .= " GROUP BY es.evaluatee_id, u.first_name, u.last_name, u.email
+$top_teachers_query .= " GROUP BY es.evaluatee_id, f.first_name, f.last_name, f.email
                         ORDER BY evaluation_count DESC
                         LIMIT 10";
 
@@ -779,7 +800,7 @@ include 'includes/header.php';
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div class="flex space-x-2">
-                            <a href="view-evaluation.php?id=<?php echo $evaluation['evaluatee_id']; ?>"
+                            <a href="view-evaluation.php?<?php echo $evaluation['evaluatee_type'] === 'teacher' && $evaluation['faculty_id'] ? 'faculty_id=' . $evaluation['faculty_id'] : 'id=' . $evaluation['evaluatee_id']; ?>"
                                class="text-seait-orange hover:text-orange-600">
                                 <i class="fas fa-eye"></i>
                             </a>

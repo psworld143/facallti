@@ -219,4 +219,212 @@ include 'includes/unified-header.php';
                 </span>
                 <?php endif; ?>
                 <span class="flex items-center">
- 
+                    <i class="fas fa-clock mr-2"></i>
+                    <?php echo $quiz['time_limit'] ? $quiz['time_limit'] . ' minutes' : 'No time limit'; ?>
+                </span>
+                <span class="flex items-center">
+                    <i class="fas fa-percentage mr-2"></i>
+                    Passing: <?php echo $quiz['passing_score']; ?>%
+                </span>
+            </div>
+        </div>
+        <div class="text-right">
+            <div class="text-2xl font-bold text-seait-orange"><?php echo $quiz['total_questions']; ?></div>
+            <div class="text-sm text-gray-500">Total Questions</div>
+        </div>
+    </div>
+</div>
+
+<!-- Key Statistics Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <!-- Total Submissions -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-600">Total Submissions</p>
+                <p class="text-2xl font-bold text-gray-900"><?php echo $quiz['total_submissions'] ?: 0; ?></p>
+            </div>
+            <div class="p-3 bg-blue-100 rounded-full">
+                <i class="fas fa-users text-blue-600 text-xl"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Completed Submissions -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-600">Completed</p>
+                <p class="text-2xl font-bold text-gray-900"><?php echo $quiz['completed_submissions'] ?: 0; ?></p>
+                <?php if ($quiz['total_submissions'] > 0): ?>
+                <p class="text-sm text-green-600">
+                    <?php echo round(($quiz['completed_submissions'] / $quiz['total_submissions']) * 100, 1); ?>% completion rate
+                </p>
+                <?php endif; ?>
+            </div>
+            <div class="p-3 bg-green-100 rounded-full">
+                <i class="fas fa-check-circle text-green-600 text-xl"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Average Score -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-600">Average Score</p>
+                <p class="text-2xl font-bold text-gray-900">
+                    <?php echo $quiz['average_score'] ? round($quiz['average_score'], 1) . '%' : 'N/A'; ?>
+                </p>
+            </div>
+            <div class="p-3 bg-yellow-100 rounded-full">
+                <i class="fas fa-chart-line text-yellow-600 text-xl"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Score Range -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-600">Score Range</p>
+                <p class="text-2xl font-bold text-gray-900">
+                    <?php 
+                    if ($quiz['lowest_score'] !== null && $quiz['highest_score'] !== null) {
+                        echo round($quiz['lowest_score'], 1) . '% - ' . round($quiz['highest_score'], 1) . '%';
+                    } else {
+                        echo 'N/A';
+                    }
+                    ?>
+                </p>
+            </div>
+            <div class="p-3 bg-purple-100 rounded-full">
+                <i class="fas fa-range text-purple-600 text-xl"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Submission Status Overview -->
+<?php if (!empty($status_stats)): ?>
+<div class="bg-white rounded-lg shadow-md p-6 mb-8">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">Submission Status Overview</h3>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <?php foreach ($status_stats as $status => $stats): ?>
+        <div class="border rounded-lg p-4">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium text-gray-600">
+                    <?php echo ucfirst($status); ?>
+                </span>
+                <span class="text-lg font-bold text-gray-900"><?php echo $stats['count']; ?></span>
+            </div>
+            <?php if ($stats['avg_score'] !== null): ?>
+            <div class="text-sm text-gray-500">
+                Avg Score: <?php echo round($stats['avg_score'], 1); ?>%
+            </div>
+            <?php endif; ?>
+            <?php if ($stats['avg_time'] !== null): ?>
+            <div class="text-sm text-gray-500">
+                Avg Time: <?php echo round($stats['avg_time'] / 60, 1); ?> min
+            </div>
+            <?php endif; ?>
+        </div>
+        <?php endforeach; ?>
+    </div>
+</div>
+<?php endif; ?>
+
+<!-- Score Distribution Chart -->
+<?php if (!empty($score_distribution)): ?>
+<div class="bg-white rounded-lg shadow-md p-6 mb-8">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">Score Distribution</h3>
+    <div class="space-y-3">
+        <?php foreach ($score_distribution as $range): ?>
+        <div class="flex items-center">
+            <div class="w-24 text-sm font-medium text-gray-600"><?php echo $range['score_range']; ?></div>
+            <div class="flex-1 mx-4">
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <?php 
+                    $percentage = $quiz['completed_submissions'] > 0 ? ($range['count'] / $quiz['completed_submissions']) * 100 : 0;
+                    $color_class = '';
+                    if (strpos($range['score_range'], '90-100') !== false || strpos($range['score_range'], '80-89') !== false) {
+                        $color_class = 'bg-green-500';
+                    } elseif (strpos($range['score_range'], '70-79') !== false || strpos($range['score_range'], '60-69') !== false) {
+                        $color_class = 'bg-yellow-500';
+                    } else {
+                        $color_class = 'bg-red-500';
+                    }
+                    ?>
+                    <div class="<?php echo $color_class; ?> h-2 rounded-full" style="width: <?php echo $percentage; ?>%"></div>
+                </div>
+            </div>
+            <div class="w-16 text-sm text-gray-900 text-right"><?php echo $range['count']; ?></div>
+        </div>
+        <?php endforeach; ?>
+    </div>
+</div>
+<?php endif; ?>
+
+<!-- Class Performance -->
+<?php if (mysqli_num_rows($class_performance_result) > 0): ?>
+<div class="bg-white rounded-lg shadow-md p-6 mb-8">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">Class Performance</h3>
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Students</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Completed</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Score</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Range</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                <?php while ($class = mysqli_fetch_assoc($class_performance_result)): ?>
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <?php echo htmlspecialchars($class['section']); ?>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <?php echo htmlspecialchars($class['subject_title']); ?>
+                        <br><span class="text-xs text-gray-400"><?php echo htmlspecialchars($class['subject_code']); ?></span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <?php echo $class['total_students']; ?>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <?php echo $class['completed_students']; ?>
+                        <?php if ($class['total_students'] > 0): ?>
+                        <span class="text-xs text-gray-500">
+                            (<?php echo round(($class['completed_students'] / $class['total_students']) * 100, 1); ?>%)
+                        </span>
+                        <?php endif; ?>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <?php echo $class['avg_score'] ? round($class['avg_score'], 1) . '%' : 'N/A'; ?>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <?php 
+                        if ($class['min_score'] !== null && $class['max_score'] !== null) {
+                            echo round($class['min_score'], 1) . '% - ' . round($class['max_score'], 1) . '%';
+                        } else {
+                            echo 'N/A';
+                        }
+                        ?>
+                    </td>
+                </tr>
+                <?php endwhile; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+<?php endif; ?>
+
+<!-- Question Performance Analysis -->
+<?php if (mysqli_num_rows($question_performance_result) > 0): ?>
+<div class="bg-white rounded-lg shadow-md p-6 mb-8">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">Question Performance Analysis</h3>
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">

@@ -207,7 +207,7 @@ if ($user_found && $user_data) {
                 exit;
                 break;
             case 'head':
-                $redirect_url = $base_url . '/IntelliEVal/dashboard.php';
+                $redirect_url = $base_url . '/heads/dashboard.php';
                 echo json_encode([
                     'success' => true,
                     'message' => 'Login successful! Redirecting to head dashboard...',

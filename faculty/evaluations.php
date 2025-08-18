@@ -52,8 +52,8 @@ $where_clause = 'WHERE ' . implode(' AND ', $where_conditions);
 // Get total count for pagination
 $count_query = "SELECT COUNT(*) as total FROM evaluation_sessions es
                 JOIN main_evaluation_categories mec ON es.main_category_id = mec.id
-                LEFT JOIN faculty f ON es.evaluator_id = f.id
-                LEFT JOIN users u ON es.evaluator_id = u.id
+                LEFT JOIN faculty f ON es.evaluator_id = f.id AND es.evaluator_type = 'teacher'
+                LEFT JOIN users u ON es.evaluator_id = u.id AND es.evaluator_type = 'head'
                 $where_clause";
 $count_stmt = mysqli_prepare($conn, $count_query);
 mysqli_stmt_bind_param($count_stmt, $param_types, ...$params);
@@ -64,15 +64,25 @@ $total_pages = ceil($total_records / $per_page);
 
 // Get evaluations
 $evaluations_query = "SELECT es.*, mec.name as category_name, mec.evaluation_type,
-                      COALESCE(f.first_name, u.first_name) as evaluatee_first_name,
-                      COALESCE(f.last_name, u.last_name) as evaluatee_last_name,
-                      COALESCE(f.email, u.email) as evaluatee_email
+                      CASE
+                          WHEN es.evaluatee_type = 'teacher' THEN evaluatee_f.first_name
+                          ELSE 'Unknown'
+                      END as evaluatee_first_name,
+                      CASE
+                          WHEN es.evaluatee_type = 'teacher' THEN evaluatee_f.last_name
+                          ELSE 'Unknown'
+                      END as evaluatee_last_name,
+                      CASE
+                          WHEN es.evaluatee_type = 'teacher' THEN evaluatee_f.email
+                          ELSE 'Unknown'
+                      END as evaluatee_email,
+                      es.evaluatee_type as evaluatee_type,
+                      evaluatee_f.id as faculty_id
                       FROM evaluation_sessions es
                       JOIN main_evaluation_categories mec ON es.main_category_id = mec.id
-                      LEFT JOIN faculty f ON es.evaluatee_id = f.id
-                      LEFT JOIN users u ON es.evaluatee_id = u.id
-                      LEFT JOIN faculty evaluator_f ON es.evaluator_id = evaluator_f.id
-                      LEFT JOIN users evaluator_u ON es.evaluator_id = evaluator_u.id
+                      LEFT JOIN faculty evaluatee_f ON es.evaluatee_id = evaluatee_f.id AND es.evaluatee_type = 'teacher'
+                      LEFT JOIN faculty evaluator_f ON es.evaluator_id = evaluator_f.id AND es.evaluator_type = 'teacher'
+                      LEFT JOIN users evaluator_u ON es.evaluator_id = evaluator_u.id AND es.evaluator_type = 'head'
                       WHERE (evaluator_f.email = ? OR evaluator_u.email = ?)
                       ORDER BY es.created_at DESC
                       LIMIT ? OFFSET ?";
@@ -92,8 +102,8 @@ $stats_query = "SELECT
                 COALESCE(SUM(CASE WHEN mec.evaluation_type = 'peer_to_peer' THEN 1 ELSE 0 END), 0) as peer_evaluations
                 FROM evaluation_sessions es
                 JOIN main_evaluation_categories mec ON es.main_category_id = mec.id
-                LEFT JOIN faculty f ON es.evaluator_id = f.id
-                LEFT JOIN users u ON es.evaluator_id = u.id
+                LEFT JOIN faculty f ON es.evaluator_id = f.id AND es.evaluator_type = 'teacher'
+                LEFT JOIN users u ON es.evaluator_id = u.id AND es.evaluator_type = 'head'
                 WHERE (f.email = ? OR u.email = ?)";
 $stats_stmt = mysqli_prepare($conn, $stats_query);
 mysqli_stmt_bind_param($stats_stmt, "ss", $_SESSION['username'], $_SESSION['username']);
@@ -317,7 +327,7 @@ include 'includes/unified-header.php';
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div class="flex space-x-2">
-                                <a href="../IntelliEVal/view-evaluation.php?id=<?php echo $evaluation['evaluatee_id']; ?>"
+                                <a href="../IntelliEVal/view-evaluation.php?<?php echo $evaluation['evaluatee_type'] === 'teacher' && $evaluation['faculty_id'] ? 'faculty_id=' . $evaluation['faculty_id'] : 'id=' . $evaluation['evaluatee_id']; ?>"
                                    class="text-blue-600 hover:text-blue-900" title="View Evaluation">
                                     <i class="fas fa-eye"></i>
                                 </a>

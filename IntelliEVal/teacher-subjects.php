@@ -93,24 +93,35 @@ if (!empty($assignments_where_conditions)) {
 }
 
 // Get teacher's subject assignments with search and filter
-$assignments_query = "SELECT ts.*, s.name as subject_name, s.code as subject_code, s.units,
-                             sem.name as semester_name, sem.academic_year
-                      FROM teacher_subjects ts
-                      JOIN subjects s ON ts.subject_id = s.id
-                      JOIN semesters sem ON ts.semester_id = sem.id
-                      WHERE ts.teacher_id = ? $assignments_where_clause
-                      ORDER BY sem.academic_year DESC, sem.name ASC, s.name ASC";
+// Use user_id for teacher_subjects since it references users.id, not faculty.id
+$user_id_for_assignments = $teacher['user_id'] ?? null;
 
-$assignments_stmt = mysqli_prepare($conn, $assignments_query);
-$assignments_params = array_merge([$teacher_id], $assignments_params);
-$assignments_param_types = 'i' . $assignments_param_types;
-mysqli_stmt_bind_param($assignments_stmt, $assignments_param_types, ...$assignments_params);
-mysqli_stmt_execute($assignments_stmt);
-$assignments_result = mysqli_stmt_get_result($assignments_stmt);
+if ($user_id_for_assignments) {
+    $assignments_query = "SELECT ts.*, s.name as subject_name, s.code as subject_code, s.units,
+                                 sem.name as semester_name, sem.academic_year,
+                                 (SELECT COUNT(*) FROM student_enrollments se WHERE se.teacher_subject_id = ts.id AND se.status = 'enrolled') as student_count
+                          FROM teacher_subjects ts
+                          JOIN subjects s ON ts.subject_id = s.id
+                          JOIN semesters sem ON ts.semester_id = sem.id
+                          WHERE ts.teacher_id = ? $assignments_where_clause
+                          ORDER BY sem.academic_year DESC, sem.name ASC, s.name ASC";
 
-$assignments = [];
-while ($row = mysqli_fetch_assoc($assignments_result)) {
-    $assignments[] = $row;
+    $assignments_stmt = mysqli_prepare($conn, $assignments_query);
+    $assignments_params = array_merge([$user_id_for_assignments], $assignments_params);
+    $assignments_param_types = 'i' . $assignments_param_types;
+    mysqli_stmt_bind_param($assignments_stmt, $assignments_param_types, ...$assignments_params);
+    mysqli_stmt_execute($assignments_stmt);
+    $assignments_result = mysqli_stmt_get_result($assignments_stmt);
+
+    $assignments = [];
+    while ($row = mysqli_fetch_assoc($assignments_result)) {
+        $assignments[] = $row;
+    }
+} else {
+    // If no user_id found, set empty assignments array
+    $assignments = [];
+    // Debug: Log the issue
+    error_log("No user_id found for faculty ID: " . $teacher_id . ". Teacher data: " . json_encode($teacher));
 }
 
 // Get teacher's classes from Faculty Module
@@ -132,8 +143,41 @@ while ($row = mysqli_fetch_assoc($faculty_classes_result)) {
     $faculty_classes[] = $row;
 }
 
+// Get available semesters for filter dropdown
+$semesters_query = "SELECT id, name, academic_year FROM semesters WHERE status = 'active' ORDER BY start_date DESC";
+$semesters_result = mysqli_query($conn, $semesters_query);
+$semesters = [];
+if ($semesters_result) {
+    while ($row = mysqli_fetch_assoc($semesters_result)) {
+        $semesters[] = $row;
+    }
+}
+
 // Get available subjects for assignment - Removed: Guidance Office should not be able to add subjects
-// Get available semesters for assignment - Removed: Guidance Office should not be able to add subjects
+
+// Debug: Add some debugging information (add ?debug=1 to URL to see debug info)
+if (isset($_GET['debug']) && $_GET['debug'] === '1') {
+    echo "<div style='background: #f0f0f0; padding: 10px; margin: 10px; border: 1px solid #ccc;'>";
+    echo "<h3>Debug Information:</h3>";
+    echo "<p><strong>Faculty ID:</strong> " . $teacher_id . "</p>";
+    echo "<p><strong>User ID:</strong> " . ($teacher['user_id'] ?? 'NULL') . "</p>";
+    echo "<p><strong>Teacher Email:</strong> " . ($teacher['email'] ?? 'NULL') . "</p>";
+    echo "<p><strong>IntelliEVal Assignments Count:</strong> " . count($assignments) . "</p>";
+    echo "<p><strong>Faculty Module Classes Count:</strong> " . count($faculty_classes) . "</p>";
+    
+    // Show sample assignment data
+    if (!empty($assignments)) {
+        echo "<p><strong>Sample Assignment:</strong></p>";
+        echo "<pre>" . print_r($assignments[0], true) . "</pre>";
+    }
+    
+    // Show sample faculty class data
+    if (!empty($faculty_classes)) {
+        echo "<p><strong>Sample Faculty Class:</strong></p>";
+        echo "<pre>" . print_r($faculty_classes[0], true) . "</pre>";
+    }
+    echo "</div>";
+}
 
 // Include the shared header
 include 'includes/header.php';
@@ -222,7 +266,7 @@ include 'includes/header.php';
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Semester/Class</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Section</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Schedule/Students</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Students</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -252,7 +296,7 @@ include 'includes/header.php';
                             <?php echo htmlspecialchars($assignment['section'] ?? 'N/A'); ?>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            <?php echo htmlspecialchars($assignment['schedule'] ?? 'N/A'); ?>
+                            <?php echo htmlspecialchars($assignment['student_count']); ?> students enrolled
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <span class="px-2 py-1 text-xs rounded-full <?php
@@ -356,8 +400,8 @@ include 'includes/header.php';
                                 <p class="text-gray-900"><?php echo htmlspecialchars($assignment['section'] ?? 'N/A'); ?></p>
                             </div>
                             <div class="col-span-2">
-                                <p class="text-gray-500">Schedule</p>
-                                <p class="text-gray-900"><?php echo htmlspecialchars($assignment['schedule'] ?? 'N/A'); ?></p>
+                                <p class="text-gray-500">Students</p>
+                                <p class="text-gray-900"><?php echo htmlspecialchars($assignment['student_count']); ?> students enrolled</p>
                             </div>
                         </div>
 

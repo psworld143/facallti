@@ -37,14 +37,25 @@ if (!$session_id) {
 $session_query = "SELECT es.*, mec.name as category_name, mec.evaluation_type,
                          COALESCE(f.first_name, u.first_name) as evaluatee_first_name,
                          COALESCE(f.last_name, u.last_name) as evaluatee_last_name,
-                         COALESCE(evaluator_f.first_name, evaluator_u.first_name) as evaluator_first_name,
-                         COALESCE(evaluator_f.last_name, evaluator_u.last_name) as evaluator_last_name
+                         CASE
+                             WHEN es.evaluator_type = 'student' THEN evaluator_s.first_name
+                             WHEN es.evaluator_type = 'teacher' THEN evaluator_f.first_name
+                             WHEN es.evaluator_type = 'head' THEN evaluator_u.first_name
+                             ELSE 'Unknown'
+                         END as evaluator_first_name,
+                         CASE
+                             WHEN es.evaluator_type = 'student' THEN evaluator_s.last_name
+                             WHEN es.evaluator_type = 'teacher' THEN evaluator_f.last_name
+                             WHEN es.evaluator_type = 'head' THEN evaluator_u.last_name
+                             ELSE 'Unknown'
+                         END as evaluator_last_name
                   FROM evaluation_sessions es
                   JOIN main_evaluation_categories mec ON es.main_category_id = mec.id
-                  LEFT JOIN faculty f ON es.evaluatee_id = f.id
-                  LEFT JOIN users u ON es.evaluatee_id = u.id
-                  LEFT JOIN faculty evaluator_f ON es.evaluator_id = evaluator_f.id
-                  LEFT JOIN users evaluator_u ON es.evaluator_id = evaluator_u.id
+                  LEFT JOIN faculty f ON es.evaluatee_id = f.id AND es.evaluatee_type = 'teacher'
+                  LEFT JOIN users u ON es.evaluatee_id = u.id AND es.evaluatee_type != 'teacher'
+                  LEFT JOIN students evaluator_s ON es.evaluator_id = evaluator_s.id AND es.evaluator_type = 'student'
+                  LEFT JOIN faculty evaluator_f ON es.evaluator_id = evaluator_f.id AND es.evaluator_type = 'teacher'
+                  LEFT JOIN users evaluator_u ON es.evaluator_id = evaluator_u.id AND es.evaluator_type = 'head'
                   WHERE es.id = ? AND (evaluator_f.email = ? OR evaluator_u.email = ?) AND mec.evaluation_type = 'peer_to_peer'";
 $session_stmt = mysqli_prepare($conn, $session_query);
 mysqli_stmt_bind_param($session_stmt, "iss", $session_id, $_SESSION['username'], $_SESSION['username']);

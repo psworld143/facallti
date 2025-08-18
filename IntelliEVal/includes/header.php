@@ -360,6 +360,10 @@
                             <a href="students.php" class="flex items-center <?php echo in_array(basename($_SERVER['PHP_SELF']), ['students.php', 'view-student.php', 'edit-student.php', 'add-student.php']) ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
                                 <i class="fas fa-users mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Students
                             </a>
+                            
+                            <a href="import_students.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'import_students.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                                <i class="fas fa-file-import mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Import Students
+                            </a>
 
                             <a href="teachers.php" class="flex items-center <?php echo in_array(basename($_SERVER['PHP_SELF']), ['teachers.php', 'view-teacher.php', 'edit-teacher.php', 'add-teacher.php', 'teacher-subjects.php']) ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
                                 <i class="fas fa-chalkboard-teacher mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Teachers
@@ -413,6 +417,10 @@
                         <div class="space-y-1">
                             <a href="reports.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'reports.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
                                 <i class="fas fa-chart-bar mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Evaluation Reports
+                            </a>
+                            
+                            <a href="advanced_analytics.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'advanced_analytics.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                                <i class="fas fa-brain mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Advanced Analytics
                             </a>
                         </div>
                     </div>

@@ -424,7 +424,6 @@ include 'includes/lms_header.php'; ?>
   flex: 1;
 }
 </style>
-?>
 
 <div class="mb-6">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">

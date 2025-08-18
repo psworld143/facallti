@@ -3,9 +3,9 @@ session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
 
-// Check if user is logged in and has guidance_officer role
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'guidance_officer') {
-    header('Location: ../login.php');
+// Check if user is logged in and has guidance_officer or head role
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['guidance_officer', 'head'])) {
+    header('Location: ../index.php');
     exit();
 }
 
@@ -87,7 +87,9 @@ $recent_evaluations_query = "SELECT es.*,
                             CASE
                                 WHEN es.evaluatee_type = 'teacher' THEN evaluatee_f.last_name
                                 ELSE evaluatee_u.last_name
-                            END as evaluatee_last_name
+                            END as evaluatee_last_name,
+                            es.evaluatee_type as evaluatee_type,
+                            evaluatee_f.id as faculty_id
                             FROM evaluation_sessions es
                             JOIN main_evaluation_categories mec ON es.main_category_id = mec.id
                             LEFT JOIN students evaluator_s ON es.evaluator_id = evaluator_s.id AND es.evaluator_type = 'student'
@@ -485,7 +487,7 @@ include 'includes/header.php';
                             <span class="text-xs text-gray-400">
                                 <?php echo date('M d, Y', strtotime($evaluation['evaluation_date'])); ?>
                             </span>
-                            <a href="view-evaluation.php?id=<?php echo $evaluation['evaluatee_id']; ?>"
+                            <a href="view-evaluation.php?<?php echo $evaluation['evaluatee_type'] === 'teacher' && $evaluation['faculty_id'] ? 'faculty_id=' . $evaluation['faculty_id'] : 'id=' . $evaluation['evaluatee_id']; ?>"
                                class="text-blue-600 hover:text-blue-900">
                                 <i class="fas fa-eye"></i>
                             </a>

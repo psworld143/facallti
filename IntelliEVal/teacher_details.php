@@ -101,16 +101,22 @@ $evaluation_history_query = "SELECT
     s.academic_year,
     sub.name as subject_name,
     mec.name as category_name,
-    CONCAT(COALESCE(evaluator_f.first_name, evaluator_u.first_name), ' ', COALESCE(evaluator_f.last_name, evaluator_u.last_name)) as evaluator_name,
-    evaluator_u.role as evaluator_role,
+    CASE
+        WHEN es.evaluator_type = 'student' THEN CONCAT(evaluator_s.first_name, ' ', evaluator_s.last_name)
+        WHEN es.evaluator_type = 'teacher' THEN CONCAT(evaluator_f.first_name, ' ', evaluator_f.last_name)
+        WHEN es.evaluator_type = 'head' THEN CONCAT(evaluator_u.first_name, ' ', evaluator_u.last_name)
+        ELSE 'Unknown Evaluator'
+    END as evaluator_name,
+    es.evaluator_type as evaluator_role,
     AVG(er.rating_value) as avg_rating,
     COUNT(er.id) as total_responses
 FROM evaluation_sessions es
 LEFT JOIN semesters s ON es.semester_id = s.id
 LEFT JOIN subjects sub ON es.subject_id = sub.id
 LEFT JOIN main_evaluation_categories mec ON es.main_category_id = mec.id
-LEFT JOIN faculty evaluator_f ON es.evaluator_id = evaluator_f.id
-LEFT JOIN users evaluator_u ON es.evaluator_id = evaluator_u.id
+LEFT JOIN students evaluator_s ON es.evaluator_id = evaluator_s.id AND es.evaluator_type = 'student'
+LEFT JOIN faculty evaluator_f ON es.evaluator_id = evaluator_f.id AND es.evaluator_type = 'teacher'
+LEFT JOIN users evaluator_u ON es.evaluator_id = evaluator_u.id AND es.evaluator_type = 'head'
 LEFT JOIN evaluation_responses er ON es.id = er.evaluation_session_id
 WHERE es.evaluatee_id = ? AND es.evaluatee_type = 'teacher'
 GROUP BY es.id
@@ -170,12 +176,18 @@ $text_feedback_query = "SELECT
     er.text_response,
     er.created_at,
     es.evaluation_date,
-    CONCAT(COALESCE(evaluator_f.first_name, evaluator_u.first_name), ' ', COALESCE(evaluator_f.last_name, evaluator_u.last_name)) as evaluator_name,
-    evaluator_u.role as evaluator_role
+    CASE
+        WHEN es.evaluator_type = 'student' THEN CONCAT(evaluator_s.first_name, ' ', evaluator_s.last_name)
+        WHEN es.evaluator_type = 'teacher' THEN CONCAT(evaluator_f.first_name, ' ', evaluator_f.last_name)
+        WHEN es.evaluator_type = 'head' THEN CONCAT(evaluator_u.first_name, ' ', evaluator_u.last_name)
+        ELSE 'Unknown Evaluator'
+    END as evaluator_name,
+    es.evaluator_type as evaluator_role
 FROM evaluation_responses er
 JOIN evaluation_sessions es ON er.evaluation_session_id = es.id
-LEFT JOIN faculty evaluator_f ON es.evaluator_id = evaluator_f.id
-LEFT JOIN users evaluator_u ON es.evaluator_id = evaluator_u.id
+LEFT JOIN students evaluator_s ON es.evaluator_id = evaluator_s.id AND es.evaluator_type = 'student'
+LEFT JOIN faculty evaluator_f ON es.evaluator_id = evaluator_f.id AND es.evaluator_type = 'teacher'
+LEFT JOIN users evaluator_u ON es.evaluator_id = evaluator_u.id AND es.evaluator_type = 'head'
 WHERE es.evaluatee_id = ? AND es.evaluatee_type = 'teacher'
 AND er.text_response IS NOT NULL AND er.text_response != ''
 ORDER BY er.created_at DESC

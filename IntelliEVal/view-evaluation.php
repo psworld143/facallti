@@ -8,8 +8,8 @@ require_once '../includes/sentiment_analysis.php';
 $sentimentAnalyzer = new SentimentAnalysis();
 
 // Check if user is logged in and has appropriate role
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['guidance_officer', 'teacher'])) {
-    header('Location: ../login.php');
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['guidance_officer', 'head', 'teacher'])) {
+    header('Location: ../index.php');
     exit();
 }
 

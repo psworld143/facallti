@@ -52,15 +52,24 @@ switch ($type) {
         }
 
         $evaluations_query = "SELECT es.id, es.evaluator_type, es.evaluation_date, es.status,
-                                    CONCAT(COALESCE(evaluator_f.first_name, evaluator_u.first_name), ' ', COALESCE(evaluator_f.last_name, evaluator_u.last_name)) as evaluator_name,
-                                    CONCAT(COALESCE(evaluatee_f.first_name, evaluatee_u.first_name), ' ', COALESCE(evaluatee_f.last_name, evaluatee_u.last_name)) as teacher_name,
+                                    CASE
+                                        WHEN es.evaluator_type = 'student' THEN CONCAT(evaluator_s.first_name, ' ', evaluator_s.last_name)
+                                        WHEN es.evaluator_type = 'teacher' THEN CONCAT(evaluator_f.first_name, ' ', evaluator_f.last_name)
+                                        WHEN es.evaluator_type = 'head' THEN CONCAT(evaluator_u.first_name, ' ', evaluator_u.last_name)
+                                        ELSE 'Unknown Evaluator'
+                                    END as evaluator_name,
+                                    CASE
+                                        WHEN es.evaluatee_type = 'teacher' THEN CONCAT(evaluatee_f.first_name, ' ', evaluatee_f.last_name)
+                                        ELSE 'Unknown Teacher'
+                                    END as teacher_name,
                                     s.name as subject_name,
                                     sem.name as semester_name
                              FROM evaluation_sessions es
-                             LEFT JOIN faculty evaluator_f ON es.evaluator_id = evaluator_f.id
-                             LEFT JOIN users evaluator_u ON es.evaluator_id = evaluator_u.id
-                             LEFT JOIN faculty evaluatee_f ON es.evaluatee_id = evaluatee_f.id
-                             LEFT JOIN users evaluatee_u ON es.evaluatee_id = evaluatee_u.id
+                             LEFT JOIN students evaluator_s ON es.evaluator_id = evaluator_s.id AND es.evaluator_type = 'student'
+                             LEFT JOIN faculty evaluator_f ON es.evaluator_id = evaluator_f.id AND es.evaluator_type = 'teacher'
+                             LEFT JOIN users evaluator_u ON es.evaluator_id = evaluator_u.id AND es.evaluator_type = 'head'
+                             LEFT JOIN faculty evaluatee_f ON es.evaluatee_id = evaluatee_f.id AND es.evaluatee_type = 'teacher'
+                             LEFT JOIN users evaluatee_u ON es.evaluatee_id = evaluatee_u.id AND es.evaluatee_type != 'teacher'
                              LEFT JOIN subjects s ON es.subject_id = s.id
                              LEFT JOIN semesters sem ON es.semester_id = sem.id
                              $evaluations_where
@@ -103,15 +112,18 @@ switch ($type) {
 
         $teachers_query = "SELECT
             es.evaluatee_id,
-            CONCAT(COALESCE(evaluatee_f.first_name, evaluatee_u.first_name), ' ', COALESCE(evaluatee_f.last_name, evaluatee_u.last_name)) as teacher_name,
+            CASE
+                WHEN es.evaluatee_type = 'teacher' THEN CONCAT(evaluatee_f.first_name, ' ', evaluatee_f.last_name)
+                ELSE 'Unknown Teacher'
+            END as teacher_name,
             COUNT(*) as total_evaluations,
             SUM(CASE WHEN es.evaluator_type = 'student' THEN 1 ELSE 0 END) as student_evaluations,
             SUM(CASE WHEN es.evaluator_type = 'teacher' THEN 1 ELSE 0 END) as teacher_evaluations,
             SUM(CASE WHEN es.evaluator_type = 'head' THEN 1 ELSE 0 END) as head_evaluations,
             GROUP_CONCAT(DISTINCT s.name SEPARATOR ', ') as subjects_taught
             FROM evaluation_sessions es
-            LEFT JOIN faculty evaluatee_f ON es.evaluatee_id = evaluatee_f.id
-            LEFT JOIN users evaluatee_u ON es.evaluatee_id = evaluatee_u.id
+            LEFT JOIN faculty evaluatee_f ON es.evaluatee_id = evaluatee_f.id AND es.evaluatee_type = 'teacher'
+            LEFT JOIN users evaluatee_u ON es.evaluatee_id = evaluatee_u.id AND es.evaluatee_type != 'teacher'
             LEFT JOIN subjects s ON es.subject_id = s.id
             $teachers_where
             GROUP BY es.evaluatee_id, evaluatee_f.first_name, evaluatee_f.last_name, evaluatee_u.first_name, evaluatee_u.last_name

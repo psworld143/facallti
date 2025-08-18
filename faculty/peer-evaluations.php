@@ -145,12 +145,81 @@ $categories_result = mysqli_query($conn, $categories_query);
 // Get faculty from the same department (excluding self)
 // Note: For peer evaluations, we use faculty IDs directly from the faculty table
 // This is different from Head-to-Teacher evaluations which use users table for heads
+
+// Handle department name variations more comprehensively
+$department_conditions = [];
+$params = [];
+$param_types = "";
+
+// Add exact match
+$department_conditions[] = "f.department = ?";
+$params[] = $teacher_department;
+$param_types .= "s";
+
+// Handle "Department of X" pattern
+if (!str_contains($teacher_department, 'Department of ')) {
+    $department_conditions[] = "f.department = ?";
+    $params[] = 'Department of ' . $teacher_department;
+    $param_types .= "s";
+}
+
+// Handle "X Department" pattern  
+if (!str_contains($teacher_department, ' Department')) {
+    $department_conditions[] = "f.department = ?";
+    $params[] = $teacher_department . ' Department';
+    $param_types .= "s";
+}
+
+// Handle "College of X" pattern
+if (!str_contains($teacher_department, 'College of ')) {
+    $department_conditions[] = "f.department = ?";
+    $params[] = 'College of ' . $teacher_department;
+    $param_types .= "s";
+}
+
+// Handle reverse patterns (if teacher has "College of X", check for just "X")
+if (str_contains($teacher_department, 'College of ')) {
+    $simple_name = str_replace('College of ', '', $teacher_department);
+    $department_conditions[] = "f.department = ?";
+    $params[] = $simple_name;
+    $param_types .= "s";
+    
+    $department_conditions[] = "f.department = ?";
+    $params[] = 'Department of ' . $simple_name;
+    $param_types .= "s";
+}
+
+// Handle partial matches for complex department names
+// If teacher has "College of Business and Good Governance", also check for "College of Business"
+if (str_contains($teacher_department, ' and ')) {
+    $parts = explode(' and ', $teacher_department);
+    if (count($parts) >= 2) {
+        $first_part = trim($parts[0]);
+        $department_conditions[] = "f.department = ?";
+        $params[] = $first_part;
+        $param_types .= "s";
+    }
+}
+
+// Handle "Information and Communication Technology" vs "Information Technology" variations
+if (str_contains($teacher_department, 'Information and Communication Technology')) {
+    $department_conditions[] = "f.department = ?";
+    $params[] = 'College of Information Technology';
+    $param_types .= "s";
+    
+    $department_conditions[] = "f.department = ?";
+    $params[] = 'Department of Information Technology';
+    $param_types .= "s";
+}
+
 $faculty_members_query = "SELECT f.id as faculty_id, f.first_name, f.last_name, f.email, f.position, f.id as user_id
                           FROM faculty f
-                          WHERE f.department = ? AND LOWER(f.email) != LOWER(?) AND f.is_active = 1
+                          WHERE (" . implode(' OR ', $department_conditions) . ") AND LOWER(f.email) != LOWER(?) AND f.is_active = 1
                           ORDER BY f.first_name, f.last_name ASC";
 $faculty_members_stmt = mysqli_prepare($conn, $faculty_members_query);
-mysqli_stmt_bind_param($faculty_members_stmt, "ss", $teacher_department, $_SESSION['username']);
+$all_params = array_merge($params, [$_SESSION['username']]);
+$all_param_types = $param_types . "s";
+mysqli_stmt_bind_param($faculty_members_stmt, $all_param_types, ...$all_params);
 mysqli_stmt_execute($faculty_members_stmt);
 $faculty_members_result = mysqli_stmt_get_result($faculty_members_stmt);
 

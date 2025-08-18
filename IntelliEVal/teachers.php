@@ -82,9 +82,71 @@ if ($search) {
 }
 
 if ($department_filter) {
-    $where_conditions[] = "f.department = ?";
+    // Handle department name variations more comprehensively
+    $department_conditions = [];
+    
+    // Add exact match
+    $department_conditions[] = "f.department = ?";
     $params[] = $department_filter;
     $param_types .= 's';
+    
+    // Handle "Department of X" pattern
+    if (!str_contains($department_filter, 'Department of ')) {
+        $department_conditions[] = "f.department = ?";
+        $params[] = 'Department of ' . $department_filter;
+        $param_types .= 's';
+    }
+    
+    // Handle "X Department" pattern  
+    if (!str_contains($department_filter, ' Department')) {
+        $department_conditions[] = "f.department = ?";
+        $params[] = $department_filter . ' Department';
+        $param_types .= 's';
+    }
+    
+    // Handle "College of X" pattern
+    if (!str_contains($department_filter, 'College of ')) {
+        $department_conditions[] = "f.department = ?";
+        $params[] = 'College of ' . $department_filter;
+        $param_types .= 's';
+    }
+    
+    // Handle reverse patterns (if filter has "College of X", check for just "X")
+    if (str_contains($department_filter, 'College of ')) {
+        $simple_name = str_replace('College of ', '', $department_filter);
+        $department_conditions[] = "f.department = ?";
+        $params[] = $simple_name;
+        $param_types .= 's';
+        
+        $department_conditions[] = "f.department = ?";
+        $params[] = 'Department of ' . $simple_name;
+        $param_types .= 's';
+    }
+    
+    // Handle partial matches for complex department names
+    // If filter has "College of Business and Good Governance", also check for "College of Business"
+    if (str_contains($department_filter, ' and ')) {
+        $parts = explode(' and ', $department_filter);
+        if (count($parts) >= 2) {
+            $first_part = trim($parts[0]);
+            $department_conditions[] = "f.department = ?";
+            $params[] = $first_part;
+            $param_types .= 's';
+        }
+    }
+    
+    // Handle "Information and Communication Technology" vs "Information Technology" variations
+    if (str_contains($department_filter, 'Information and Communication Technology')) {
+        $department_conditions[] = "f.department = ?";
+        $params[] = 'College of Information Technology';
+        $param_types .= 's';
+        
+        $department_conditions[] = "f.department = ?";
+        $params[] = 'Department of Information Technology';
+        $param_types .= 's';
+    }
+    
+    $where_conditions[] = "(" . implode(' OR ', $department_conditions) . ")";
 }
 
 if ($status_filter) {

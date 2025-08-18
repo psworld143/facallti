@@ -3,7 +3,7 @@
     "description": "Student Registration System for SEAIT",
     "type": "project",
     "require": {
-        "php": ">=7.4",
+        "php": ">=7.4,<8.2",
         "phpoffice/phpspreadsheet": "^1.29",
         "ext-mysqli": "*",
         "ext-json": "*"
