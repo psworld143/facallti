@@ -1,0 +1,317 @@
+/* Enhanced Evaluation UI Styles */
+
+/* Progress Bar */
+.progress-bar {
+    background: linear-gradient(90deg, #FF6B35 0%, #FF8C42 100%);
+    transition: width 0.5s ease-in-out;
+    border-radius: 9999px;
+}
+
+/* Question Cards */
+.question-card {
+    transition: all 0.3s ease;
+    border-left: 4px solid transparent;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.question-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.question-card.answered {
+    border-left-color: #10B981;
+    background-color: #F0FDF4;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
+}
+
+/* Rating Stars */
+.rating-stars {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.rating-star {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 2px solid #E5E7EB;
+    background: white;
+    min-width: 60px;
+    text-align: center;
+    font-weight: 500;
+}
+
+.rating-star:hover {
+    border-color: #FF6B35;
+    background-color: #FFF8F0;
+    transform: scale(1.05);
+}
+
+.rating-star.selected {
+    border-color: #FF6B35;
+    background-color: #FF6B35;
+    color: white;
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+}
+
+/* Auto-save Indicator */
+.auto-save-indicator {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.auto-save-indicator.show {
+    opacity: 1;
+}
+
+/* Category Navigation */
+.category-nav {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: white;
+    border-bottom: 1px solid #E5E7EB;
+}
+
+.nav-item {
+    transition: all 0.3s ease;
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+.nav-item:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.nav-item.active {
+    background: linear-gradient(135deg, #FF6B35 0%, #FF8C42 100%);
+    color: white;
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(255, 107, 53, 0.3);
+}
+
+/* Enhanced Form Elements */
+.enhanced-textarea {
+    transition: all 0.2s ease;
+    border-radius: 8px;
+    border: 2px solid #E5E7EB;
+}
+
+.enhanced-textarea:focus {
+    border-color: #FF6B35;
+    box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+}
+
+/* Enhanced Buttons */
+.btn-enhanced {
+    transition: all 0.3s ease;
+    border-radius: 8px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.btn-enhanced:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.btn-enhanced:active {
+    transform: translateY(0);
+}
+
+/* Enhanced Cards */
+.card-enhanced {
+    border-radius: 16px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    border: 1px solid #F3F4F6;
+    transition: all 0.3s ease;
+}
+
+.card-enhanced:hover {
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+/* Status Indicators */
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-completed {
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.status-draft {
+    background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+/* Question Number Badge */
+.question-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: linear-gradient(135deg, #FF6B35 0%, #FF8C42 100%);
+    color: white;
+    border-radius: 50%;
+    font-size: 0.75rem;
+    font-weight: 700;
+    margin-right: 8px;
+}
+
+/* Enhanced Radio Buttons */
+.radio-enhanced {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border: 2px solid #E5E7EB;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: white;
+}
+
+.radio-enhanced:hover {
+    border-color: #FF6B35;
+    background-color: #FFF8F0;
+}
+
+.radio-enhanced.selected {
+    border-color: #FF6B35;
+    background-color: #FF6B35;
+    color: white;
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+}
+
+.radio-enhanced input[type="radio"] {
+    margin-right: 12px;
+    accent-color: #FF6B35;
+}
+
+/* Loading Animation */
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #FF6B35;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Pulse Animation */
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+/* Slide In Animation */
+.slide-in {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Responsive Enhancements */
+@media (max-width: 768px) {
+    .rating-stars {
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .rating-star {
+        min-width: auto;
+        width: 100%;
+    }
+    
+    .nav-item {
+        font-size: 0.75rem;
+        padding: 6px 10px;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    
+    .auto-save-indicator {
+        top: 10px;
+        right: 10px;
+        font-size: 0.875rem;
+        padding: 8px 12px;
+    }
+    
+    .category-nav .flex {
+        gap: 0.25rem;
+        padding-bottom: 0.5rem;
+    }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+    .question-card {
+        background-color: #1F2937;
+        border-color: #374151;
+        color: #F9FAFB;
+    }
+    
+    .question-card.answered {
+        background-color: #064E3B;
+        border-left-color: #10B981;
+    }
+    
+    .enhanced-textarea {
+        background-color: #1F2937;
+        border-color: #374151;
+        color: #F9FAFB;
+    }
+    
+    .radio-enhanced {
+        background-color: #1F2937;
+        border-color: #374151;
+        color: #F9FAFB;
+    }
+} 

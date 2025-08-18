@@ -1,0 +1,48 @@
+# Excel Import Template for Student Registration
+
+This file should be replaced with an actual Excel (.xlsx) file with the following structure:
+
+## Required Columns (in order):
+
+| Column A | Column B | Column C | Column D | Column E |
+|----------|----------|----------|----------|----------|
+| Student ID | First Name | Middle Name | Last Name | Email |
+
+## Example Data:
+
+| Student ID | First Name | Middle Name | Last Name | Email |
+|------------|------------|-------------|-----------|-------|
+| 2024-0001 | Juan | Santos | Dela Cruz | juan.delacruz@seait.edu.ph |
+| 2024-0002 | Maria | Garcia | Santos | maria.santos@seait.edu.ph |
+| 2024-0003 | Pedro | Lopez | Reyes | pedro.reyes@seait.edu.ph |
+
+## Notes:
+
+1. **Student ID**: Must be unique, alphanumeric characters only
+2. **First Name**: Required field, minimum 2 characters
+3. **Middle Name**: Optional field, can be left empty
+4. **Last Name**: Required field, minimum 2 characters
+5. **Email**: Must be a valid email format and unique
+
+## File Requirements:
+
+- Format: .xlsx or .xls
+- Maximum file size: 5MB
+- Maximum rows: 1000 students per import
+- Header row is optional (system will auto-detect)
+
+## Creating the Template:
+
+1. Open Microsoft Excel or Google Sheets
+2. Create the headers in row 1 (optional)
+3. Add sample data starting from row 2
+4. Save as .xlsx format
+5. Upload through the admin interface
+
+## Validation Rules:
+
+- All required fields must be filled
+- Email addresses must be valid format
+- Student IDs and emails must be unique
+- File must not exceed 5MB
+- Maximum 1000 rows per import 

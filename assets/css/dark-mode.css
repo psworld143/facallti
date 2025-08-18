@@ -1,0 +1,483 @@
+/* Dark Mode CSS Variables and Styles */
+
+:root {
+    /* Light mode colors */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8f9fa;
+    --bg-tertiary: #e9ecef;
+    --text-primary: #2C3E50;
+    --text-secondary: #6c757d;
+    --text-muted: #6c757d;
+    --border-color: #dee2e6;
+    --shadow-color: rgba(0, 0, 0, 0.1);
+    --accent-color: #FF6B35;
+    --accent-hover: #e55a2b;
+    --card-bg: #ffffff;
+    --navbar-bg: #ffffff;
+    --footer-bg: #2C3E50;
+    --footer-text: #ffffff;
+    --footer-text-muted: #bdc3c7;
+}
+
+[data-theme="dark"] {
+    /* Dark mode colors */
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2d2d2d;
+    --bg-tertiary: #3d3d3d;
+    --text-primary: #ffffff;
+    --text-secondary: #b0b0b0;
+    --text-muted: #888888;
+    --border-color: #404040;
+    --shadow-color: rgba(0, 0, 0, 0.3);
+    --accent-color: #FF6B35;
+    --accent-hover: #ff8c5a;
+    --card-bg: #2d2d2d;
+    --navbar-bg: #2d2d2d;
+    --footer-bg: #1a1a1a;
+    --footer-text: #ffffff;
+    --footer-text-muted: #b0b0b0;
+}
+
+/* Dark mode utility classes */
+.dark-mode {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.dark-mode .bg-white {
+    background-color: var(--card-bg) !important;
+}
+
+/* Text color overrides for dark mode */
+.dark-mode .text-gray-600 {
+    color: white !important;
+}
+
+.dark-mode .text-gray-700 {
+    color: white !important;
+}
+
+.dark-mode .text-gray-800 {
+    color: white !important;
+}
+
+.dark-mode .text-gray-900 {
+    color: white !important;
+}
+
+.dark-mode .text-gray-500 {
+    color: white !important;
+}
+
+.dark-mode .text-gray-400 {
+    color: white !important;
+}
+
+.dark-mode .text-gray-300 {
+    color: white !important;
+}
+
+.dark-mode .text-gray-200 {
+    color: white !important;
+}
+
+.dark-mode .text-gray-100 {
+    color: white !important;
+}
+
+/* Additional text color fixes */
+.dark-mode p {
+    color: var(--text-primary) !important;
+}
+
+.dark-mode h1, .dark-mode h2, .dark-mode h3, .dark-mode h4, .dark-mode h5, .dark-mode h6 {
+    color: var(--text-primary) !important;
+}
+
+.dark-mode span {
+    color: inherit;
+}
+
+.dark-mode label {
+    color: var(--text-primary) !important;
+}
+
+.dark-mode strong {
+    color: var(--text-primary) !important;
+}
+
+.dark-mode em {
+    color: var(--text-primary) !important;
+}
+
+.dark-mode b {
+    color: var(--text-primary) !important;
+}
+
+.dark-mode i {
+    color: inherit;
+}
+
+/* Border color overrides */
+.dark-mode .border-gray-200 {
+    border-color: var(--border-color) !important;
+}
+
+.dark-mode .border-gray-300 {
+    border-color: var(--border-color) !important;
+}
+
+.dark-mode .border-gray-400 {
+    border-color: var(--border-color) !important;
+}
+
+.dark-mode .border-gray-500 {
+    border-color: var(--border-color) !important;
+}
+
+/* Shadow overrides */
+.dark-mode .shadow-lg {
+    box-shadow: 0 10px 15px -3px var(--shadow-color) !important;
+}
+
+.dark-mode .shadow-xl {
+    box-shadow: 0 20px 25px -5px var(--shadow-color) !important;
+}
+
+.dark-mode .shadow-md {
+    box-shadow: 0 4px 6px -1px var(--shadow-color) !important;
+}
+
+.dark-mode .shadow-sm {
+    box-shadow: 0 1px 2px 0 var(--shadow-color) !important;
+}
+
+/* Navbar dark mode */
+.dark-mode nav {
+    background-color: var(--navbar-bg) !important;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Footer dark mode */
+.dark-mode footer {
+    background-color: var(--footer-bg) !important;
+}
+
+.dark-mode footer .text-gray-300 {
+    color: var(--footer-text-muted) !important;
+}
+
+/* Form elements dark mode */
+.dark-mode input,
+.dark-mode textarea,
+.dark-mode select {
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.dark-mode input:focus,
+.dark-mode textarea:focus,
+.dark-mode select:focus {
+    border-color: var(--accent-color) !important;
+    box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1) !important;
+}
+
+.dark-mode input::placeholder,
+.dark-mode textarea::placeholder {
+    color: var(--text-muted) !important;
+}
+
+/* Button dark mode */
+.dark-mode .btn-primary {
+    background-color: var(--accent-color) !important;
+    color: white !important;
+}
+
+.dark-mode .btn-primary:hover {
+    background-color: var(--accent-hover) !important;
+}
+
+/* Card dark mode */
+.dark-mode .bg-gray-50 {
+    background-color: var(--bg-secondary) !important;
+}
+
+.dark-mode .bg-gray-100 {
+    background-color: var(--bg-secondary) !important;
+}
+
+.dark-mode .bg-gray-200 {
+    background-color: var(--bg-tertiary) !important;
+}
+
+/* Dropdown dark mode */
+.dark-mode .dropdown-menu {
+    background-color: var(--card-bg) !important;
+    border-color: var(--border-color) !important;
+}
+
+.dark-mode .dropdown-item {
+    color: var(--text-primary) !important;
+}
+
+.dark-mode .dropdown-item:hover {
+    background-color: var(--bg-tertiary) !important;
+}
+
+/* Timeline scrollbar dark mode */
+.dark-mode .timeline-scroll::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+}
+
+.dark-mode .timeline-scroll::-webkit-scrollbar-thumb {
+    background: var(--accent-color);
+}
+
+.dark-mode .timeline-scroll::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-hover);
+}
+
+/* Admission tab dark mode */
+.dark-mode .admission-tab:not(.active) {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+}
+
+.dark-mode .admission-tab:not(.active):hover {
+    background-color: var(--border-color) !important;
+}
+
+/* Modal dark mode */
+.dark-mode .modal-content {
+    background-color: var(--card-bg) !important;
+    border-color: var(--border-color) !important;
+}
+
+.dark-mode .modal-header {
+    border-bottom-color: var(--border-color) !important;
+}
+
+.dark-mode .modal-footer {
+    border-top-color: var(--border-color) !important;
+}
+
+/* List items dark mode */
+.dark-mode li {
+    color: var(--text-primary) !important;
+}
+
+.dark-mode ul li,
+.dark-mode ol li {
+    color: var(--text-primary) !important;
+}
+
+/* Link colors in dark mode */
+.dark-mode a:not(.text-seait-orange):not(.text-blue-600):not(.text-green-600):not(.text-red-600) {
+    color: var(--text-primary) !important;
+}
+
+.dark-mode a:hover:not(.text-seait-orange):not(.text-blue-600):not(.text-green-600):not(.text-red-600) {
+    color: var(--accent-color) !important;
+}
+
+/* Button colors in dark mode */
+.dark-mode button:not(.text-seait-orange):not(.text-blue-600):not(.text-green-600):not(.text-red-600) {
+    color: var(--text-primary) !important;
+}
+
+.dark-mode button:hover:not(.text-seait-orange):not(.text-blue-600):not(.text-green-600):not(.text-red-600) {
+    color: var(--accent-color) !important;
+}
+
+/* Specific override for Services button in dark mode */
+.dark-mode button.text-seait-dark {
+    color: white !important;
+}
+
+.dark-mode button.text-seait-dark:hover {
+    color: var(--accent-color) !important;
+}
+
+/* Specific overrides for Programs Offered section */
+.dark-mode .bg-seait-light.dark\:bg-gray-800 h4 {
+    color: black !important;
+}
+
+.dark-mode .bg-seait-light.dark\:bg-gray-800 ul li {
+    color: black !important;
+}
+
+.dark-mode .bg-seait-light.dark\:bg-gray-800 p {
+    color: black !important;
+}
+
+.dark-mode .bg-seait-light.dark\:bg-gray-800 h3 {
+    color: black !important;
+}
+
+/* More general override for Programs Offered section */
+.dark-mode .bg-gray-800 h4 {
+    color: black !important;
+}
+
+.dark-mode .bg-gray-800 ul li {
+    color: black !important;
+}
+
+.dark-mode .bg-gray-800 p {
+    color: black !important;
+}
+
+.dark-mode .bg-gray-800 h3 {
+    color: black !important;
+}
+
+/* Core Values section dark mode overrides */
+.dark-mode .bg-seait-light h3 {
+    color: black !important;
+}
+
+.dark-mode .bg-seait-light p {
+    color: black !important;
+}
+
+.dark-mode .bg-seait-light .text-seait-dark {
+    color: black !important;
+}
+
+.dark-mode .bg-seait-light .text-gray-600 {
+    color: black !important;
+}
+
+/* Table dark mode */
+.dark-mode table {
+    color: var(--text-primary) !important;
+}
+
+.dark-mode th {
+    color: var(--text-primary) !important;
+    background-color: var(--bg-secondary) !important;
+}
+
+.dark-mode td {
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+/* Code and pre elements */
+.dark-mode code {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+}
+
+.dark-mode pre {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+/* Blockquote dark mode */
+.dark-mode blockquote {
+    border-left-color: var(--accent-color) !important;
+    color: var(--text-secondary) !important;
+}
+
+/* Smooth transition for theme switching */
+* {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Dark mode toggle button styles */
+.theme-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.theme-toggle:hover {
+    background-color: var(--bg-tertiary);
+    transform: scale(1.1);
+}
+
+.theme-toggle .icon {
+    font-size: 1.2rem;
+    transition: transform 0.3s ease;
+}
+
+.theme-toggle:hover .icon {
+    transform: rotate(15deg);
+}
+
+/* Dark mode indicator */
+.dark-mode .theme-toggle .fa-sun {
+    display: inline-block;
+}
+
+.dark-mode .theme-toggle .fa-moon {
+    display: none;
+}
+
+.theme-toggle .fa-sun {
+    display: none;
+}
+
+.theme-toggle .fa-moon {
+    display: inline-block;
+}
+
+/* Additional fixes for specific elements */
+.dark-mode .prose {
+    color: var(--text-primary) !important;
+}
+
+.dark-mode .prose h1,
+.dark-mode .prose h2,
+.dark-mode .prose h3,
+.dark-mode .prose h4,
+.dark-mode .prose h5,
+.dark-mode .prose h6 {
+    color: var(--text-primary) !important;
+}
+
+.dark-mode .prose p {
+    color: var(--text-primary) !important;
+}
+
+.dark-mode .prose ul li,
+.dark-mode .prose ol li {
+    color: var(--text-primary) !important;
+}
+
+.dark-mode .prose blockquote {
+    color: var(--text-secondary) !important;
+}
+
+.dark-mode .prose code {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+}
+
+.dark-mode .prose pre {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Fix for any remaining invisible text */
+.dark-mode * {
+    color: inherit;
+}
+
+.dark-mode .text-inherit {
+    color: inherit !important;
+} 
