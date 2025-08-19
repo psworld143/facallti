@@ -585,9 +585,12 @@ $curriculum_result = mysqli_query($conn, $curriculum_query);
 
                     <!-- Requirements List -->
                     <div class="bg-white rounded-lg shadow-lg p-4 lg:p-6">
-                        <h2 class="text-lg lg:text-xl font-semibold text-seait-dark mb-4">Manage Requirements</h2>
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-lg lg:text-xl font-semibold text-seait-dark">Manage Requirements</h2>
+                            <input type="text" id="requirementsSearch" placeholder="Search requirements..." class="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-seait-orange" style="max-width: 250px;">
+                        </div>
                         <div class="table-container">
-                            <table class="responsive-table">
+                            <table class="responsive-table" id="requirementsTable">
                                 <thead>
                                     <tr>
                                         <th>Course</th>
@@ -751,9 +754,12 @@ $curriculum_result = mysqli_query($conn, $curriculum_query);
 
                     <!-- Curriculum List -->
                     <div class="bg-white rounded-lg shadow-lg p-4 lg:p-6">
-                        <h2 class="text-lg lg:text-xl font-semibold text-seait-dark mb-4">Manage Curriculum</h2>
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-lg lg:text-xl font-semibold text-seait-dark">Manage Curriculum</h2>
+                            <input type="text" id="curriculumSearch" placeholder="Search curriculum..." class="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-seait-orange" style="max-width: 250px;">
+                        </div>
                         <div class="table-container">
-                            <table class="responsive-table">
+                            <table class="responsive-table" id="curriculumTable">
                                 <thead>
                                     <tr>
                                         <th>Course</th>
@@ -1395,6 +1401,25 @@ $curriculum_result = mysqli_query($conn, $curriculum_query);
                 console.error('Course select or Prerequisite select not found.');
             }
         }
+
+        // --- Table Search Functionality ---
+        function setupTableSearch(inputId, tableId) {
+            const input = document.getElementById(inputId);
+            const table = document.getElementById(tableId);
+            if (!input || !table) return;
+            input.addEventListener('input', function() {
+                const filter = input.value.toLowerCase();
+                const rows = table.querySelectorAll('tbody tr');
+                rows.forEach(row => {
+                    const text = row.textContent.toLowerCase();
+                    row.style.display = text.includes(filter) ? '' : 'none';
+                });
+            });
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            setupTableSearch('requirementsSearch', 'requirementsTable');
+            setupTableSearch('curriculumSearch', 'curriculumTable');
+        });
     </script>
 </body>
 </html>

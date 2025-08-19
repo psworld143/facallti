@@ -3,9 +3,9 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Aug 17, 2025 at 05:20 PM
+-- Generation Time: Aug 19, 2025 at 05:06 AM
 -- Server version: 10.4.28-MariaDB
--- PHP Version: 8.2.4
+-- PHP Version: 8.1.17
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -22,17 +22,15 @@ SET time_zone = "+00:00";
 --
 
 DELIMITER $$
---
--- Procedures
---
-CREATE DEFINER=`root`@`localhost` PROCEDURE `GenerateTrainingSuggestions` (IN `teacher_id` INT)   BEGIN
+
+CREATE PROCEDURE `GenerateTrainingSuggestions` (IN `teacher_id` INT)
+BEGIN
     DECLARE done INT DEFAULT FALSE;
     DECLARE sub_cat_id INT;
     DECLARE sub_cat_name VARCHAR(255);
     DECLARE avg_rating DECIMAL(3,2);
     DECLARE priority VARCHAR(20);
-    
-    
+
     DECLARE score_cursor CURSOR FOR
         SELECT 
             esc.id,
@@ -49,28 +47,25 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `GenerateTrainingSuggestions` (IN `t
             AND er.rating_value IS NOT NULL
         GROUP BY esc.id
         HAVING COUNT(er.id) >= 3;
-    
+
     DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
-    
+
     OPEN score_cursor;
-    
+
     read_loop: LOOP
         FETCH score_cursor INTO sub_cat_id, sub_cat_name, avg_rating;
         IF done THEN
             LEAVE read_loop;
         END IF;
-        
-        
+
         SET priority = CASE 
             WHEN avg_rating < 3.0 THEN 'critical'
             WHEN avg_rating < 3.5 THEN 'high'
             WHEN avg_rating < 4.0 THEN 'medium'
             ELSE 'low'
         END;
-        
-        
+
         IF priority IN ('medium', 'high', 'critical') THEN
-            
             INSERT IGNORE INTO training_suggestions 
                 (user_id, training_id, suggestion_reason, evaluation_category_id, evaluation_score, priority_level, suggested_by)
             SELECT 
@@ -92,13 +87,14 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `GenerateTrainingSuggestions` (IN `t
                         AND ts2.status IN ('pending', 'accepted')
                 );
         END IF;
-        
-    END LOOP;
-    
-    CLOSE score_cursor;
-END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `GetTeacherTrainingRecommendations` (IN `teacher_id` INT)   BEGIN
+    END LOOP;
+
+    CLOSE score_cursor;
+END $$
+
+CREATE PROCEDURE `GetTeacherTrainingRecommendations` (IN `teacher_id` INT)
+BEGIN
     SELECT 
         ts.id as training_id,
         ts.title,
@@ -134,7 +130,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `GetTeacherTrainingRecommendations` 
             ELSE 5
         END,
         ts.start_date;
-END$$
+END $$
 
 DELIMITER ;
 
@@ -496,7 +492,68 @@ INSERT INTO `class_enrollments` (`id`, `class_id`, `student_id`, `join_date`, `s
 (4, 5, 1, '2025-08-14 15:12:49', 'enrolled', '2025-08-14 15:12:49', NULL),
 (5, 4, 2, '2025-08-14 15:22:16', 'enrolled', '2025-08-14 15:22:16', NULL),
 (6, 3, 4, '2025-08-14 15:24:52', 'enrolled', '2025-08-14 15:24:52', NULL),
-(7, 5, 2, '2025-08-14 16:30:37', 'enrolled', '2025-08-14 16:30:37', NULL);
+(7, 5, 2, '2025-08-14 16:30:37', 'enrolled', '2025-08-14 16:30:37', NULL),
+(8, 5, 206, '2025-08-18 23:47:43', 'enrolled', '2025-08-18 23:47:43', NULL),
+(9, 5, 207, '2025-08-18 23:47:43', 'enrolled', '2025-08-18 23:47:43', NULL),
+(10, 5, 208, '2025-08-18 23:47:43', 'enrolled', '2025-08-18 23:47:43', NULL),
+(11, 5, 209, '2025-08-18 23:47:43', 'enrolled', '2025-08-18 23:47:43', NULL),
+(12, 5, 210, '2025-08-18 23:47:43', 'enrolled', '2025-08-18 23:47:43', NULL),
+(13, 5, 211, '2025-08-18 23:47:43', 'enrolled', '2025-08-18 23:47:43', NULL),
+(14, 5, 212, '2025-08-18 23:47:43', 'enrolled', '2025-08-18 23:47:43', NULL),
+(15, 5, 213, '2025-08-18 23:47:44', 'enrolled', '2025-08-18 23:47:44', NULL),
+(16, 5, 214, '2025-08-18 23:47:44', 'enrolled', '2025-08-18 23:47:44', NULL),
+(17, 5, 215, '2025-08-18 23:47:44', 'enrolled', '2025-08-18 23:47:44', NULL),
+(18, 5, 216, '2025-08-18 23:47:44', 'enrolled', '2025-08-18 23:47:44', NULL),
+(19, 5, 217, '2025-08-18 23:47:44', 'enrolled', '2025-08-18 23:47:44', NULL),
+(20, 5, 218, '2025-08-18 23:47:44', 'enrolled', '2025-08-18 23:47:44', NULL),
+(21, 5, 219, '2025-08-18 23:47:44', 'enrolled', '2025-08-18 23:47:44', NULL),
+(22, 5, 220, '2025-08-18 23:47:44', 'enrolled', '2025-08-18 23:47:44', NULL),
+(23, 5, 221, '2025-08-18 23:47:44', 'enrolled', '2025-08-18 23:47:44', NULL),
+(24, 5, 222, '2025-08-18 23:47:44', 'enrolled', '2025-08-18 23:47:44', NULL),
+(25, 5, 223, '2025-08-18 23:47:44', 'enrolled', '2025-08-18 23:47:44', NULL),
+(26, 5, 224, '2025-08-18 23:47:44', 'enrolled', '2025-08-18 23:47:44', NULL),
+(27, 5, 225, '2025-08-18 23:47:44', 'enrolled', '2025-08-18 23:47:44', NULL),
+(28, 5, 226, '2025-08-18 23:47:44', 'enrolled', '2025-08-18 23:47:44', NULL),
+(29, 5, 227, '2025-08-18 23:47:44', 'enrolled', '2025-08-18 23:47:44', NULL),
+(30, 5, 228, '2025-08-18 23:47:45', 'enrolled', '2025-08-18 23:47:45', NULL),
+(31, 5, 229, '2025-08-18 23:47:45', 'enrolled', '2025-08-18 23:47:45', NULL),
+(32, 5, 230, '2025-08-18 23:47:45', 'enrolled', '2025-08-18 23:47:45', NULL),
+(33, 5, 231, '2025-08-18 23:47:45', 'enrolled', '2025-08-18 23:47:45', NULL),
+(34, 5, 232, '2025-08-18 23:47:45', 'enrolled', '2025-08-18 23:47:45', NULL),
+(35, 5, 233, '2025-08-18 23:47:45', 'enrolled', '2025-08-18 23:47:45', NULL),
+(36, 5, 234, '2025-08-18 23:47:45', 'enrolled', '2025-08-18 23:47:45', NULL),
+(37, 5, 235, '2025-08-18 23:47:45', 'enrolled', '2025-08-18 23:47:45', NULL),
+(38, 5, 236, '2025-08-18 23:47:45', 'enrolled', '2025-08-18 23:47:45', NULL),
+(39, 5, 237, '2025-08-18 23:47:45', 'enrolled', '2025-08-18 23:47:45', NULL),
+(40, 5, 238, '2025-08-18 23:47:45', 'enrolled', '2025-08-18 23:47:45', NULL),
+(41, 5, 239, '2025-08-18 23:47:45', 'enrolled', '2025-08-18 23:47:45', NULL),
+(42, 5, 240, '2025-08-18 23:47:45', 'enrolled', '2025-08-18 23:47:45', NULL),
+(43, 5, 241, '2025-08-18 23:47:45', 'enrolled', '2025-08-18 23:47:45', NULL),
+(44, 5, 242, '2025-08-18 23:47:45', 'enrolled', '2025-08-18 23:47:45', NULL),
+(45, 5, 243, '2025-08-18 23:47:45', 'enrolled', '2025-08-18 23:47:45', NULL),
+(46, 5, 244, '2025-08-18 23:47:46', 'enrolled', '2025-08-18 23:47:46', NULL),
+(47, 5, 245, '2025-08-18 23:47:46', 'enrolled', '2025-08-18 23:47:46', NULL),
+(48, 5, 246, '2025-08-18 23:47:46', 'enrolled', '2025-08-18 23:47:46', NULL),
+(49, 5, 247, '2025-08-18 23:47:46', 'enrolled', '2025-08-18 23:47:46', NULL),
+(50, 5, 248, '2025-08-18 23:47:46', 'enrolled', '2025-08-18 23:47:46', NULL),
+(51, 5, 249, '2025-08-18 23:47:46', 'enrolled', '2025-08-18 23:47:46', NULL),
+(52, 5, 250, '2025-08-18 23:47:46', 'enrolled', '2025-08-18 23:47:46', NULL),
+(53, 5, 251, '2025-08-18 23:47:46', 'enrolled', '2025-08-18 23:47:46', NULL),
+(54, 5, 252, '2025-08-18 23:47:46', 'enrolled', '2025-08-18 23:47:46', NULL),
+(55, 5, 253, '2025-08-18 23:47:46', 'enrolled', '2025-08-18 23:47:46', NULL),
+(56, 5, 254, '2025-08-18 23:47:46', 'enrolled', '2025-08-18 23:47:46', NULL),
+(57, 5, 255, '2025-08-18 23:47:46', 'enrolled', '2025-08-18 23:47:46', NULL),
+(58, 5, 256, '2025-08-18 23:47:46', 'enrolled', '2025-08-18 23:47:46', NULL),
+(59, 5, 257, '2025-08-18 23:47:46', 'enrolled', '2025-08-18 23:47:46', NULL),
+(60, 5, 258, '2025-08-18 23:47:46', 'enrolled', '2025-08-18 23:47:46', NULL),
+(61, 5, 259, '2025-08-18 23:47:47', 'enrolled', '2025-08-18 23:47:47', NULL),
+(62, 5, 260, '2025-08-18 23:47:47', 'enrolled', '2025-08-18 23:47:47', NULL),
+(63, 5, 261, '2025-08-18 23:47:47', 'enrolled', '2025-08-18 23:47:47', NULL),
+(64, 5, 262, '2025-08-18 23:47:47', 'enrolled', '2025-08-18 23:47:47', NULL),
+(65, 5, 263, '2025-08-18 23:47:47', 'enrolled', '2025-08-18 23:47:47', NULL),
+(66, 5, 264, '2025-08-18 23:47:47', 'enrolled', '2025-08-18 23:47:47', NULL),
+(67, 5, 265, '2025-08-18 23:47:47', 'enrolled', '2025-08-18 23:47:47', NULL),
+(68, 5, 266, '2025-08-18 23:47:47', 'enrolled', '2025-08-18 23:47:47', NULL);
 
 -- --------------------------------------------------------
 
@@ -1288,7 +1345,7 @@ CREATE TABLE `evaluation_schedules` (
 INSERT INTO `evaluation_schedules` (`id`, `semester_id`, `evaluation_type`, `start_date`, `end_date`, `status`, `created_by`, `created_at`, `updated_at`) VALUES
 (1, 1, 'student_to_teacher', '2025-08-14 17:37:00', '2025-08-21 17:37:00', 'active', 1, '2025-08-10 13:37:28', '2025-08-14 15:37:11'),
 (2, 1, 'teacher_to_teacher', '2025-08-14 17:52:00', '2025-08-21 17:52:00', 'active', 1, '2025-08-10 13:37:28', '2025-08-14 15:53:06'),
-(3, 1, 'head_to_teacher', '2024-12-05 08:00:00', '2024-12-15 17:00:00', 'scheduled', 1, '2025-08-10 13:37:28', NULL),
+(3, 1, 'head_to_teacher', '2025-08-18 14:04:00', '2025-08-25 14:04:00', 'active', 1, '2025-08-10 13:37:28', '2025-08-18 12:04:43'),
 (4, 1, 'student_to_teacher', '2024-11-15 08:00:00', '2024-11-30 17:00:00', 'completed', 1, '2025-08-10 13:40:41', '2025-08-12 06:39:28'),
 (5, 1, 'teacher_to_teacher', '2024-12-01 08:00:00', '2024-12-10 17:00:00', 'scheduled', 1, '2025-08-10 13:40:41', NULL),
 (6, 1, 'head_to_teacher', '2024-12-05 08:00:00', '2024-12-15 17:00:00', 'scheduled', 1, '2025-08-10 13:40:41', NULL);
@@ -1326,7 +1383,12 @@ INSERT INTO `evaluation_sessions` (`id`, `evaluator_id`, `evaluator_type`, `eval
 (331, 7, 'teacher', 3, 'teacher', 5, 1, NULL, '2025-08-14', 'draft', '', '2025-08-14 15:53:06', NULL),
 (332, 3, 'teacher', 7, 'teacher', 5, 1, NULL, '2025-08-14', 'draft', '', '2025-08-14 15:53:06', NULL),
 (333, 2, 'teacher', 9, 'teacher', 5, 1, NULL, '2025-08-14', 'draft', '', '2025-08-14 15:53:06', NULL),
-(334, 2, 'student', 2, 'teacher', 1, NULL, NULL, '2025-08-15', 'completed', NULL, '2025-08-14 16:30:53', '2025-08-14 16:36:30');
+(334, 2, 'student', 2, 'teacher', 1, 1, NULL, '2025-08-15', 'completed', NULL, '2025-08-14 16:30:53', '2025-08-18 07:50:43'),
+(337, 11, 'head', 7, 'teacher', 3, 1, NULL, '2025-08-18', 'draft', '', '2025-08-18 12:04:43', NULL),
+(338, 11, 'head', 3, 'teacher', 3, 1, NULL, '2025-08-18', 'draft', '', '2025-08-18 12:04:43', NULL),
+(339, 7, 'head', 9, 'teacher', 3, 1, NULL, '2025-08-18', 'draft', '', '2025-08-18 12:04:43', NULL),
+(340, 7, 'head', 4, 'teacher', 3, 1, NULL, '2025-08-18', 'draft', '', '2025-08-18 12:04:43', NULL),
+(341, 7, 'head', 2, 'teacher', 3, 1, NULL, '2025-08-18', 'draft', '', '2025-08-18 12:04:43', NULL);
 
 -- --------------------------------------------------------
 
@@ -1417,7 +1479,7 @@ CREATE TABLE `faculty` (
 --
 
 INSERT INTO `faculty` (`id`, `first_name`, `last_name`, `email`, `password`, `position`, `department`, `bio`, `image_url`, `is_active`, `created_at`) VALUES
-(1, 'Dr. Maria', 'Santos', 'msantos@seait.edu.ph', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Dean', 'College of Engineering', 'Expert in computer engineering with 15 years of experience', NULL, 1, '2025-08-05 10:14:11'),
+(1, 'Dr. Maria', 'Santos', 'msantos@seait.edu.ph', '$2y$10$NXCWm8t7bTMY4MU3HTwKYOHsiXA4uPQGWJdd06K38IKuLe/DKkqVC', 'Dean', 'College of Engineering', 'Expert in computer engineering with 15 years of experience', NULL, 1, '2025-08-05 10:14:11'),
 (2, 'Michael Paul', 'Sebando', 'msebando@seait.edu.ph', '$2y$10$KM8tKMYTqJ3De938qIT21OHM0oI7xCgcU1cqZmVDMwdh4aiqGoula', 'Professor', 'College of Information and Communication Technology', 'Specialist in software engineering and web development', '', 1, '2025-08-05 10:14:11'),
 (3, 'Dr. Ana', 'Reyes', 'areyes@seait.edu.ph', NULL, 'Associate Professor', 'College of Business', 'Expert in business management and entrepreneurship', NULL, 1, '2025-08-05 10:14:11'),
 (4, 'Dr. Roberto', 'Garcia', 'rgarcia@seait.edu.ph', NULL, 'Dean', 'College of Information Technology', 'Expert in software engineering and artificial intelligence with 20 years of experience', NULL, 1, '2025-08-05 10:17:11'),
@@ -2314,8 +2376,7 @@ CREATE TABLE `quizzes` (
 
 INSERT INTO `quizzes` (`id`, `teacher_id`, `class_id`, `lesson_id`, `title`, `description`, `quiz_type`, `time_limit`, `passing_score`, `max_attempts`, `status`, `created_at`, `updated_at`) VALUES
 (2, 2, NULL, 4, 'Introduction to Application Development Quiz', 'This quiz covers the fundamental concepts of application development including types of applications, development methodologies, and key concepts. The quiz consists of multiple choice questions and has a time limit of 30 minutes.', 'lesson_specific', 30, 70, 2, 'published', '2025-08-17 13:29:40', '2025-08-17 14:05:39'),
-(3, 2, NULL, 5, 'Introduction to Application Development Quiz', 'This quiz covers the fundamental concepts of application development including types of applications, development methodologies, and key concepts. The quiz consists of multiple choice questions and has a time limit of 30 minutes.', 'lesson_specific', 30, 70, 2, 'published', '2025-08-17 13:30:40', '2025-08-17 14:05:39'),
-(4, 2, NULL, NULL, 'Sample Quiz', 'This is a sample quiz to test the system', 'general', 30, 70, 1, 'draft', '2025-08-17 13:59:06', '2025-08-17 14:05:51');
+(3, 2, NULL, 5, 'Introduction to Application Development Quiz', 'This quiz covers the fundamental concepts of application development including types of applications, development methodologies, and key concepts. The quiz consists of multiple choice questions and has a time limit of 30 minutes.', 'lesson_specific', 30, 70, 2, 'published', '2025-08-17 13:30:40', '2025-08-17 14:05:39');
 
 -- --------------------------------------------------------
 
@@ -2698,7 +2759,7 @@ CREATE TABLE `students` (
   `first_name` varchar(100) NOT NULL,
   `middle_name` varchar(100) DEFAULT NULL,
   `last_name` varchar(100) NOT NULL,
-  `email` varchar(255) NOT NULL,
+  `email` varchar(255) DEFAULT NULL,
   `password_hash` varchar(255) NOT NULL,
   `status` enum('active','pending','inactive','deleted') DEFAULT 'active',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -2711,9 +2772,70 @@ CREATE TABLE `students` (
 --
 
 INSERT INTO `students` (`id`, `student_id`, `first_name`, `middle_name`, `last_name`, `email`, `password_hash`, `status`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, '2024-0001', 'Juan', 'Santos', 'Dela Cruz', 'juan.delacruz@seait.edu.ph', '$2y$10$g5F5UI3JzdlCNul52Qaqxe1h9gk/aAHTRm9AR8DTepzzNpd6gtQ4.', 'active', '2025-08-10 11:44:42', '2025-08-13 16:26:12', NULL),
+(1, '2024-0001', 'Juan', 'Santos', 'Dela Cruz', 'juan.delacruz@seait.edu.ph', '$2y$10$cs/XVTHbrKfGE5zqAFf/s.E85rPqhbUjl9QOMOesnNEHBk9UhxIyi', 'active', '2025-08-10 11:44:42', '2025-08-17 17:50:10', NULL),
 (2, '2024-0002', 'Maria', 'Garcia', 'Santos', 'maria.santos@seait.edu.ph', '$2y$10$g5F5UI3JzdlCNul52Qaqxe1h9gk/aAHTRm9AR8DTepzzNpd6gtQ4.', 'active', '2025-08-10 11:44:42', '2025-08-13 16:25:12', NULL),
-(4, '2024-0004', 'Ana', 'Martinez', 'Gonzales', 'ana.gonzales@seait.edu.ph', '$2y$10$g5F5UI3JzdlCNul52Qaqxe1h9gk/aAHTRm9AR8DTepzzNpd6gtQ4.', 'active', '2025-08-10 11:44:42', '2025-08-13 16:26:12', NULL);
+(4, '2024-0004', 'Ana', 'Martinez', 'Gonzales', 'ana.gonzales@seait.edu.ph', '$2y$10$g5F5UI3JzdlCNul52Qaqxe1h9gk/aAHTRm9AR8DTepzzNpd6gtQ4.', 'active', '2025-08-10 11:44:42', '2025-08-13 16:26:12', NULL),
+(206, '2023-00184', 'JOHN MICHAEL', NULL, 'ALVAREZ', 'johnmichael.alvarez@seait.edu.ph', '$2y$10$Tn5fbD6h3hOKEovVXeb1PeU2Gk/UV.yaSjs9rUl1mB1uS6Ka44oGS', 'active', '2025-08-18 23:47:43', NULL, NULL),
+(207, '2023-02649', 'BERNARD', NULL, 'AQUINO', 'bernard.aquino@seait.edu.ph', '$2y$10$c9crQFunOESJCOIcskvY8Oxu0dhA6OiWuSBHggKo33Vb/GFCymif.', 'active', '2025-08-18 23:47:43', NULL, NULL),
+(208, '2023-00897', 'KENNETH', NULL, 'CAGAITAN', 'kenneth.cagaitan@seait.edu.ph', '$2y$10$goSBX7TIWOuJjNEJGQ2SuukEskiSrHXLwOzqiXL9O1.vRo/ac2Y7q', 'active', '2025-08-18 23:47:43', NULL, NULL),
+(209, '2023-05200', 'JAIME, JR.', NULL, 'DANI', 'jaime,jr..dani@seait.edu.ph', '$2y$10$D8LRED0abNR3rIwhvP0AeuPMXDjyE4r/d09Khte90oErxTBxHicAG', 'active', '2025-08-18 23:47:43', NULL, NULL),
+(210, '2023-00054', 'APPLE', NULL, 'DONATO', 'apple.donato@seait.edu.ph', '$2y$10$1SkOE3JDE8M15UCwOWlCiOkfxkShfXITr9sc37cho0mubihzVwaK2', 'active', '2025-08-18 23:47:43', NULL, NULL),
+(211, '2023-00994', 'JASSEN LOUISSE', NULL, 'DUBLAS', 'jassenlouisse.dublas@seait.edu.ph', '$2y$10$ElvUKnuu3Q.T1U5q./M2uOKKuRMo5F62uaJgmovo4wH6ogy1UNzHK', 'active', '2025-08-18 23:47:43', NULL, NULL),
+(212, '2023-01078', 'NELTON, JR.', NULL, 'GUMABON', 'nelton,jr..gumabon@seait.edu.ph', '$2y$10$XYCq.c3CTX6PLmJ8U3w7L.NEzSKx/W9OGByZC9GAd/NADT7.4v/lW', 'active', '2025-08-18 23:47:43', NULL, NULL),
+(213, '2023-00025', 'JAIRUZ ALEEM', NULL, 'LAGAMO', 'jairuzaleem.lagamo@seait.edu.ph', '$2y$10$77wtmipY7vqCW0cJ1xKuceBG0/59FxzMJdsEG/fKmJLAUL7sjEe3y', 'active', '2025-08-18 23:47:44', NULL, NULL),
+(214, '2023-05082', 'IVAN EMMANUEL', NULL, 'PADILLA', 'ivanemmanuel.padilla@seait.edu.ph', '$2y$10$JLQU.HQi7ptVlroZjcItPuirgmlSIPNrBbQeFpPqpa0SJy1lRfWAO', 'active', '2025-08-18 23:47:44', NULL, NULL),
+(215, '2023-00080', 'MHER KHYLA', NULL, 'PAGALAN', 'mherkhyla.pagalan@seait.edu.ph', '$2y$10$1VR1bUA/PTDNqJ50vooU/OthNmZNVwe7EoOFpk3o/36Huh1cj4ZFG', 'active', '2025-08-18 23:47:44', NULL, NULL),
+(216, '2023-02654', 'CHRISTIAN', NULL, 'PEROL', 'christian.perol@seait.edu.ph', '$2y$10$idLfplFmkW/KDQntsDRpAusoBFGUuHKv9gJ05C6oaXHSS/eiGcNTi', 'active', '2025-08-18 23:47:44', NULL, NULL),
+(217, '2023-03405', 'LYNZEL MARIEL', NULL, 'TAMAYO', 'lynzelmariel.tamayo@seait.edu.ph', '$2y$10$VRd0MdK/cVQ0OZr2iq9Bceo8hwhA7FPXbv1usHmp0xv1VSwanNSAC', 'active', '2025-08-18 23:47:44', NULL, NULL),
+(218, '2023-00026', 'GINO PAOLO', NULL, 'VALENZUELA', 'ginopaolo.valenzuela@seait.edu.ph', '$2y$10$oC8jeYOCxbuW91NA01p5w.GaBrVUAsVAm.aojLrGIQCqVijfcOvuO', 'active', '2025-08-18 23:47:44', NULL, NULL),
+(219, '2022-03659', 'LIEZL JANE', NULL, 'ARREGLADO', 'liezljane.arreglado@seait.edu.ph', '$2y$10$3ZOowFabWwPNAhOeuZoL.uLBzu2IGKPjYUcmr4Q9XdRBorCgmNzia', 'active', '2025-08-18 23:47:44', NULL, NULL),
+(220, '2022-00947', 'KENDRICK', NULL, 'BATCHARO', 'kendrick.batcharo@seait.edu.ph', '$2y$10$5AA5toYJLA6p9B8KyptxY.YIL3yLKlBDkf0EgXMQ3YauoaMGOsY1y', 'active', '2025-08-18 23:47:44', NULL, NULL),
+(221, '2022-07480', 'CLOUFERD', NULL, 'CARACOTDACOT', 'clouferd.caracotdacot@seait.edu.ph', '$2y$10$xfOsHdC9/s9JxH55MO0Jeu57Owz76O0Q9aWyvjzW0YIrTlQcmCEXi', 'active', '2025-08-18 23:47:44', NULL, NULL),
+(222, '2022-00488', 'JACK LESTER', NULL, 'CASIANO', 'jacklester.casiano@seait.edu.ph', '$2y$10$VIPV637dFeLS22frDAVW.e116cplhyIRzjYbrmg.hy77mMTQctQSi', 'active', '2025-08-18 23:47:44', NULL, NULL),
+(223, '2022-00945', 'JULES ANDRIE', NULL, 'CASTAÑAS', 'julesandrie.castaÑas@seait.edu.ph', '$2y$10$mI2tkUn6j6llqI97IAVMWunwL3pWEtO7SpZgs3DqZaha6g/L2GNVe', 'active', '2025-08-18 23:47:44', NULL, NULL),
+(224, '2022-00365', 'JOHN CARLO', NULL, 'DEYPALAN', 'johncarlo.deypalan@seait.edu.ph', '$2y$10$HctjBuTiOxxkQeJEMwE8P.kbuoAr6NTHc3MoHLyW/I6E5i00HJwL.', 'active', '2025-08-18 23:47:44', NULL, NULL),
+(225, '2022-00745', 'JOHN REY', NULL, 'EPE', 'johnrey.epe@seait.edu.ph', '$2y$10$.Pjz/Dpc/aPhUHDnDZdc/Ozyfj2PzAf9h2jydOXsZ9esIZa22jnVS', 'active', '2025-08-18 23:47:44', NULL, NULL),
+(226, '2022-00944', 'JIROVEE', NULL, 'FONTILON', 'jirovee.fontilon@seait.edu.ph', '$2y$10$5u/XZULH56.uWpH56wXreu7GJ7tsYy2DmjX4qYoGAk/Zs2Ow5tDqK', 'active', '2025-08-18 23:47:44', NULL, NULL),
+(227, '2022-03946', 'KYTH WINLIET', NULL, 'GONZAGA', 'kythwinliet.gonzaga@seait.edu.ph', '$2y$10$knwyR2DFtqQXIb1IgFVc8uNonFUmVs2NEHuJsYAFFst0DbLblwaaS', 'active', '2025-08-18 23:47:44', NULL, NULL),
+(228, '2022-03136', 'PIOLO', NULL, 'GRAFANE', 'piolo.grafane@seait.edu.ph', '$2y$10$bkz5g8JlWZoZhs8u/5o6Zu0xlYfB5fWg5NuTmWr0tfBuYsSmh5g2O', 'active', '2025-08-18 23:47:45', NULL, NULL),
+(229, '2022-01030', 'IAN VINCENT', NULL, 'LIGAYA', 'ianvincent.ligaya@seait.edu.ph', '$2y$10$4V7w3YBpC5HFhJcMFvg0YOMOK3kUH8ii6cAwwB19RoDRT8I0RCim2', 'active', '2025-08-18 23:47:45', NULL, NULL),
+(230, '2022-04704', 'CLINT JOHN', NULL, 'MANULAT', 'clintjohn.manulat@seait.edu.ph', '$2y$10$o0NWNcuKf1fdQf5UdNezNeWAMGUI1csNmxxbXopqdpNM.nEFwsFUG', 'active', '2025-08-18 23:47:45', NULL, NULL),
+(231, '2022-00375', 'SHAINE RHAICA', NULL, 'MOJICA', 'shainerhaica.mojica@seait.edu.ph', '$2y$10$437VHWQngF6Oh/erusSYLOY2bOy4iUpZ2hd3dRXAlDGaKiZ8iIq8G', 'active', '2025-08-18 23:47:45', NULL, NULL),
+(232, '2022-04851', 'ZYRUS JAY', NULL, 'OFTANA', 'zyrusjay.oftana@seait.edu.ph', '$2y$10$H8/mvwRhTnVtOs3.4tzV4OawVAeh15VIxfmDGGW0lpHkoyIqGu4Oi', 'active', '2025-08-18 23:47:45', NULL, NULL),
+(233, '2022-00705', 'KATHLEEN NICOLE', NULL, 'OLIVA', 'kathleennicole.oliva@seait.edu.ph', '$2y$10$cRSVWVLW9D7TVTixfwqdBOm9xtYVt2N8U9LdM4ouvLA7MZVt1Vy.m', 'active', '2025-08-18 23:47:45', NULL, NULL),
+(234, '2022-01273', 'RYAN MATTHEW', NULL, 'ORACION', 'ryanmatthew.oracion@seait.edu.ph', '$2y$10$X4oea5A3AmhUeukgvkkLNODfwTEhMvRqEdbaan97s7ahalXIn5z9y', 'active', '2025-08-18 23:47:45', NULL, NULL),
+(235, '2022-00792', 'ALEXANDRA ANN ROCHELLE', NULL, 'PANGAN', 'alexandraannrochelle.pangan@seait.edu.ph', '$2y$10$0RAXBTzDfKNxVkVR/BZi0eN6Zycesz8K5fptEvbetcveUZcDt1yf2', 'active', '2025-08-18 23:47:45', NULL, NULL),
+(236, '2022-03051', 'SHYRA', NULL, 'PERLA', 'shyra.perla@seait.edu.ph', '$2y$10$GQoceka/OkzBlogibOmEIeteyGgZ7.H5eBDny.FsrLlPk79RYj6eq', 'active', '2025-08-18 23:47:45', NULL, NULL),
+(237, '2022-00948', 'GLEN CHRISTIAN', NULL, 'SALVADOR', 'glenchristian.salvador@seait.edu.ph', '$2y$10$o.xj7T1GWvXghzmI5T0HtObFHz3qyBWd5Y5Ixl4RLZ0.erk7kjk4q', 'active', '2025-08-18 23:47:45', NULL, NULL),
+(238, '2022-00585', 'JOMARIE', NULL, 'SORIOSO', 'jomarie.sorioso@seait.edu.ph', '$2y$10$HiaBQL2Vpwk7UypzpqTGm.CEhBNj5ufsv2eB3VW4zvrWuGIyi0UqS', 'active', '2025-08-18 23:47:45', NULL, NULL),
+(239, '2022-03972', 'REIGNA JANE', NULL, 'UMIPIG', 'reignajane.umipig@seait.edu.ph', '$2y$10$f4SNUUmJRWil24K3eRGd0OSDT00mGgNzf6erBD46DIFGHa0.hZzJe', 'active', '2025-08-18 23:47:45', NULL, NULL),
+(240, '2022-03141', 'JOSHUA', NULL, 'VILLAVECENCIO', 'joshua.villavecencio@seait.edu.ph', '$2y$10$EA2c8DuzI6Eew4HstsFHMOIHYHQBlt/WeXNOlZWk4Ht5zXhmkK9Z6', 'active', '2025-08-18 23:47:45', NULL, NULL),
+(241, '2022-00330', 'SWEEDEN MARK', NULL, 'ALPAS', 'sweedenmark.alpas@seait.edu.ph', '$2y$10$KVVlaMoDmVgBP8v19JgUjefffFAvXQ3UTMFY01PxxCNmlQbbwi5TC', 'active', '2025-08-18 23:47:45', NULL, NULL),
+(242, '2022-00591', 'JUN BREECH', NULL, 'CALIPUSAN', 'junbreech.calipusan@seait.edu.ph', '$2y$10$5.5sTmzVF6cn3joR5ARPYux33Vxh8Itv5LOG6qxlaGD6eeEqmpHAy', 'active', '2025-08-18 23:47:45', NULL, NULL),
+(243, '2022-00108', 'MICHAEL ANGELO', NULL, 'CASIDO', 'michaelangelo.casido@seait.edu.ph', '$2y$10$Zne6lOyeQkljnQkvqH8HJ.67hB0cDyL6URzDJKeYYgWpjhOgp2kxq', 'active', '2025-08-18 23:47:45', NULL, NULL),
+(244, '2022-02438', 'EDMARK', NULL, 'CERVEZA', 'edmark.cerveza@seait.edu.ph', '$2y$10$r74xhrYuWV7wFUs.tWIGNuXCRg/5Xs1NrHFm3ELhiuyQvl2GvOwiO', 'active', '2025-08-18 23:47:46', NULL, NULL),
+(245, '2022-00613', 'BYRON', NULL, 'DEFENSOR', 'byron.defensor@seait.edu.ph', '$2y$10$tznZOzdeD8.NEhVZb/.Ds.UCfEvfcjMaOoTMqrhuneyhes/gYKZ/i', 'active', '2025-08-18 23:47:46', NULL, NULL),
+(246, '2022-04442', 'RENETTE', NULL, 'DEL MUNDO', 'renette.delmundo@seait.edu.ph', '$2y$10$h7Jh2BOnw.611ZXd3UmUP.BfPcyUWX7VsEvtBJulO9NZ/zdmrYQ9G', 'active', '2025-08-18 23:47:46', NULL, NULL),
+(247, '2022-02875', 'MELCAH', NULL, 'DENG', 'melcah.deng@seait.edu.ph', '$2y$10$V9Fkl7CgZzN2YKuPFyRnG.T1gJ2ki.AbnZQLxoJ./rdkmhvQxh2du', 'active', '2025-08-18 23:47:46', NULL, NULL),
+(248, '2022-00815', 'RODRICK', NULL, 'DIWATEN', 'rodrick.diwaten@seait.edu.ph', '$2y$10$HejVxv4aSftsDUy2jrruE.k.TWjYN4k4HiY7kQlTonsYmEzKaFQBm', 'active', '2025-08-18 23:47:46', NULL, NULL),
+(249, '2023-02774', 'JACKIELOU', NULL, 'FERNANDEZ', 'jackielou.fernandez@seait.edu.ph', '$2y$10$dyk6vVWyHellWKu6bcJDLuLw3052vZvuH1WkrsHDlEmT3Nv02kjpC', 'active', '2025-08-18 23:47:46', NULL, NULL),
+(250, '2022-04850', 'VLADEMER', NULL, 'FIGURACION', 'vlademer.figuracion@seait.edu.ph', '$2y$10$aCIxt5i51a2m179s6QlBbuvUBjvA2s6bKOi0eo8jH/IYkjgcP9rJu', 'active', '2025-08-18 23:47:46', NULL, NULL),
+(251, '2022-04820', 'RONALIZA', NULL, 'GARBOSA', 'ronaliza.garbosa@seait.edu.ph', '$2y$10$ipj/g9jzkmovLC74dSrsWuqznpYZiPuT.6P04WwtTCFkQR9P339nW', 'active', '2025-08-18 23:47:46', NULL, NULL),
+(252, '2022-04083', 'SHANA ROSE', NULL, 'GARNICA', 'shanarose.garnica@seait.edu.ph', '$2y$10$jrbUADhbt53QwH7b5d9q1.JjgX7yM2lQKyvE6FAFcXLcS7ArjvjFO', 'active', '2025-08-18 23:47:46', NULL, NULL),
+(253, '2023-04044', 'JAN KYLE', NULL, 'GULLIM', 'jankyle.gullim@seait.edu.ph', '$2y$10$n3Mc8cYh5lpCTsg.MaJoDOGvXqovKBYNynSaW2YOWqGwDdo1xz1yG', 'active', '2025-08-18 23:47:46', NULL, NULL),
+(254, '2022-01451', 'FRUNDY MHEG', NULL, 'LAURESTA', 'frundymheg.lauresta@seait.edu.ph', '$2y$10$fIJHgSxLmU.6oSMEsh8JeuU9vWmDrRDSp0XWqg0uWKFqLU7ERc.Ti', 'active', '2025-08-18 23:47:46', NULL, NULL),
+(255, '2025-05407', 'JHON REN', NULL, 'LOSAÑES', 'jhonren.losaÑes@seait.edu.ph', '$2y$10$lmdmxiFuOyFiYE62VzmqhOcwRONoLaiPPJf94E4icCpvG3aXcz9nu', 'active', '2025-08-18 23:47:46', NULL, NULL),
+(256, '2022-00571', 'TAHER', NULL, 'MAMALUBA', 'taher.mamaluba@seait.edu.ph', '$2y$10$al0mKa5cluFszPSwLIzgA.JB.qCI.7kKkMrv4yaBwFxAPIqoHwkiS', 'active', '2025-08-18 23:47:46', NULL, NULL),
+(257, '2022-01160', 'REGINE', NULL, 'MOUNTAL', 'regine.mountal@seait.edu.ph', '$2y$10$AkPOBT.Gqei0KlGhBXFUEuvU4BjHLb1IlofTj0lxTGP6jz5IfyvTq', 'active', '2025-08-18 23:47:46', NULL, NULL),
+(258, '2023-05632', 'ANDREY', NULL, 'OSANO', 'andrey.osano@seait.edu.ph', '$2y$10$691HhsFxwOH1eEYrFVDKEesw8hWzfZVxrQ6pW71NpBQBk1Noqbh5u', 'active', '2025-08-18 23:47:46', NULL, NULL),
+(259, '2019-00614', 'NYVEIN CLARK', NULL, 'PAREJA', 'nyveinclark.pareja@seait.edu.ph', '$2y$10$H.Scb8l35WC.StZ3vuQj1uf99HfodZ4Utiz6DVciV.XUG8JFW277K', 'active', '2025-08-18 23:47:47', NULL, NULL),
+(260, '2020-00107', 'RAYMARK', NULL, 'PAUSAL', 'raymark.pausal@seait.edu.ph', '$2y$10$bvtxe8EXUze6ENeZ4zbG4eLKmtXQoyHudNxHzgFrI98u88dtlgtoG', 'active', '2025-08-18 23:47:47', NULL, NULL),
+(261, '2022-00561', 'RENAMAE', NULL, 'PEDI-AN', 'renamae.pedi-an@seait.edu.ph', '$2y$10$RT/MT02YmEDyZksxlK3X0uk3JsE1vzpUj6okaQuz1QxGgDqTbzaMe', 'active', '2025-08-18 23:47:47', NULL, NULL),
+(262, '2021-06149', 'THAN', NULL, 'PINADO', 'than.pinado@seait.edu.ph', '$2y$10$XBNg6Y2S79jeVtGe8pe9S.8l.f0wFYYFQXJWSDqOEGFXVpUkHtCoy', 'active', '2025-08-18 23:47:47', NULL, NULL),
+(263, '2022-04923', 'REGIE', NULL, 'RAPISTA', 'regie.rapista@seait.edu.ph', '$2y$10$tYGCU0VUlRRCOvNXu3qP9eUsmT1DRtGdBLo5yMRISNTAA2V5VZp3K', 'active', '2025-08-18 23:47:47', NULL, NULL),
+(264, '2022-04546', 'WAWEE MHEL JANE', NULL, 'RAYMUNDO', 'waweemheljane.raymundo@seait.edu.ph', '$2y$10$u2NZHw7ZRwt14knX93sfl.c9lNZcLYQd7jfEYqlVhb3wbz/uvBo9.', 'active', '2025-08-18 23:47:47', NULL, NULL),
+(265, '2021-03861', 'JOSHUA', NULL, 'TRAZO', 'joshua.trazo@seait.edu.ph', '$2y$10$dE7oWMT5K/au2s61qXUsr.vcSI05xQjtyv7TIKxD2tsRvMbBuc.8.', 'active', '2025-08-18 23:47:47', NULL, NULL),
+(266, '2022-00109', 'GERDWIN', NULL, 'MONDEJAR', 'gerdwin.mondejar@seait.edu.ph', '$2y$10$goxFZZZy.7dqb7K1jbYaT.V0VQnbyl6AiFsl.BGyAMq.MfpJbbXxy', 'active', '2025-08-18 23:47:47', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -3012,16 +3134,16 @@ CREATE TABLE `teacher_dashboard_stats` (
 -- --------------------------------------------------------
 
 --
--- Stand-in structure for view `teacher_recent_activities`
--- (See below for the actual view)
+-- Table structure for table `teacher_recent_activities`
 --
+
 CREATE TABLE `teacher_recent_activities` (
-`activity_type` varchar(12)
-,`activity_id` int(11)
-,`teacher_id` int(11)
-,`description` varchar(323)
-,`activity_date` timestamp
-);
+  `activity_type` varchar(12) DEFAULT NULL,
+  `activity_id` int(11) DEFAULT NULL,
+  `teacher_id` int(11) DEFAULT NULL,
+  `description` varchar(323) DEFAULT NULL,
+  `activity_date` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -3064,21 +3186,21 @@ CREATE TABLE `teacher_subjects` (
 -- --------------------------------------------------------
 
 --
--- Stand-in structure for view `teacher_training_needs_view`
--- (See below for the actual view)
+-- Table structure for table `teacher_training_needs_view`
 --
+
 CREATE TABLE `teacher_training_needs_view` (
-`user_id` int(11)
-,`first_name` varchar(50)
-,`last_name` varchar(50)
-,`email` varchar(100)
-,`sub_category_id` int(11)
-,`sub_category_name` varchar(255)
-,`main_category_name` varchar(255)
-,`average_rating` decimal(14,4)
-,`total_ratings` bigint(21)
-,`priority_level` varchar(8)
-);
+  `user_id` int(11) DEFAULT NULL,
+  `first_name` varchar(50) DEFAULT NULL,
+  `last_name` varchar(50) DEFAULT NULL,
+  `email` varchar(100) DEFAULT NULL,
+  `sub_category_id` int(11) DEFAULT NULL,
+  `sub_category_name` varchar(255) DEFAULT NULL,
+  `main_category_name` varchar(255) DEFAULT NULL,
+  `average_rating` decimal(14,4) DEFAULT NULL,
+  `total_ratings` bigint(21) DEFAULT NULL,
+  `priority_level` varchar(8) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -3242,6 +3364,15 @@ CREATE TABLE `training_suggestions` (
   `response_notes` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Dumping data for table `training_suggestions`
+--
+
+INSERT INTO `training_suggestions` (`id`, `user_id`, `training_id`, `suggestion_reason`, `evaluation_category_id`, `evaluation_score`, `priority_level`, `suggested_by`, `suggestion_date`, `status`, `response_date`, `response_notes`) VALUES
+(1, 2, 1, 'Based on your evaluation score of 2.13 in Classroom Management (Student to Teacher Evaluation), which is below the recommended threshold of 4.0. This training will help improve your performance in this area.', 1, 2.13, 'critical', 5, '2025-08-18 09:24:55', 'pending', NULL, NULL),
+(2, 2, 3, 'Based on your evaluation score of 2.5 in Communication Skills (Student to Teacher Evaluation), which is below the recommended threshold of 4.0. This training will help improve your performance in this area.', 4, 2.50, 'high', 5, '2025-08-18 09:24:55', 'pending', NULL, NULL),
+(3, 2, 2, 'Based on your evaluation score of 2.63 in Teaching Skills (Student to Teacher Evaluation), which is below the recommended threshold of 4.0. This training will help improve your performance in this area.', 2, 2.63, 'high', 5, '2025-08-18 09:24:55', 'pending', NULL, NULL);
+
 -- --------------------------------------------------------
 
 --
@@ -3288,7 +3419,7 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `username`, `email`, `password`, `first_name`, `last_name`, `role`, `status`, `created_at`, `updated_at`) VALUES
-(1, 'admin', 'admin@seait.edu.ph', '$2y$10$cMOojXGmDMOhjndcskIz7.SiyLe5qaJYxrtNrlLgpvpmUovMHFwPS', 'Admin', 'User', 'admin', 'active', '2025-08-05 10:14:11', '2025-08-10 17:21:54'),
+(1, 'admin', 'admin@seait.edu.ph', '$2y$10$.kwR9gKMUqFF4BN/JjbtleOPz4WeziWL.DA965DqWnAeTUz2McGMa', 'Admin', 'User', 'admin', 'active', '2025-08-05 10:14:11', '2025-08-17 17:50:10'),
 (2, 'social_manager', 'social@seait.edu.ph', '$2y$10$cMOojXGmDMOhjndcskIz7.SiyLe5qaJYxrtNrlLgpvpmUovMHFwPS', 'Social', 'Manager', 'social_media_manager', 'active', '2025-08-05 10:14:11', '2025-08-10 17:21:54'),
 (3, 'content_creator', 'content@seait.edu.ph', '$2y$10$cMOojXGmDMOhjndcskIz7.SiyLe5qaJYxrtNrlLgpvpmUovMHFwPS', 'Content', 'Creator', 'content_creator', 'active', '2025-08-05 10:14:11', '2025-08-17 13:28:48'),
 (5, 'guidance', 'guidance@seait.edu.ph', '$2y$10$cMOojXGmDMOhjndcskIz7.SiyLe5qaJYxrtNrlLgpvpmUovMHFwPS', 'Guidance', 'Officer', 'guidance_officer', 'active', '2025-08-10 12:41:23', '2025-08-10 17:21:54'),
@@ -3321,7 +3452,8 @@ INSERT INTO `user_inquiries` (`id`, `user_question`, `bot_response`, `user_email
 (1, 'What programs does SEAIT offer?', 'SEAIT offers various academic programs across different colleges. You can explore our Academic Programs section to see all available courses. Each program has detailed information about curriculum, requirements, and career opportunities.', '', '', '::1', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 0, '2025-08-08 02:34:10'),
 (2, 'How to enroll?', 'You can apply for admission by visiting our Admission Process section on the website, or contact our admission office directly. We offer various programs including undergraduate and graduate degrees. You can also start your application through our pre-registration form.', '', '', '::1', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 0, '2025-08-08 03:54:30'),
 (3, 'how to enroll', 'You can apply for admission by visiting our Admission Process section on the website, or contact our admission office directly. We offer various programs including undergraduate and graduate degrees. You can also start your application through our pre-registration form.', '', '', '::1', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 0, '2025-08-08 05:29:52'),
-(4, 'Publications', 'Thank you for your question! For specific inquiries, I recommend contacting our relevant department directly. You can find contact information in the Contact Us section, or visit our main office during business hours.', '', '', '::1', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 0, '2025-08-08 07:12:45');
+(4, 'Publications', 'Thank you for your question! For specific inquiries, I recommend contacting our relevant department directly. You can find contact information in the Contact Us section, or visit our main office during business hours.', '', '', '::1', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36', 0, '2025-08-08 07:12:45'),
+(5, 'How to enroll?', 'You can apply for admission by visiting our Admission Process section on the website, or contact our admission office directly. We offer various programs including undergraduate and graduate degrees. You can also start your application through our pre-registration form.', '', '', '::1', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', 0, '2025-08-19 02:30:02');
 
 -- --------------------------------------------------------
 
@@ -3330,7 +3462,7 @@ INSERT INTO `user_inquiries` (`id`, `user_question`, `bot_response`, `user_email
 --
 DROP TABLE IF EXISTS `active_students_view`;
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `active_students_view`  AS SELECT `s`.`id` AS `id`, `s`.`student_id` AS `student_id`, `s`.`first_name` AS `first_name`, `s`.`middle_name` AS `middle_name`, `s`.`last_name` AS `last_name`, `s`.`email` AS `email`, `s`.`status` AS `status`, `s`.`created_at` AS `created_at`, concat(`s`.`first_name`,' ',`s`.`last_name`) AS `full_name`, `sp`.`phone` AS `phone`, `sp`.`date_of_birth` AS `date_of_birth`, `sai`.`program_id` AS `program_id`, `sai`.`year_level` AS `year_level`, `sai`.`academic_status` AS `academic_status` FROM ((`students` `s` left join `student_profiles` `sp` on(`s`.`id` = `sp`.`student_id`)) left join `student_academic_info` `sai` on(`s`.`id` = `sai`.`student_id`)) WHERE `s`.`status` = 'active' ;
+CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `active_students_view`  AS SELECT `s`.`id` AS `id`, `s`.`student_id` AS `student_id`, `s`.`first_name` AS `first_name`, `s`.`middle_name` AS `middle_name`, `s`.`last_name` AS `last_name`, `s`.`email` AS `email`, `s`.`status` AS `status`, `s`.`created_at` AS `created_at`, concat(`s`.`first_name`,' ',`s`.`last_name`) AS `full_name`, `sp`.`phone` AS `phone`, `sp`.`date_of_birth` AS `date_of_birth`, `sai`.`program_id` AS `program_id`, `sai`.`year_level` AS `year_level`, `sai`.`academic_status` AS `academic_status` FROM ((`students` `s` left join `student_profiles` `sp` on(`s`.`id` = `sp`.`student_id`)) left join `student_academic_info` `sai` on(`s`.`id` = `sai`.`student_id`)) WHERE `s`.`status` = 'active' ;
 
 -- --------------------------------------------------------
 
@@ -3339,7 +3471,7 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 --
 DROP TABLE IF EXISTS `evaluation_summary_view`;
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `evaluation_summary_view`  AS SELECT `es`.`id` AS `id`, `es`.`evaluator_id` AS `evaluator_id`, `es`.`evaluator_type` AS `evaluator_type`, `es`.`evaluatee_id` AS `evaluatee_id`, `es`.`evaluatee_type` AS `evaluatee_type`, `es`.`main_category_id` AS `main_category_id`, `mec`.`name` AS `main_category_name`, `mec`.`evaluation_type` AS `evaluation_type`, `es`.`evaluation_date` AS `evaluation_date`, `es`.`status` AS `status`, `es`.`notes` AS `notes`, count(`er`.`id`) AS `total_responses`, avg(`er`.`rating_value`) AS `average_rating`, count(case when `er`.`rating_value` = 5 then 1 end) AS `excellent_count`, count(case when `er`.`rating_value` = 4 then 1 end) AS `very_satisfactory_count`, count(case when `er`.`rating_value` = 3 then 1 end) AS `satisfactory_count`, count(case when `er`.`rating_value` = 2 then 1 end) AS `good_count`, count(case when `er`.`rating_value` = 1 then 1 end) AS `poor_count` FROM ((`evaluation_sessions` `es` join `main_evaluation_categories` `mec` on(`es`.`main_category_id` = `mec`.`id`)) left join `evaluation_responses` `er` on(`es`.`id` = `er`.`evaluation_session_id`)) GROUP BY `es`.`id` ;
+CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `evaluation_summary_view`  AS SELECT `es`.`id` AS `id`, `es`.`evaluator_id` AS `evaluator_id`, `es`.`evaluator_type` AS `evaluator_type`, `es`.`evaluatee_id` AS `evaluatee_id`, `es`.`evaluatee_type` AS `evaluatee_type`, `es`.`main_category_id` AS `main_category_id`, `mec`.`name` AS `main_category_name`, `mec`.`evaluation_type` AS `evaluation_type`, `es`.`evaluation_date` AS `evaluation_date`, `es`.`status` AS `status`, `es`.`notes` AS `notes`, count(`er`.`id`) AS `total_responses`, avg(`er`.`rating_value`) AS `average_rating`, count(case when `er`.`rating_value` = 5 then 1 end) AS `excellent_count`, count(case when `er`.`rating_value` = 4 then 1 end) AS `very_satisfactory_count`, count(case when `er`.`rating_value` = 3 then 1 end) AS `satisfactory_count`, count(case when `er`.`rating_value` = 2 then 1 end) AS `good_count`, count(case when `er`.`rating_value` = 1 then 1 end) AS `poor_count` FROM ((`evaluation_sessions` `es` join `main_evaluation_categories` `mec` on(`es`.`main_category_id` = `mec`.`id`)) left join `evaluation_responses` `er` on(`es`.`id` = `er`.`evaluation_session_id`)) GROUP BY `es`.`id` ;
 
 -- --------------------------------------------------------
 
@@ -3348,7 +3480,7 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 --
 DROP TABLE IF EXISTS `lms_assignments_view`;
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `lms_assignments_view`  AS SELECT `a`.`id` AS `id`, `a`.`class_id` AS `class_id`, `a`.`category_id` AS `category_id`, `a`.`title` AS `title`, `a`.`description` AS `description`, `a`.`instructions` AS `instructions`, `a`.`due_date` AS `due_date`, `a`.`max_score` AS `max_score`, `a`.`allow_late_submission` AS `allow_late_submission`, `a`.`late_penalty` AS `late_penalty`, `a`.`file_required` AS `file_required`, `a`.`max_file_size` AS `max_file_size`, `a`.`allowed_file_types` AS `allowed_file_types`, `a`.`status` AS `status`, `a`.`created_by` AS `created_by`, `a`.`created_at` AS `created_at`, `a`.`updated_at` AS `updated_at`, `ac`.`name` AS `category_name`, `ac`.`color` AS `category_color`, count(`s`.`id`) AS `submission_count`, count(case when `s`.`status` = 'graded' then 1 end) AS `graded_count`, `u`.`first_name` AS `created_by_name`, `u`.`last_name` AS `created_by_last_name` FROM (((`lms_assignments` `a` join `lms_assignment_categories` `ac` on(`a`.`category_id` = `ac`.`id`)) join `users` `u` on(`a`.`created_by` = `u`.`id`)) left join `lms_assignment_submissions` `s` on(`a`.`id` = `s`.`assignment_id`)) WHERE `a`.`status` <> 'draft' GROUP BY `a`.`id` ;
+CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `lms_assignments_view`  AS SELECT `a`.`id` AS `id`, `a`.`class_id` AS `class_id`, `a`.`category_id` AS `category_id`, `a`.`title` AS `title`, `a`.`description` AS `description`, `a`.`instructions` AS `instructions`, `a`.`due_date` AS `due_date`, `a`.`max_score` AS `max_score`, `a`.`allow_late_submission` AS `allow_late_submission`, `a`.`late_penalty` AS `late_penalty`, `a`.`file_required` AS `file_required`, `a`.`max_file_size` AS `max_file_size`, `a`.`allowed_file_types` AS `allowed_file_types`, `a`.`status` AS `status`, `a`.`created_by` AS `created_by`, `a`.`created_at` AS `created_at`, `a`.`updated_at` AS `updated_at`, `ac`.`name` AS `category_name`, `ac`.`color` AS `category_color`, count(`s`.`id`) AS `submission_count`, count(case when `s`.`status` = 'graded' then 1 end) AS `graded_count`, `u`.`first_name` AS `created_by_name`, `u`.`last_name` AS `created_by_last_name` FROM (((`lms_assignments` `a` join `lms_assignment_categories` `ac` on(`a`.`category_id` = `ac`.`id`)) join `users` `u` on(`a`.`created_by` = `u`.`id`)) left join `lms_assignment_submissions` `s` on(`a`.`id` = `s`.`assignment_id`)) WHERE `a`.`status` <> 'draft' GROUP BY `a`.`id` ;
 
 -- --------------------------------------------------------
 
@@ -3357,7 +3489,7 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 --
 DROP TABLE IF EXISTS `lms_discussion_activity`;
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `lms_discussion_activity`  AS SELECT `d`.`id` AS `id`, `d`.`class_id` AS `class_id`, `d`.`title` AS `title`, `d`.`description` AS `description`, `d`.`is_pinned` AS `is_pinned`, `d`.`is_locked` AS `is_locked`, `d`.`allow_replies` AS `allow_replies`, `d`.`status` AS `status`, `d`.`created_by` AS `created_by`, `d`.`created_at` AS `created_at`, `d`.`updated_at` AS `updated_at`, count(`p`.`id`) AS `post_count`, count(distinct `p`.`author_id`) AS `participant_count`, max(`p`.`created_at`) AS `last_activity`, `u`.`first_name` AS `created_by_name`, `u`.`last_name` AS `created_by_last_name` FROM ((`lms_discussions` `d` join `users` `u` on(`d`.`created_by` = `u`.`id`)) left join `lms_discussion_posts` `p` on(`d`.`id` = `p`.`discussion_id` and `p`.`status` = 'active')) WHERE `d`.`status` = 'active' GROUP BY `d`.`id` ;
+CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `lms_discussion_activity`  AS SELECT `d`.`id` AS `id`, `d`.`class_id` AS `class_id`, `d`.`title` AS `title`, `d`.`description` AS `description`, `d`.`is_pinned` AS `is_pinned`, `d`.`is_locked` AS `is_locked`, `d`.`allow_replies` AS `allow_replies`, `d`.`status` AS `status`, `d`.`created_by` AS `created_by`, `d`.`created_at` AS `created_at`, `d`.`updated_at` AS `updated_at`, count(`p`.`id`) AS `post_count`, count(distinct `p`.`author_id`) AS `participant_count`, max(`p`.`created_at`) AS `last_activity`, `u`.`first_name` AS `created_by_name`, `u`.`last_name` AS `created_by_last_name` FROM ((`lms_discussions` `d` join `users` `u` on(`d`.`created_by` = `u`.`id`)) left join `lms_discussion_posts` `p` on(`d`.`id` = `p`.`discussion_id` and `p`.`status` = 'active')) WHERE `d`.`status` = 'active' GROUP BY `d`.`id` ;
 
 -- --------------------------------------------------------
 
@@ -3366,7 +3498,7 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 --
 DROP TABLE IF EXISTS `lms_materials_view`;
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `lms_materials_view`  AS SELECT `m`.`id` AS `id`, `m`.`class_id` AS `class_id`, `m`.`category_id` AS `category_id`, `m`.`title` AS `title`, `m`.`description` AS `description`, `m`.`file_path` AS `file_path`, `m`.`file_name` AS `file_name`, `m`.`file_size` AS `file_size`, `m`.`mime_type` AS `mime_type`, `m`.`external_url` AS `external_url`, `m`.`content` AS `content`, `m`.`type` AS `type`, `m`.`order_number` AS `order_number`, `m`.`is_public` AS `is_public`, `m`.`status` AS `status`, `m`.`created_by` AS `created_by`, `m`.`created_at` AS `created_at`, `m`.`updated_at` AS `updated_at`, `mc`.`name` AS `category_name`, `mc`.`icon` AS `category_icon`, `mc`.`color` AS `category_color`, count(`ml`.`id`) AS `access_count`, `u`.`first_name` AS `created_by_name`, `u`.`last_name` AS `created_by_last_name` FROM (((`lms_materials` `m` join `lms_material_categories` `mc` on(`m`.`category_id` = `mc`.`id`)) join `users` `u` on(`m`.`created_by` = `u`.`id`)) left join `lms_material_access_logs` `ml` on(`m`.`id` = `ml`.`material_id`)) WHERE `m`.`status` = 'active' GROUP BY `m`.`id` ;
+CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `lms_materials_view`  AS SELECT `m`.`id` AS `id`, `m`.`class_id` AS `class_id`, `m`.`category_id` AS `category_id`, `m`.`title` AS `title`, `m`.`description` AS `description`, `m`.`file_path` AS `file_path`, `m`.`file_name` AS `file_name`, `m`.`file_size` AS `file_size`, `m`.`mime_type` AS `mime_type`, `m`.`external_url` AS `external_url`, `m`.`content` AS `content`, `m`.`type` AS `type`, `m`.`order_number` AS `order_number`, `m`.`is_public` AS `is_public`, `m`.`status` AS `status`, `m`.`created_by` AS `created_by`, `m`.`created_at` AS `created_at`, `m`.`updated_at` AS `updated_at`, `mc`.`name` AS `category_name`, `mc`.`icon` AS `category_icon`, `mc`.`color` AS `category_color`, count(`ml`.`id`) AS `access_count`, `u`.`first_name` AS `created_by_name`, `u`.`last_name` AS `created_by_last_name` FROM (((`lms_materials` `m` join `lms_material_categories` `mc` on(`m`.`category_id` = `mc`.`id`)) join `users` `u` on(`m`.`created_by` = `u`.`id`)) left join `lms_material_access_logs` `ml` on(`m`.`id` = `ml`.`material_id`)) WHERE `m`.`status` = 'active' GROUP BY `m`.`id` ;
 
 -- --------------------------------------------------------
 
@@ -3375,7 +3507,7 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 --
 DROP TABLE IF EXISTS `lms_student_grades_summary`;
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `lms_student_grades_summary`  AS SELECT `sg`.`class_id` AS `class_id`, `sg`.`student_id` AS `student_id`, `s`.`first_name` AS `first_name`, `s`.`last_name` AS `last_name`, `s`.`student_id` AS `student_number`, `gc`.`name` AS `category_name`, `gc`.`weight` AS `weight`, count(`sg`.`id`) AS `grade_count`, avg(`sg`.`percentage`) AS `average_percentage`, sum(`sg`.`score`) AS `total_score`, sum(`sg`.`max_score`) AS `total_max_score` FROM ((`lms_student_grades` `sg` join `students` `s` on(`sg`.`student_id` = `s`.`id`)) join `lms_grade_categories` `gc` on(`sg`.`category_id` = `gc`.`id`)) WHERE `sg`.`status` = 'published' GROUP BY `sg`.`class_id`, `sg`.`student_id`, `gc`.`id` ;
+CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `lms_student_grades_summary`  AS SELECT `sg`.`class_id` AS `class_id`, `sg`.`student_id` AS `student_id`, `s`.`first_name` AS `first_name`, `s`.`last_name` AS `last_name`, `s`.`student_id` AS `student_number`, `gc`.`name` AS `category_name`, `gc`.`weight` AS `weight`, count(`sg`.`id`) AS `grade_count`, avg(`sg`.`percentage`) AS `average_percentage`, sum(`sg`.`score`) AS `total_score`, sum(`sg`.`max_score`) AS `total_max_score` FROM ((`lms_student_grades` `sg` join `students` `s` on(`sg`.`student_id` = `s`.`id`)) join `lms_grade_categories` `gc` on(`sg`.`category_id` = `gc`.`id`)) WHERE `sg`.`status` = 'published' GROUP BY `sg`.`class_id`, `sg`.`student_id`, `gc`.`id` ;
 
 -- --------------------------------------------------------
 
@@ -3384,7 +3516,7 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 --
 DROP TABLE IF EXISTS `student_statistics_view`;
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `student_statistics_view`  AS SELECT count(0) AS `total_students`, sum(case when `students`.`status` = 'active' then 1 else 0 end) AS `active_students`, sum(case when `students`.`status` = 'pending' then 1 else 0 end) AS `pending_students`, sum(case when `students`.`status` = 'inactive' then 1 else 0 end) AS `inactive_students`, sum(case when cast(`students`.`created_at` as date) = curdate() then 1 else 0 end) AS `today_registrations`, sum(case when month(`students`.`created_at`) = month(curdate()) and year(`students`.`created_at`) = year(curdate()) then 1 else 0 end) AS `this_month_registrations` FROM `students` WHERE `students`.`status` <> 'deleted' ;
+CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `student_statistics_view`  AS SELECT count(0) AS `total_students`, sum(case when `students`.`status` = 'active' then 1 else 0 end) AS `active_students`, sum(case when `students`.`status` = 'pending' then 1 else 0 end) AS `pending_students`, sum(case when `students`.`status` = 'inactive' then 1 else 0 end) AS `inactive_students`, sum(case when cast(`students`.`created_at` as date) = curdate() then 1 else 0 end) AS `today_registrations`, sum(case when month(`students`.`created_at`) = month(curdate()) and year(`students`.`created_at`) = year(curdate()) then 1 else 0 end) AS `this_month_registrations` FROM `students` WHERE `students`.`status` <> 'deleted' ;
 
 -- --------------------------------------------------------
 
@@ -3393,25 +3525,7 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 --
 DROP TABLE IF EXISTS `teacher_dashboard_stats`;
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `teacher_dashboard_stats`  AS SELECT `t`.`id` AS `teacher_id`, count(distinct `tc`.`id`) AS `total_classes`, count(distinct case when `tc`.`status` = 'active' then `tc`.`id` end) AS `active_classes`, count(distinct `ce`.`id`) AS `total_enrollments`, count(distinct case when `ce`.`status` = 'active' then `ce`.`id` end) AS `active_enrollments`, count(distinct `es`.`id`) AS `total_evaluations`, count(distinct case when `es`.`status` = 'completed' then `es`.`id` end) AS `completed_evaluations` FROM (((`users` `t` left join `teacher_classes` `tc` on(`t`.`id` = `tc`.`teacher_id`)) left join `class_enrollments` `ce` on(`tc`.`id` = `ce`.`class_id`)) left join `evaluation_sessions` `es` on(`t`.`id` = `es`.`evaluator_id`)) WHERE `t`.`role` = 'teacher' GROUP BY `t`.`id` ;
-
--- --------------------------------------------------------
-
---
--- Structure for view `teacher_recent_activities`
---
-DROP TABLE IF EXISTS `teacher_recent_activities`;
-
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `teacher_recent_activities`  AS SELECT 'class' AS `activity_type`, `tc`.`id` AS `activity_id`, `tc`.`teacher_id` AS `teacher_id`, concat('Created class: ',`cc`.`subject_title`,' - ',`tc`.`section`) FROM (`teacher_classes` `tc` join `course_curriculum` `cc` on(`tc`.`subject_id` = `cc`.`id`))union all select 'announcement' AS `activity_type`,`ca`.`id` AS `activity_id`,`ca`.`teacher_id` AS `teacher_id`,concat('Posted announcement: ',`ca`.`title`) collate utf8mb4_unicode_ci AS `description`,`ca`.`created_at` AS `activity_date` from `class_announcements` `ca` union all select 'evaluation' AS `activity_type`,`es`.`id` AS `activity_id`,`es`.`evaluator_id` AS `teacher_id`,concat('Completed evaluation for ',`u`.`first_name`,' ',`u`.`last_name`) collate utf8mb4_unicode_ci AS `description`,`es`.`updated_at` AS `activity_date` from (`evaluation_sessions` `es` join `users` `u` on(`es`.`evaluatee_id` = `u`.`id`)) where `es`.`status` = 'completed' order by `activity_date` desc  ;
-
--- --------------------------------------------------------
-
---
--- Structure for view `teacher_training_needs_view`
---
-DROP TABLE IF EXISTS `teacher_training_needs_view`;
-
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `teacher_training_needs_view`  AS SELECT `u`.`id` AS `user_id`, `u`.`first_name` AS `first_name`, `u`.`last_name` AS `last_name`, `u`.`email` AS `email`, `esc`.`id` AS `sub_category_id`, `esc`.`name` AS `sub_category_name`, `mec`.`name` AS `main_category_name`, avg(`er`.`rating_value`) AS `average_rating`, count(`er`.`id`) AS `total_ratings`, CASE WHEN avg(`er`.`rating_value`) < 3.0 THEN 'critical' WHEN avg(`er`.`rating_value`) < 3.5 THEN 'high' WHEN avg(`er`.`rating_value`) < 4.0 THEN 'medium' ELSE 'low' END AS `priority_level` FROM (((((`users` `u` join `evaluation_sessions` `es` on(`u`.`id` = `es`.`evaluatee_id`)) join `main_evaluation_categories` `mec` on(`es`.`main_category_id` = `mec`.`id`)) join `evaluation_sub_categories` `esc` on(`mec`.`id` = `esc`.`main_category_id`)) left join `evaluation_questionnaires` `eq` on(`esc`.`id` = `eq`.`sub_category_id`)) left join `evaluation_responses` `er` on(`eq`.`id` = `er`.`questionnaire_id` and `es`.`id` = `er`.`evaluation_session_id`)) WHERE `u`.`role` = 'teacher' AND `es`.`evaluatee_type` = 'teacher' AND `es`.`status` = 'completed' AND `er`.`rating_value` is not null GROUP BY `u`.`id`, `esc`.`id` HAVING `total_ratings` >= 3 ;
+CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `teacher_dashboard_stats`  AS SELECT `t`.`id` AS `teacher_id`, count(distinct `tc`.`id`) AS `total_classes`, count(distinct case when `tc`.`status` = 'active' then `tc`.`id` end) AS `active_classes`, count(distinct `ce`.`id`) AS `total_enrollments`, count(distinct case when `ce`.`status` = 'active' then `ce`.`id` end) AS `active_enrollments`, count(distinct `es`.`id`) AS `total_evaluations`, count(distinct case when `es`.`status` = 'completed' then `es`.`id` end) AS `completed_evaluations` FROM (((`users` `t` left join `teacher_classes` `tc` on(`t`.`id` = `tc`.`teacher_id`)) left join `class_enrollments` `ce` on(`tc`.`id` = `ce`.`class_id`)) left join `evaluation_sessions` `es` on(`t`.`id` = `es`.`evaluator_id`)) WHERE `t`.`role` = 'teacher' GROUP BY `t`.`id` ;
 
 -- --------------------------------------------------------
 
@@ -3420,7 +3534,7 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 --
 DROP TABLE IF EXISTS `training_summary_view`;
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `training_summary_view`  AS SELECT `ts`.`id` AS `id`, `ts`.`title` AS `title`, `ts`.`type` AS `type`, `ts`.`status` AS `status`, `ts`.`start_date` AS `start_date`, `ts`.`end_date` AS `end_date`, `tc`.`name` AS `category_name`, `mec`.`name` AS `main_category_name`, `esc`.`name` AS `sub_category_name`, `ts`.`max_participants` AS `max_participants`, count(`tr`.`id`) AS `registered_count`, count(case when `tr`.`status` = 'completed' then 1 end) AS `completed_count`, avg(`tr`.`feedback_rating`) AS `average_feedback_rating` FROM ((((`trainings_seminars` `ts` left join `training_categories` `tc` on(`ts`.`category_id` = `tc`.`id`)) left join `main_evaluation_categories` `mec` on(`ts`.`main_category_id` = `mec`.`id`)) left join `evaluation_sub_categories` `esc` on(`ts`.`sub_category_id` = `esc`.`id`)) left join `training_registrations` `tr` on(`ts`.`id` = `tr`.`training_id`)) GROUP BY `ts`.`id` ;
+CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `training_summary_view`  AS SELECT `ts`.`id` AS `id`, `ts`.`title` AS `title`, `ts`.`type` AS `type`, `ts`.`status` AS `status`, `ts`.`start_date` AS `start_date`, `ts`.`end_date` AS `end_date`, `tc`.`name` AS `category_name`, `mec`.`name` AS `main_category_name`, `esc`.`name` AS `sub_category_name`, `ts`.`max_participants` AS `max_participants`, count(`tr`.`id`) AS `registered_count`, count(case when `tr`.`status` = 'completed' then 1 end) AS `completed_count`, avg(`tr`.`feedback_rating`) AS `average_feedback_rating` FROM ((((`trainings_seminars` `ts` left join `training_categories` `tc` on(`ts`.`category_id` = `tc`.`id`)) left join `main_evaluation_categories` `mec` on(`ts`.`main_category_id` = `mec`.`id`)) left join `evaluation_sub_categories` `esc` on(`ts`.`sub_category_id` = `esc`.`id`)) left join `training_registrations` `tr` on(`ts`.`id` = `tr`.`training_id`)) GROUP BY `ts`.`id` ;
 
 --
 -- Indexes for dumped tables
@@ -4394,7 +4508,7 @@ ALTER TABLE `class_announcements`
 -- AUTO_INCREMENT for table `class_enrollments`
 --
 ALTER TABLE `class_enrollments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=69;
 
 --
 -- AUTO_INCREMENT for table `class_materials`
@@ -4478,7 +4592,7 @@ ALTER TABLE `evaluation_schedules`
 -- AUTO_INCREMENT for table `evaluation_sessions`
 --
 ALTER TABLE `evaluation_sessions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=335;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=342;
 
 --
 -- AUTO_INCREMENT for table `evaluation_sub_categories`
@@ -4742,7 +4856,7 @@ ALTER TABLE `settings`
 -- AUTO_INCREMENT for table `students`
 --
 ALTER TABLE `students`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=267;
 
 --
 -- AUTO_INCREMENT for table `student_academic_info`
@@ -4862,7 +4976,7 @@ ALTER TABLE `training_registrations`
 -- AUTO_INCREMENT for table `training_suggestions`
 --
 ALTER TABLE `training_suggestions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `users`
@@ -4874,7 +4988,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `user_inquiries`
 --
 ALTER TABLE `user_inquiries`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- Constraints for dumped tables

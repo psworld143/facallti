@@ -3,12 +3,13 @@
     "description": "Student Registration System for SEAIT",
     "type": "project",
     "require": {
-        "php": ">=8.1",
+        "php": ">=7.4",
         "phpoffice/phpspreadsheet": "^1.29",
         "ext-mysqli": "*",
         "ext-json": "*"
     },
     "require-dev": {
+        "doctrine/instantiator": "^1.5",
         "phpunit/phpunit": "^9.0"
     },
     "autoload": {
@@ -34,4 +35,4 @@
     },
     "minimum-stability": "stable",
     "prefer-stable": true
-} 
+}
