@@ -3,7 +3,7 @@
         'name' => 'seait/student-registration-system',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '97c058fb7d9841b05b52d6b45becdba4ef98db62',
+        'reference' => '32debe2b7d56539dee6e6440f3f0d150ab53e69c',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -202,7 +202,7 @@
         'seait/student-registration-system' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '97c058fb7d9841b05b52d6b45becdba4ef98db62',
+            'reference' => '32debe2b7d56539dee6e6440f3f0d150ab53e69c',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

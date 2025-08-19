@@ -64,3 +64,14 @@
     [size] => 13067
 )
 
+[19-Aug-2025 02:06:23 Europe/Berlin] DEBUG: Import handler triggered.
+[19-Aug-2025 02:06:23 Europe/Berlin] DEBUG: File uploaded: Array
+(
+    [name] => Sample Import.xlsx
+    [full_path] => Sample Import.xlsx
+    [type] => application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+    [tmp_name] => /Applications/XAMPP/xamppfiles/temp/phpYCB2gG
+    [error] => 0
+    [size] => 13067
+)
+

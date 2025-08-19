@@ -452,15 +452,16 @@ document.getElementById('importForm').addEventListener('submit', function(e) {
         method: 'POST',
         body: formData
     })
-    .then(response => response.text()) // CHANGED: get raw text
+    .then(response => response.text())
     .then(text => {
-        console.log('Raw response:', text); // ADDED: log raw response
+        console.log('Raw response:', text);
         let data;
         try {
             data = JSON.parse(text);
         } catch (e) {
+            // Not valid JSON
             console.error('JSON parse error:', e);
-            showImportStatusModal('Import failed: Invalid server response. See console for details.', false);
+            showImportStatusModal('Import failed: Server returned an unexpected response.<br><br><pre style="white-space:pre-wrap;max-height:200px;overflow:auto;">' + text.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre>', false);
             importBtn.disabled = false;
             importBtn.innerHTML = '<i class="fas fa-upload mr-2"></i>Import Students';
             return;
@@ -500,11 +501,10 @@ document.getElementById('importForm').addEventListener('submit', function(e) {
         }
     })
     .catch(error => {
-        console.error('Error:', error);
-        progressText.textContent = 'Error occurred during import';
+        console.error('Network or fetch error:', error);
+        showImportStatusModal('A network error occurred. Please try again.', false);
         importBtn.disabled = false;
         importBtn.innerHTML = '<i class="fas fa-upload mr-2"></i>Import Students';
-        showImportStatusModal('An error occurred during import. Please try again.', false);
     });
 });
 
@@ -514,7 +514,7 @@ function showImportStatusModal(message, isSuccess = true) {
     const title = document.getElementById('importStatusTitle');
     const msg = document.getElementById('importStatusMessage');
     title.textContent = isSuccess ? 'Import Successful' : 'Import Failed';
-    msg.textContent = message;
+    msg.innerHTML = message; // Use innerHTML to allow HTML tags like <br> and <pre>
     // Change icon and color based on success or error
     const icon = modalContent.querySelector('i');
     icon.className = isSuccess ? 'fas fa-check-circle text-green-600' : 'fas fa-times-circle text-red-600';
