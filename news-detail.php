@@ -36,11 +36,12 @@ if (!$post = mysqli_fetch_assoc($result)) {
     <meta property="og:url" content="https://<?php echo $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']; ?>">
     <meta property="og:type" content="article">
     <meta property="og:site_name" content="SEAIT - South East Asian Institute of Technology, Inc.">
-    <meta property="og:image" content="https://<?php echo $_SERVER['HTTP_HOST']; ?>/assets/images/seait-logo.png">
+    <meta property="og:image" content="https://<?php echo $_SERVER['HTTP_HOST']; ?>/<?php echo !empty($post['image_url']) ? htmlspecialchars($post['image_url']) : 'assets/images/seait-logo.png'; ?>">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:image:alt" content="SEAIT Logo">
     <meta property="og:locale" content="en_US">
+    <meta property="fb:app_id" content="YOUR_FACEBOOK_APP_ID_HERE">
 
     <!-- Facebook App ID (optional but recommended) -->
     <!-- <meta property="fb:app_id" content="YOUR_FACEBOOK_APP_ID"> -->
@@ -49,7 +50,7 @@ if (!$post = mysqli_fetch_assoc($result)) {
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="<?php echo htmlspecialchars($post['title']); ?>">
     <meta name="twitter:description" content="<?php echo htmlspecialchars(substr(strip_tags($post['content']), 0, 200)) . '...'; ?>">
-    <meta name="twitter:image" content="https://<?php echo $_SERVER['HTTP_HOST']; ?>/assets/images/seait-logo.png">
+    <meta name="twitter:image" content="https://<?php echo $_SERVER['HTTP_HOST']; ?>/<?php echo !empty($post['image_url']) ? htmlspecialchars($post['image_url']) : 'assets/images/seait-logo.png'; ?>">
 
     <!-- Article Meta Tags -->
     <meta property="article:published_time" content="<?php echo $post['created_at']; ?>">
@@ -179,19 +180,29 @@ if (!$post = mysqli_fetch_assoc($result)) {
     <div class="max-w-7xl mx-auto px-4 py-12">
         <div class="bg-white rounded-lg shadow-lg overflow-hidden">
             <!-- Article Header -->
-            <div class="bg-gradient-to-r from-seait-orange to-orange-600 text-white p-8 md:p-12">
-                <div class="flex items-center space-x-4 mb-4">
-                    <span class="px-3 py-1 bg-white/20 rounded-full text-sm font-medium">
-                        <?php echo ucfirst($post['type']); ?>
-                    </span>
-                    <span class="text-sm opacity-90">
-                        <?php echo date('F d, Y', strtotime($post['created_at'])); ?>
-                    </span>
+            <?php
+                $hasImage = !empty($post['image_url']);
+                $imagePath =  htmlspecialchars($post['image_url']);
+                $headerStyle = $hasImage
+                    ? "background: linear-gradient(rgba(44,62,80,0.3), rgba(44,62,80,0.3)), url('{$imagePath}') center center / cover no-repeat;"
+                    : "";
+            ?>
+            <!-- DEBUG: image_url = <?php echo $post['image_url']; ?>, hasImage = <?php echo $hasImage ? 'true' : 'false'; ?>, imagePath = <?php echo $imagePath; ?> -->
+            <div class="<?php echo $hasImage ? '' : 'bg-gradient-to-r from-seait-orange to-orange-600'; ?> text-white relative" style="<?php echo $headerStyle; ?> min-height:350px; min-height:40vh;">
+                <div class="absolute left-0 bottom-0 z-10 max-w-3xl w-full p-4 md:p-6">
+                    <div class="flex items-center space-x-4 mb-2">
+                        <span class="px-3 py-1 bg-white/20 rounded-full text-xs font-medium">
+                            <?php echo ucfirst($post['type']); ?>
+                        </span>
+                        <span class="text-xs opacity-90">
+                            <?php echo date('F d, Y', strtotime($post['created_at'])); ?>
+                        </span>
+                    </div>
+                    <h1 class="text-xl md:text-2xl lg:text-3xl font-bold mb-1"><?php echo htmlspecialchars($post['title']); ?></h1>
+                    <p class="text-sm md:text-base opacity-90 mb-0">
+                        By <?php echo htmlspecialchars($post['first_name'] . ' ' . $post['last_name']); ?>
+                    </p>
                 </div>
-                <h1 class="text-3xl md:text-4xl lg:text-5xl font-bold mb-2"><?php echo htmlspecialchars($post['title']); ?></h1>
-                <p class="text-lg md:text-xl opacity-90">
-                    By <?php echo htmlspecialchars($post['first_name'] . ' ' . $post['last_name']); ?>
-                </p>
             </div>
 
             <!-- Article Content -->

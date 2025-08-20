@@ -23,12 +23,12 @@ $student_id = get_student_id($conn, $_SESSION['email']);
 // Verify student is enrolled in this class
 $class_query = "SELECT ce.*, tc.section, tc.join_code, tc.status as class_status,
                 cc.subject_title, cc.subject_code, cc.units, cc.description as subject_description,
-                u.id as teacher_id, u.first_name as teacher_first_name, u.last_name as teacher_last_name,
-                u.email as teacher_email
+                f.id as teacher_id, f.first_name as teacher_first_name, f.last_name as teacher_last_name,
+                f.email as teacher_email
                 FROM class_enrollments ce
                 JOIN teacher_classes tc ON ce.class_id = tc.id
                 JOIN course_curriculum cc ON tc.subject_id = cc.id
-                JOIN users u ON tc.teacher_id = u.id
+                JOIN faculty f ON tc.teacher_id = f.id
                 WHERE ce.class_id = ? AND ce.student_id = ? AND ce.status = 'enrolled'";
 $class_stmt = mysqli_prepare($conn, $class_query);
 mysqli_stmt_bind_param($class_stmt, "ii", $class_id, $student_id);
@@ -86,7 +86,7 @@ $where_clause = 'WHERE ' . implode(' AND ', $where_conditions);
 $assignments_query = "SELECT a.*, ac.name as category_name, ac.color as category_color,
                      COUNT(s.id) as submission_count,
                      COUNT(CASE WHEN s.status = 'graded' THEN 1 END) as graded_count,
-                     u.first_name as created_by_name, u.last_name as created_by_last_name,
+                     f.first_name as created_by_name, f.last_name as created_by_last_name,
                      s.id as submission_id, s.status as submission_status, s.score, s.submitted_at,
                      CASE
                          WHEN a.due_date < NOW() THEN 'overdue'
@@ -101,7 +101,7 @@ $assignments_query = "SELECT a.*, ac.name as category_name, ac.color as category
                      END as time_remaining
                      FROM lms_assignments a
                      JOIN lms_assignment_categories ac ON a.category_id = ac.id
-                     JOIN users u ON a.created_by = u.id
+                     JOIN faculty f ON a.created_by = f.id
                      LEFT JOIN lms_assignment_submissions s ON a.id = s.assignment_id AND s.student_id = ?
                      $where_clause
                      GROUP BY a.id

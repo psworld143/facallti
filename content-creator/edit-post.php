@@ -36,6 +36,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $content = $_POST['content']; // Don't sanitize HTML content from CKEditor
     $type = sanitize_input($_POST['type']);
 
+    // Handle image upload
+    $image_url = $post['image_url']; // Default to existing image
+    if (isset($_FILES['post_image']) && $_FILES['post_image']['error'] === UPLOAD_ERR_OK) {
+        $upload_dir = '../assets/images/news/';
+        $file_tmp = $_FILES['post_image']['tmp_name'];
+        $file_name = basename($_FILES['post_image']['name']);
+        $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+        $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        if (in_array($file_ext, $allowed_exts)) {
+            $new_name = uniqid('news_', true) . '.' . $file_ext;
+            $dest_path = $upload_dir . $new_name;
+            if (move_uploaded_file($file_tmp, $dest_path)) {
+                $image_url = 'assets/images/news/' . $new_name;
+            }
+        }
+    }
+
     // Determine status based on action
     if (isset($_POST['action']) && $_POST['action'] === 'save_draft') {
         $status = 'draft';
@@ -56,9 +73,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
-    $query = "UPDATE posts SET title = ?, content = ?, type = ?, status = ?, updated_at = NOW() WHERE id = ? AND author_id = ?";
+    $query = "UPDATE posts SET title = ?, content = ?, type = ?, status = ?, image_url = ?, updated_at = NOW() WHERE id = ? AND author_id = ?";
     $stmt = mysqli_prepare($conn, $query);
-    mysqli_stmt_bind_param($stmt, "ssssii", $title, $content, $type, $status, $post_id, $_SESSION['user_id']);
+    mysqli_stmt_bind_param($stmt, "ssssssi", $title, $content, $type, $status, $image_url, $post_id, $_SESSION['user_id']);
 
     if (mysqli_stmt_execute($stmt)) {
         // Update the post data for display
@@ -66,6 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $post['content'] = $content;
         $post['type'] = $type;
         $post['status'] = $status;
+        $post['image_url'] = $image_url;
     } else {
         $message = display_message('Error updating post. Please try again.', 'error');
     }
@@ -101,6 +119,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <style>
         body {
             font-family: 'Poppins', sans-serif;
+        }
+        .image-preview-auto-fit {
+            max-width: 100%;
+            max-height: 12rem;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
         }
     </style>
     <!-- CKEditor CDN -->
@@ -237,7 +264,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </div>
 
             <div class="bg-white rounded-lg shadow-md p-6">
-                <form method="POST" class="space-y-6">
+                <form method="POST" class="space-y-6" enctype="multipart/form-data">
                     <input type="hidden" name="action" id="formAction" value="submit">
 
                     <div>
@@ -263,6 +290,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             <option value="event" <?php echo $post['type'] === 'event' ? 'selected' : ''; ?>>Event</option>
                             <option value="article" <?php echo $post['type'] === 'article' ? 'selected' : ''; ?>>Article</option>
                         </select>
+                    </div>
+
+                    <div>
+                        <label for="post_image" class="block text-sm font-medium text-gray-700 mb-2">
+                            Post Main Image
+                        </label>
+                        <?php if (!empty($post['image_url'])): ?>
+                            <div class="mb-2">
+                                <img src="../<?php echo htmlspecialchars($post['image_url']); ?>" alt="Current Image" class="image-preview-auto-fit">
+                                <div class="text-xs text-gray-500">Current Image</div>
+                            </div>
+                        <?php endif; ?>
+                        <input type="file" id="post_image" name="post_image" accept="image/*"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange focus:border-transparent"
+                               onchange="previewImage(event)">
+                        <div id="imagePreview" class="mt-2"></div>
                     </div>
 
                     <div>
@@ -511,6 +554,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // Update the textarea with CKEditor content before form submission
             if (editor) {
                 document.getElementById('content').value = editor.getData();
+            }
+        }
+
+        function previewImage(event) {
+            const preview = document.getElementById('imagePreview');
+            preview.innerHTML = '';
+            const file = event.target.files[0];
+            if (file) {
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file);
+                img.className = 'image-preview-auto-fit';
+                img.onload = function() { URL.revokeObjectURL(img.src); };
+                preview.appendChild(img);
             }
         }
     </script>

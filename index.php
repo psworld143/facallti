@@ -176,6 +176,69 @@ $courses_result = mysqli_query($conn, $courses_query);
             justify-content: center;
             flex-shrink: 0;
         }
+
+        /* Enhanced carousel transitions */
+        .carousel-slide {
+            transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Ensure carousel content is visible when slide is active */
+        .carousel-slide.opacity-100 .carousel-title,
+        .carousel-slide.opacity-100 .carousel-subtitle,
+        .carousel-slide.opacity-100 .carousel-description,
+        .carousel-slide.opacity-100 .carousel-button {
+            transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Override any conflicting styles for carousel content */
+        .carousel-title,
+        .carousel-subtitle,
+        .carousel-description,
+        .carousel-button {
+            transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: opacity, transform;
+        }
+
+        /* Enhanced navigation styles */
+        .carousel-dot {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .carousel-nav {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Active navbar link styles */
+        .navbar-link-active {
+            color: #FF6B35 !important;
+            font-weight: 600;
+        }
+        .navbar-link-active:hover {
+            color: #FF6B35 !important;
+        }
+
+        .carousel-title, .carousel-subtitle, .carousel-description {
+            text-shadow: 0 2px 8px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.25);
+        }
+
+        /* Page Loader Styles */
+        #page-loader {
+            background: #fff;
+            transition: opacity 0.5s;
+        }
+        .dark-mode #page-loader {
+            background: #1e293b; /* Tailwind's gray-900 */
+        }
+        .loader-spinner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        /* Hide carousel until images are loaded */
+        .carousel-hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body class="bg-gray-50 dark-mode" data-theme="light">
@@ -200,7 +263,7 @@ $courses_result = mysqli_query($conn, $courses_query);
     <section id="home" class="relative bg-gradient-to-r from-seait-orange to-orange-600 text-white min-h-screen flex items-center">
         <div class="relative overflow-hidden w-full">
             <!-- Carousel Container -->
-            <div id="carousel" class="relative h-screen min-h-[400px] sm:min-h-[500px] md:min-h-[600px] lg:min-h-[700px] xl:min-h-[800px]">
+            <div id="carousel" class="relative h-screen min-h-[400px] sm:min-h-[500px] md:min-h-[600px] lg:min-h-[700px] xl:min-h-[800px] carousel-hidden">
                 <?php
                 // Reset the carousel result pointer to fetch all slides again
                 mysqli_data_seek($carousel_result, 0);
@@ -208,32 +271,32 @@ $courses_result = mysqli_query($conn, $courses_query);
                 while($slide = mysqli_fetch_assoc($carousel_result)):
                     $slide_count++;
                 ?>
-                <div class="carousel-slide absolute inset-0 transition-all duration-1000 ease-in-out <?php echo $slide_count === 1 ? 'opacity-100 scale-100' : 'opacity-0 scale-105'; ?>" data-slide="<?php echo $slide_count; ?>">
+                <div class="carousel-slide absolute inset-0 transition-all duration-1000 ease-in-out <?php echo $slide_count === 1 ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-105 pointer-events-none'; ?>" data-slide="<?php echo $slide_count; ?>">
                     <!-- Background Image with Overlay -->
-                    <div class="absolute inset-0 bg-black bg-opacity-40"></div>
-                    <div class="absolute inset-0 bg-cover bg-center bg-no-repeat" style="background-image: url('<?php echo htmlspecialchars($slide['image_url']); ?>'); filter: blur(3px);"></div>
+                    <div class="absolute inset-0 bg-black bg-opacity-50"></div>
+                    <div class="absolute inset-0 bg-cover bg-center bg-no-repeat" style="background-image: url('<?php echo htmlspecialchars($slide['image_url']); ?>'); filter: blur(1px);"></div>
 
                     <!-- Content Container -->
                     <div class="relative z-10 flex h-full">
                         <!-- Mobile: Center content, Desktop/Tablet: Lower left with reduced top margin -->
                         <div class="w-full flex items-center justify-center md:items-end md:justify-start md:pb-20 md:pt-8 md:pl-8 lg:pb-24 lg:pt-12 lg:pl-12">
                             <div class="max-w-7xl mx-auto md:mx-0 px-4 text-center md:text-left">
-                                <div class="max-w-4xl md:max-w-2xl lg:max-w-3xl">
+                                <div class="max-w-4xl md:max-w-2xl lg:max-w-3xl rounded-xl shadow-lg p-6 md:p-8">
                                     <!-- Title -->
-                                    <h1 class="carousel-title text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-3 px-2 md:px-0 <?php echo $slide_count === 1 ? 'animate-fade-in' : 'opacity-0 transform translate-y-8'; ?>">
+                                    <h1 class="carousel-title text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-2 md:mb-3 px-2 md:px-0 <?php echo $slide_count === 1 ? 'animate-fade-in' : 'opacity-0 transform translate-y-8'; ?>">
                                         <?php echo nl2br(htmlspecialchars($slide['title'])); ?>
                                     </h1>
 
                                     <!-- Subtitle -->
                                     <?php if (!empty($slide['subtitle'])): ?>
-                                    <p class="carousel-subtitle text-lg sm:text-xl md:text-2xl mb-3 md:mb-4 px-2 md:px-0 <?php echo $slide_count === 1 ? 'animate-fade-in-delay' : 'opacity-0 transform translate-y-8'; ?>">
+                                    <p class="carousel-subtitle text-2xl sm:text-3xl md:text-4xl mb-3 md:mb-4 px-2 md:px-0 <?php echo $slide_count === 1 ? 'animate-fade-in-delay' : 'opacity-0 transform translate-y-8'; ?>">
                                         <?php echo nl2br(htmlspecialchars($slide['subtitle'])); ?>
                                     </p>
                                     <?php endif; ?>
 
                                     <!-- Description -->
                                     <?php if (!empty($slide['description'])): ?>
-                                    <p class="carousel-description text-base sm:text-lg mb-4 md:mb-6 max-w-3xl md:max-w-none mx-auto md:mx-0 px-2 md:px-0 <?php echo $slide_count === 1 ? 'animate-fade-in-delay-2' : 'opacity-0 transform translate-y-8'; ?>">
+                                    <p class="carousel-description text-lg sm:text-xl md:text-2xl mb-4 md:mb-6 max-w-3xl md:max-w-none mx-auto md:mx-0 px-2 md:px-0 <?php echo $slide_count === 1 ? 'animate-fade-in-delay-2' : 'opacity-0 transform translate-y-8'; ?>">
                                         <?php echo nl2br(htmlspecialchars($slide['description'])); ?>
                                     </p>
                                     <?php endif; ?>
@@ -241,7 +304,7 @@ $courses_result = mysqli_query($conn, $courses_query);
                                     <!-- Button -->
                                     <?php if (!empty($slide['button_text']) && !empty($slide['button_link'])): ?>
                                     <div class="carousel-button <?php echo $slide_count === 1 ? 'animate-fade-in-delay-3' : 'opacity-0 transform translate-y-8'; ?>">
-                                        <a href="<?php echo htmlspecialchars($slide['button_link']); ?>" class="bg-white text-seait-orange px-6 md:px-8 py-3 md:py-4 rounded-lg font-semibold text-base md:text-lg hover:bg-gray-100 transition-all duration-300 inline-block shadow-lg hover:shadow-xl transform hover:-translate-y-1">
+                                        <a href="<?php echo htmlspecialchars($slide['button_link']); ?>" class="bg-white text-seait-orange px-8 md:px-10 py-4 md:py-5 rounded-lg font-semibold text-lg md:text-2xl hover:bg-gray-100 transition-all duration-300 inline-block shadow-lg hover:shadow-xl transform hover:-translate-y-1">
                                             <?php echo nl2br(htmlspecialchars($slide['button_text'])); ?>
                                         </a>
                                     </div>
@@ -1014,6 +1077,16 @@ $courses_result = mysqli_query($conn, $courses_query);
     <!-- Include FAB Inquiry System -->
     <?php include 'includes/fab-inquiry.php'; ?>
 
+    <!-- Page Loader Overlay -->
+    <div id="page-loader" class="fixed inset-0 z-[9999] flex items-center justify-center bg-white dark:bg-gray-900 transition-opacity duration-500">
+        <div class="loader-spinner">
+            <svg class="animate-spin h-16 w-16 text-seait-orange" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+        </div>
+    </div>
+
     <script>
         // Mobile menu functionality is handled in navbar.php
         // No duplicate JavaScript needed here
@@ -1038,15 +1111,20 @@ $courses_result = mysqli_query($conn, $courses_query);
         let slides = [];
         let dots = [];
         let totalSlides = 0;
-        let autoAdvanceInterval = 5000; // 5 seconds
+        let autoAdvanceInterval = 10000; // 10 seconds
 
         function showSlide(slideNumber) {
             console.log('Showing slide:', slideNumber);
 
-            // Hide all slides with scale effect
-            slides.forEach(slide => {
-                slide.classList.remove('opacity-100', 'scale-100');
-                slide.classList.add('opacity-0', 'scale-105');
+            // Hide all slides with scale effect and pointer-events
+            slides.forEach((slide, idx) => {
+                if (idx === slideNumber - 1) {
+                    slide.classList.add('opacity-100', 'scale-100', 'pointer-events-auto');
+                    slide.classList.remove('opacity-0', 'scale-105', 'pointer-events-none');
+                } else {
+                    slide.classList.remove('opacity-100', 'scale-100', 'pointer-events-auto');
+                    slide.classList.add('opacity-0', 'scale-105', 'pointer-events-none');
+                }
             });
 
             // Remove active class from all dots
@@ -1227,6 +1305,38 @@ $courses_result = mysqli_query($conn, $courses_query);
 
                 // Start the carousel
                 startCarousel();
+            }
+
+            // Carousel image preloading for smooth initial transition
+            const carousel = document.getElementById('carousel');
+            if (carousel) {
+                const images = carousel.querySelectorAll('img');
+                let loadedCount = 0;
+                if (images.length === 0) {
+                    carousel.classList.remove('carousel-hidden');
+                } else {
+                    images.forEach(img => {
+                        if (img.complete) {
+                            loadedCount++;
+                            if (loadedCount === images.length) {
+                                carousel.classList.remove('carousel-hidden');
+                            }
+                        } else {
+                            img.addEventListener('load', () => {
+                                loadedCount++;
+                                if (loadedCount === images.length) {
+                                    carousel.classList.remove('carousel-hidden');
+                                }
+                            });
+                            img.addEventListener('error', () => {
+                                loadedCount++;
+                                if (loadedCount === images.length) {
+                                    carousel.classList.remove('carousel-hidden');
+                                }
+                            });
+                        }
+                    });
+                }
             }
         });
 
@@ -1551,6 +1661,15 @@ $courses_result = mysqli_query($conn, $courses_query);
 
                 // Default response
                 return "Thank you for your question! For specific inquiries, I recommend contacting our relevant department directly. You can find contact information in the Contact Us section, or visit our main office during business hours.";
+            }
+        });
+
+        // Hide page loader when fully loaded
+        window.addEventListener('load', function() {
+            const loader = document.getElementById('page-loader');
+            if (loader) {
+                loader.style.opacity = '0';
+                setTimeout(() => loader.style.display = 'none', 500);
             }
         });
     </script>

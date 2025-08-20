@@ -23,12 +23,12 @@ $student_id = get_student_id($conn, $_SESSION['email']);
 // Verify student is enrolled in this class
 $class_query = "SELECT ce.*, tc.section, tc.join_code, tc.status as class_status,
                 cc.subject_title, cc.subject_code, cc.units, cc.description as subject_description,
-                u.id as teacher_id, u.first_name as teacher_first_name, u.last_name as teacher_last_name,
-                u.email as teacher_email
+                f.id as teacher_id, f.first_name as teacher_first_name, f.last_name as teacher_last_name,
+                f.email as teacher_email
                 FROM class_enrollments ce
                 JOIN teacher_classes tc ON ce.class_id = tc.id
                 JOIN course_curriculum cc ON tc.subject_id = cc.id
-                JOIN users u ON tc.teacher_id = u.id
+                JOIN faculty f ON tc.teacher_id = f.id
                 WHERE ce.class_id = ? AND ce.student_id = ? AND ce.status = 'enrolled'";
 $class_stmt = mysqli_prepare($conn, $class_query);
 mysqli_stmt_bind_param($class_stmt, "ii", $class_id, $student_id);
@@ -66,10 +66,10 @@ $categories_result = mysqli_stmt_get_result($categories_stmt);
 // Get all materials for this class (we'll organize them by category in PHP)
 $materials_query = "SELECT m.*, mc.name as category_name, mc.icon as category_icon, mc.color as category_color,
                    COUNT(ml.id) as access_count,
-                   u.first_name as created_by_name, u.last_name as created_by_last_name
+                   f.first_name as created_by_name, f.last_name as created_by_last_name
                    FROM lms_materials m
                    JOIN lms_material_categories mc ON m.category_id = mc.id
-                   JOIN users u ON m.created_by = u.id
+                   JOIN faculty f ON m.created_by = f.id
                    LEFT JOIN lms_material_access_logs ml ON m.id = ml.material_id
                    WHERE m.class_id = ? AND m.status = 'active'
                    GROUP BY m.id

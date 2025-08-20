@@ -25,14 +25,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         // Check if join code exists and class is active
         $class_query = "SELECT tc.*, cc.subject_title, cc.subject_code, cc.units,
-                       u.first_name as teacher_first_name, u.last_name as teacher_last_name
+                       f.first_name as teacher_first_name, f.last_name as teacher_last_name
                        FROM teacher_classes tc
                        JOIN course_curriculum cc ON tc.subject_id = cc.id
-                       JOIN users u ON tc.teacher_id = u.id
+                       JOIN faculty f ON tc.teacher_id = f.id
                        WHERE tc.join_code = ? AND tc.status = 'active'";
         $class_stmt = mysqli_prepare($conn, $class_query);
-        mysqli_stmt_bind_param($class_stmt, "s", $join_code);
-        mysqli_stmt_execute($class_stmt);
+        if (!$class_stmt) {
+        }
+        if (!mysqli_stmt_bind_param($class_stmt, "s", $join_code)) {
+        }
+        if (!mysqli_stmt_execute($class_stmt)) {
+        }
         $class_result = mysqli_stmt_get_result($class_stmt);
         $class = mysqli_fetch_assoc($class_result);
 
@@ -59,17 +63,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $message = "Student profile not found. Please contact administrator.";
                     $message_type = "error";
                 } else {
-                    // Enroll student in the class using the correct student_id
-                    $enroll_query = "INSERT INTO class_enrollments (class_id, student_id, status) VALUES (?, ?, 'enrolled')";
-                    $enroll_stmt = mysqli_prepare($conn, $enroll_query);
-                    mysqli_stmt_bind_param($enroll_stmt, "ii", $class['id'], $student_id);
-
-                    if (mysqli_stmt_execute($enroll_stmt)) {
-                        $message = "Successfully joined " . htmlspecialchars($class['subject_title']) . " - Section " . htmlspecialchars($class['section']) . "!";
-                        $message_type = "success";
-                    } else {
-                        $message = "Error joining class: " . mysqli_error($conn);
+                    // Prevent joining another class with the same subject
+                    $subject_id = $class['subject_id'];
+                    $already_enrolled_subject_query = "SELECT ce.id FROM class_enrollments ce JOIN teacher_classes tc ON ce.class_id = tc.id WHERE ce.student_id = ? AND tc.subject_id = ? AND ce.status = 'enrolled'";
+                    $already_enrolled_subject_stmt = mysqli_prepare($conn, $already_enrolled_subject_query);
+                    mysqli_stmt_bind_param($already_enrolled_subject_stmt, "ii", $student_id, $subject_id);
+                    mysqli_stmt_execute($already_enrolled_subject_stmt);
+                    $already_enrolled_subject_result = mysqli_stmt_get_result($already_enrolled_subject_stmt);
+                    if (mysqli_num_rows($already_enrolled_subject_result) > 0) {
+                        $message = "You are already enrolled in a class for this subject!";
                         $message_type = "error";
+                    } else {
+                        // Enroll student in the class using the correct student_id
+                        $enroll_query = "INSERT INTO class_enrollments (class_id, student_id, status) VALUES (?, ?, 'enrolled')";
+                        $enroll_stmt = mysqli_prepare($conn, $enroll_query);
+                        mysqli_stmt_bind_param($enroll_stmt, "ii", $class['id'], $student_id);
+                        if (mysqli_stmt_execute($enroll_stmt)) {
+                            $message = "Successfully joined " . htmlspecialchars($class['subject_title']) . " - Section " . htmlspecialchars($class['section']) . "!";
+                            $message_type = "success";
+                        } else {
+                            $message = "Error joining class: " . mysqli_error($conn);
+                            $message_type = "error";
+                        }
                     }
                 }
             }
@@ -82,11 +97,11 @@ $student_id = get_student_id($conn, $_SESSION['email']);
 
 $current_enrollments_query = "SELECT ce.*, tc.section, tc.join_code,
                              cc.subject_title, cc.subject_code,
-                             u.first_name as teacher_first_name, u.last_name as teacher_last_name
+                             f.first_name as teacher_first_name, f.last_name as teacher_last_name
                              FROM class_enrollments ce
                              JOIN teacher_classes tc ON ce.class_id = tc.id
                              JOIN course_curriculum cc ON tc.subject_id = cc.id
-                             JOIN users u ON tc.teacher_id = u.id
+                             JOIN faculty f ON tc.teacher_id = f.id
                              WHERE ce.student_id = ? AND ce.status = 'enrolled'
                              ORDER BY ce.join_date DESC
                              LIMIT 5";

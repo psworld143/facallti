@@ -1,9 +1,9 @@
 <?php
 // Database configuration
-$host = 'localhost';
-$dbname = 'seait_website';
-$username = 'root';
-$password = '';
+$host = 'seait-edu.ph';
+$dbname = 'seaitedu_seait_website';
+$username = 'seaitedu_seait_website';
+$password = '020894Website';
 
 // Create connection
 $conn = mysqli_connect($host, $username, $password, $dbname, 3306, '/Applications/XAMPP/xamppfiles/var/mysql/mysql.sock');

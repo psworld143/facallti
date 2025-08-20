@@ -23,12 +23,12 @@ $student_id = get_student_id($conn, $_SESSION['email']);
 // Verify student is enrolled in this class
 $class_query = "SELECT ce.*, tc.section, tc.join_code, tc.status as class_status,
                 cc.subject_title, cc.subject_code, cc.units, cc.description as subject_description,
-                u.id as teacher_id, u.first_name as teacher_first_name, u.last_name as teacher_last_name,
-                u.email as teacher_email
+                f.id as teacher_id, f.first_name as teacher_first_name, f.last_name as teacher_last_name,
+                f.email as teacher_email
                 FROM class_enrollments ce
                 JOIN teacher_classes tc ON ce.class_id = tc.id
                 JOIN course_curriculum cc ON tc.subject_id = cc.id
-                JOIN users u ON tc.teacher_id = u.id
+                JOIN faculty f ON tc.teacher_id = f.id
                 WHERE ce.class_id = ? AND ce.student_id = ? AND ce.status = 'enrolled'";
 $class_stmt = mysqli_prepare($conn, $class_query);
 mysqli_stmt_bind_param($class_stmt, "ii", $class_id, $student_id);
@@ -67,9 +67,9 @@ $discussions_query = "SELECT d.*,
                      COUNT(p.id) as post_count,
                      COUNT(DISTINCT p.author_id) as participant_count,
                      MAX(p.created_at) as last_activity,
-                     u.first_name as created_by_name, u.last_name as created_by_last_name
+                     f.first_name as created_by_name, f.last_name as created_by_last_name
                      FROM lms_discussions d
-                     JOIN users u ON d.created_by = u.id
+                     JOIN faculty f ON d.created_by = f.id
                      LEFT JOIN lms_discussion_posts p ON d.id = p.discussion_id AND p.status = 'active'
                      $where_clause
                      GROUP BY d.id

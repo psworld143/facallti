@@ -227,6 +227,8 @@ $slides_result = mysqli_query($conn, $slides_query);
         }
     </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- CKEditor 5 CDN -->
+    <script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
     <style>
         body {
             font-family: 'Poppins', sans-serif;
@@ -505,6 +507,20 @@ $slides_result = mysqli_query($conn, $slides_query);
     </div>
 
     <script>
+        // Initialize CKEditor for Description textarea
+        document.addEventListener('DOMContentLoaded', function() {
+            if (document.getElementById('slideDescription')) {
+                ClassicEditor.create(document.getElementById('slideDescription'))
+                    .then(editor => {
+                        window.slideDescriptionEditor = editor;
+                    })
+                    .catch(error => {
+                        console.error('CKEditor initialization error:', error);
+                    });
+            }
+        });
+
+        // When opening Add/Edit modal, update CKEditor value
         function openAddModal() {
             document.getElementById('modalTitle').textContent = 'Add New Carousel Slide';
             document.getElementById('formAction').value = 'add';
@@ -512,6 +528,9 @@ $slides_result = mysqli_query($conn, $slides_query);
             document.getElementById('slideId').value = '';
             document.getElementById('currentImage').value = '';
             document.getElementById('slideModal').classList.remove('hidden');
+            if (window.slideDescriptionEditor) {
+                window.slideDescriptionEditor.setData('');
+            }
         }
 
         function openEditModal(slide) {
@@ -526,6 +545,9 @@ $slides_result = mysqli_query($conn, $slides_query);
             document.getElementById('slideSortOrder').value = slide.sort_order;
             document.getElementById('currentImage').value = slide.image_url;
             document.getElementById('slideModal').classList.remove('hidden');
+            if (window.slideDescriptionEditor) {
+                window.slideDescriptionEditor.setData(slide.description);
+            }
         }
 
         function closeModal() {

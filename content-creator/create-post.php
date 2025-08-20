@@ -12,6 +12,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $content = $_POST['content']; // Don't sanitize HTML content from CKEditor
     $type = sanitize_input($_POST['type']);
 
+    // Handle image upload
+    $image_url = NULL;
+    if (isset($_FILES['post_image']) && $_FILES['post_image']['error'] === UPLOAD_ERR_OK) {
+        $upload_dir = '../assets/images/news/';
+        $file_tmp = $_FILES['post_image']['tmp_name'];
+        $file_name = basename($_FILES['post_image']['name']);
+        $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+        $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        if (in_array($file_ext, $allowed_exts)) {
+            $new_name = uniqid('news_', true) . '.' . $file_ext;
+            $dest_path = $upload_dir . $new_name;
+            if (move_uploaded_file($file_tmp, $dest_path)) {
+                $image_url = 'assets/images/news/' . $new_name;
+            }
+        }
+    }
+
     // Determine status based on action
     if (isset($_POST['action']) && $_POST['action'] === 'save_draft') {
         $status = 'draft';
@@ -21,9 +38,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $message = display_message('Post created successfully and submitted for approval!', 'success');
     }
 
-    $query = "INSERT INTO posts (title, content, type, status, author_id) VALUES (?, ?, ?, ?, ?)";
+    $query = "INSERT INTO posts (title, content, type, status, author_id, image_url) VALUES (?, ?, ?, ?, ?, ?)";
     $stmt = mysqli_prepare($conn, $query);
-    mysqli_stmt_bind_param($stmt, "ssssi", $title, $content, $type, $status, $_SESSION['user_id']);
+    mysqli_stmt_bind_param($stmt, "ssssis", $title, $content, $type, $status, $_SESSION['user_id'], $image_url);
 
     if (mysqli_stmt_execute($stmt)) {
         // Message is already set above based on action
@@ -62,6 +79,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <style>
         body {
             font-family: 'Poppins', sans-serif;
+        }
+        .image-preview-auto-fit {
+            max-width: 100%;
+            max-height: 12rem;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
         }
     </style>
     <!-- CKEditor CDN -->
@@ -135,7 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <?php endif; ?>
 
             <div class="bg-white rounded-lg shadow-md p-6">
-                <form method="POST" class="space-y-6">
+                <form method="POST" class="space-y-6" enctype="multipart/form-data">
                     <input type="hidden" name="action" id="formAction" value="submit">
 
                     <div>
@@ -160,6 +186,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             <option value="event">Event</option>
                             <option value="article">Article</option>
                         </select>
+                    </div>
+
+                    <div>
+                        <label for="post_image" class="block text-sm font-medium text-gray-700 mb-2">
+                            Post Main Image
+                        </label>
+                        <input type="file" id="post_image" name="post_image" accept="image/*"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange focus:border-transparent"
+                               onchange="previewImage(event)">
+                        <div id="imagePreview" class="mt-2"></div>
                     </div>
 
                     <div>
@@ -286,6 +322,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         'blockQuote',
                         'insertTable',
                         'mediaEmbed',
+                        'insertImage',
+                        'imageUpload',
                         '|',
                         'undo',
                         'redo'
@@ -320,6 +358,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 },
                 mediaEmbed: {
                     previewsInData: true
+                },
+                image: {
+                    toolbar: [
+                        'imageTextAlternative',
+                        'imageStyle:full',
+                        'imageStyle:side'
+                    ]
                 }
             })
             .then(editorInstance => {
@@ -397,6 +442,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // Update the textarea with CKEditor content before form submission
             if (editor) {
                 document.getElementById('content').value = editor.getData();
+            }
+        }
+
+        function previewImage(event) {
+            const preview = document.getElementById('imagePreview');
+            preview.innerHTML = '';
+            const file = event.target.files[0];
+            if (file) {
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file);
+                img.className = 'image-preview-auto-fit';
+                img.onload = function() { URL.revokeObjectURL(img.src); };
+                preview.appendChild(img);
             }
         }
     </script>

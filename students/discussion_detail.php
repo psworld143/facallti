@@ -24,12 +24,12 @@ $student_id = get_student_id($conn, $_SESSION['email']);
 // Verify student is enrolled in this class
 $class_query = "SELECT ce.*, tc.section, tc.join_code, tc.status as class_status,
                 cc.subject_title, cc.subject_code, cc.units, cc.description as subject_description,
-                u.id as teacher_id, u.first_name as teacher_first_name, u.last_name as teacher_last_name,
-                u.email as teacher_email
+                f.id as teacher_id, f.first_name as teacher_first_name, f.last_name as teacher_last_name,
+                f.email as teacher_email
                 FROM class_enrollments ce
                 JOIN teacher_classes tc ON ce.class_id = tc.id
                 JOIN course_curriculum cc ON tc.subject_id = cc.id
-                JOIN users u ON tc.teacher_id = u.id
+                JOIN faculty f ON tc.teacher_id = f.id
                 WHERE ce.class_id = ? AND ce.student_id = ? AND ce.status = 'enrolled'";
 $class_stmt = mysqli_prepare($conn, $class_query);
 mysqli_stmt_bind_param($class_stmt, "ii", $class_id, $student_id);
@@ -43,9 +43,9 @@ if (!$class_data) {
 }
 
 // Get discussion details
-$discussion_query = "SELECT d.*, u.first_name as created_by_name, u.last_name as created_by_last_name
+$discussion_query = "SELECT d.*, f.first_name as created_by_name, f.last_name as created_by_last_name
                      FROM lms_discussions d
-                     JOIN users u ON d.created_by = u.id
+                     JOIN faculty f ON d.created_by = f.id
                      WHERE d.id = ? AND d.class_id = ? AND d.status = 'active'";
 $discussion_stmt = mysqli_prepare($conn, $discussion_query);
 mysqli_stmt_bind_param($discussion_stmt, "ii", $discussion_id, $class_id);
@@ -96,14 +96,14 @@ $page_title = 'Discussion - ' . $discussion_data['title'];
 
 // Get posts for this discussion
 $posts_query = "SELECT p.*,
-                u.first_name as author_name, u.last_name as author_last_name,
+                f.first_name as author_name, f.last_name as author_last_name,
                 COUNT(r.id) as reaction_count,
                 COUNT(CASE WHEN r.reaction_type = 'like' THEN 1 END) as likes,
                 COUNT(CASE WHEN r.reaction_type = 'love' THEN 1 END) as loves,
                 COUNT(CASE WHEN r.reaction_type = 'helpful' THEN 1 END) as helpful,
                 COUNT(CASE WHEN r.reaction_type = 'insightful' THEN 1 END) as insightful
                 FROM lms_discussion_posts p
-                JOIN users u ON p.author_id = u.id
+                JOIN faculty f ON p.author_id = f.id
                 LEFT JOIN lms_post_reactions r ON p.id = r.post_id
                 WHERE p.discussion_id = ? AND p.status = 'active'
                 GROUP BY p.id

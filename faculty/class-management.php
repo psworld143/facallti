@@ -312,7 +312,7 @@ include 'includes/unified-header.php';
         <div class="p-6">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 <?php while ($class = mysqli_fetch_assoc($classes_result)): ?>
-                <div class="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow class-card">
+                <div class="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow class-card flex flex-col h-full">
                     <!-- Header Photo -->
                     <div class="h-32 relative <?php
                         echo $class['status'] === 'active' ? 'bg-gradient-to-br from-blue-500 to-blue-600' : 'bg-gradient-to-br from-red-500 to-red-600';
@@ -335,7 +335,7 @@ include 'includes/unified-header.php';
                     </div>
 
                     <!-- Card Content -->
-                    <div class="p-4">
+                    <div class="p-4 flex-1 flex flex-col">
                         <!-- Subject Title -->
                         <h3 class="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
                             <?php echo htmlspecialchars($class['subject_title']); ?>
@@ -380,32 +380,32 @@ include 'includes/unified-header.php';
                             <span>Created <?php echo date('M d, Y', strtotime($class['created_at'])); ?></span>
                         </div>
 
-                        <!-- Actions -->
-                        <div class="flex space-x-2">
-                            <a href="class_dashboard.php?class_id=<?php echo $class['id']; ?>"
-                               class="flex-1 bg-seait-orange text-white text-center py-2 px-3 rounded-md hover:bg-orange-600 transition text-sm font-medium action-btn">
-                                <i class="fas fa-tachometer-alt mr-1"></i>Dashboard
-                            </a>
-                            <button onclick="viewStudents(<?php echo $class['id']; ?>)"
-                                    class="bg-blue-600 text-white py-2 px-3 rounded-md hover:bg-blue-700 transition text-sm font-medium action-btn">
-                                <i class="fas fa-users"></i>
-                            </button>
-                            <button onclick="editClass(<?php echo htmlspecialchars(json_encode($class)); ?>)"
-                                    class="bg-green-600 text-white py-2 px-3 rounded-md hover:bg-green-700 transition text-sm font-medium action-btn">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                        </div>
-
-                        <!-- Secondary Actions -->
-                        <div class="flex space-x-2 mt-2">
-                            <button onclick="regenerateJoinCode(<?php echo $class['id']; ?>)"
-                                    class="flex-1 bg-purple-600 text-white py-2 px-3 rounded-md hover:bg-purple-700 transition text-sm font-medium action-btn">
-                                <i class="fas fa-sync-alt mr-1"></i>Regenerate Code
-                            </button>
-                            <button onclick="deleteClass(<?php echo $class['id']; ?>)"
-                                    class="bg-red-600 text-white py-2 px-3 rounded-md hover:bg-red-700 transition text-sm font-medium action-btn">
-                                <i class="fas fa-trash"></i>
-                            </button>
+                        <!-- Actions and Secondary Actions at the bottom -->
+                        <div class="mt-auto">
+                            <div class="flex space-x-2">
+                                <a href="class_dashboard.php?class_id=<?php echo $class['id']; ?>"
+                                   class="flex-1 bg-seait-orange text-white text-center py-2 px-3 rounded-md hover:bg-orange-600 transition text-sm font-medium action-btn">
+                                    <i class="fas fa-tachometer-alt mr-1"></i>Dashboard
+                                </a>
+                                <button onclick="viewStudents(<?php echo $class['id']; ?>)"
+                                        class="bg-blue-600 text-white py-2 px-3 rounded-md hover:bg-blue-700 transition text-sm font-medium action-btn">
+                                    <i class="fas fa-users"></i>
+                                </button>
+                                <button onclick="editClass(<?php echo htmlspecialchars(json_encode($class)); ?>)"
+                                        class="bg-green-600 text-white py-2 px-3 rounded-md hover:bg-green-700 transition text-sm font-medium action-btn">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </div>
+                            <div class="flex space-x-2 mt-2">
+                                <button onclick="regenerateJoinCode(<?php echo $class['id']; ?>)"
+                                        class="flex-1 bg-purple-600 text-white py-2 px-3 rounded-md hover:bg-purple-700 transition text-sm font-medium action-btn">
+                                    <i class="fas fa-sync-alt mr-1"></i>Regenerate Code
+                                </button>
+                                <button onclick="deleteClass(<?php echo $class['id']; ?>)"
+                                        class="bg-red-600 text-white py-2 px-3 rounded-md hover:bg-red-700 transition text-sm font-medium action-btn">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

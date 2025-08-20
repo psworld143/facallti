@@ -55,7 +55,7 @@ $params = [$student_id];
 $param_types = 'i';
 
 if ($search) {
-    $where_conditions[] = "(cc.subject_title LIKE ? OR cc.subject_code LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ?)";
+    $where_conditions[] = "(cc.subject_title LIKE ? OR cc.subject_code LIKE ? OR f.first_name LIKE ? OR f.last_name LIKE ?)";
     $search_param = "%$search%";
     $params = array_merge($params, [$search_param, $search_param, $search_param, $search_param]);
     $param_types .= 'ssss';
@@ -73,7 +73,7 @@ $where_clause = 'WHERE ' . implode(' AND ', $where_conditions);
 $count_query = "SELECT COUNT(*) as total FROM class_enrollments ce
                 JOIN teacher_classes tc ON ce.class_id = tc.id
                 JOIN course_curriculum cc ON tc.subject_id = cc.id
-                JOIN users u ON tc.teacher_id = u.id
+                JOIN faculty f ON tc.teacher_id = f.id
                 $where_clause";
 $count_stmt = mysqli_prepare($conn, $count_query);
 mysqli_stmt_bind_param($count_stmt, $param_types, ...$params);
@@ -85,11 +85,11 @@ $total_pages = ceil($total_records / $per_page);
 // Get enrolled classes
 $classes_query = "SELECT ce.*, tc.section, tc.join_code, tc.status as class_status,
                   cc.subject_title, cc.subject_code, cc.units,
-                  u.first_name as teacher_first_name, u.last_name as teacher_last_name
+                  f.first_name as teacher_first_name, f.last_name as teacher_last_name
                   FROM class_enrollments ce
                   JOIN teacher_classes tc ON ce.class_id = tc.id
                   JOIN course_curriculum cc ON tc.subject_id = cc.id
-                  JOIN users u ON tc.teacher_id = u.id
+                  JOIN faculty f ON tc.teacher_id = f.id
                   $where_clause
                   ORDER BY ce.join_date DESC
                   LIMIT ? OFFSET ?";
@@ -263,7 +263,7 @@ include 'includes/header.php';
         <div class="p-6">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <?php while ($class = mysqli_fetch_assoc($classes_result)): ?>
-                <div class="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow class-card">
+                <div class="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow class-card flex flex-col h-full">
                     <!-- Header Photo -->
                     <div class="h-32 relative <?php
                         echo $class['status'] === 'enrolled' ? 'header-gradient' :
@@ -288,7 +288,7 @@ include 'includes/header.php';
                     </div>
 
                     <!-- Card Content -->
-                    <div class="p-4">
+                    <div class="p-4 flex-1 flex flex-col">
                         <!-- Subject Title -->
                         <h3 class="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
                             <?php echo htmlspecialchars($class['subject_title']); ?>
@@ -331,27 +331,29 @@ include 'includes/header.php';
                             <span>Joined <?php echo date('M d, Y', strtotime($class['join_date'])); ?></span>
                         </div>
 
-                        <!-- Actions -->
-                        <?php if ($class['status'] === 'enrolled'): ?>
-                        <div class="flex space-x-2">
-                            <a href="class_dashboard.php?class_id=<?php echo $class['class_id']; ?>"
-                               class="flex-1 bg-blue-600 text-white text-center py-2 px-3 rounded-md hover:bg-blue-700 transition text-sm font-medium action-btn">
-                                <i class="fas fa-door-open mr-1"></i>Open Class
-                            </a>
-                            <button onclick="dropClass(<?php echo $class['id']; ?>)"
-                                    class="bg-red-600 text-white py-2 px-3 rounded-md hover:bg-red-700 transition text-sm font-medium action-btn">
-                                <i class="fas fa-user-minus"></i>
-                            </button>
-                        </div>
-                        <?php else: ?>
-                        <div class="text-center py-2 text-sm text-gray-500">
-                            <?php if ($class['status'] === 'dropped'): ?>
-                                <i class="fas fa-times-circle mr-1"></i>Dropped
+                        <!-- Actions or Status at the bottom -->
+                        <div class="mt-auto">
+                            <?php if ($class['status'] === 'enrolled'): ?>
+                            <div class="flex space-x-2">
+                                <a href="class_dashboard.php?class_id=<?php echo $class['class_id']; ?>"
+                                   class="flex-1 bg-blue-600 text-white text-center py-2 px-3 rounded-md hover:bg-blue-700 transition text-sm font-medium action-btn">
+                                    <i class="fas fa-door-open mr-1"></i>Open Class
+                                </a>
+                                <button onclick="dropClass(<?php echo $class['id']; ?>)"
+                                        class="bg-red-600 text-white py-2 px-3 rounded-md hover:bg-red-700 transition text-sm font-medium action-btn">
+                                    <i class="fas fa-user-minus"></i>
+                                </button>
+                            </div>
                             <?php else: ?>
-                                <i class="fas fa-check-circle mr-1"></i>Completed
+                            <div class="text-center py-2 text-sm text-gray-500">
+                                <?php if ($class['status'] === 'dropped'): ?>
+                                    <i class="fas fa-times-circle mr-1"></i>Dropped
+                                <?php else: ?>
+                                    <i class="fas fa-check-circle mr-1"></i>Completed
+                                <?php endif; ?>
+                            </div>
                             <?php endif; ?>
                         </div>
-                        <?php endif; ?>
                     </div>
                 </div>
                 <?php endwhile; ?>

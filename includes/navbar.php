@@ -3,7 +3,7 @@
 // This file should be included in all pages for consistent navigation
 ?>
 <!-- Navigation -->
-<nav class="bg-white dark:bg-gray-900 shadow-lg sticky top-0 z-40">
+<nav class="bg-transparent dark:bg-transparent sticky top-0 z-40">
     <div class="max-w-7xl mx-auto px-2 sm:px-4">
         <div class="flex items-center justify-between py-3 md:py-4">
             <!-- Logo and Brand - Leftmost Position -->
@@ -132,7 +132,7 @@
         </div>
 
         <!-- Mobile Navigation Menu -->
-        <div id="mobile-menu" class="hidden md:hidden bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-3 relative z-30">
+        <div id="mobile-menu" class="hidden md:hidden bg-white dark:bg-gray-800 py-3 relative z-30">
             <div class="grid grid-cols-2 gap-2 px-4">
                 <a href="index.php#home" class="text-seait-dark dark:text-white hover:text-seait-orange transition py-2 px-3 text-center text-sm border border-gray-200 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Home</a>
                 <a href="index.php#about" class="text-seait-dark dark:text-white hover:text-seait-orange transition py-2 px-3 text-center text-sm border border-gray-200 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700">About</a>
@@ -181,38 +181,52 @@
 </nav>
 
 <!-- Login Modal -->
-<div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-auto">
-        <!-- Modal Header -->
-        <div class="flex items-center justify-between p-6 border-b border-gray-200">
-            <h3 class="text-xl font-semibold text-seait-dark">Login to SEAIT</h3>
-            <button onclick="closeLoginModal()" class="text-gray-400 hover:text-gray-600 transition">
-                <i class="fas fa-times text-xl"></i>
+<div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 animate-fade-in-modal">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto overflow-hidden relative">
+        <!-- Modal Header with Gradient and Logo -->
+        <div class="flex flex-col items-center justify-center p-6 border-b border-gray-200 bg-gradient-to-r from-seait-orange to-orange-400 relative">
+            <img src="assets/images/seait-logo.png" alt="SEAIT Logo" class="h-12 w-12 rounded-full shadow-lg mb-2 border-4 border-white bg-white">
+            <h3 class="text-xl font-bold text-white drop-shadow">Login to SEAIT</h3>
+            <button onclick="closeLoginModal()" class="absolute top-4 right-4 text-white hover:text-orange-100 transition text-2xl focus:outline-none">
+                <i class="fas fa-times"></i>
             </button>
         </div>
 
         <!-- Modal Body -->
         <div class="p-6">
-            <form id="loginForm" method="POST" class="space-y-4">
+            <form id="loginForm" method="POST" class="space-y-5">
                 <div>
                     <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username or Email</label>
                     <input type="text" id="username" name="username" required
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange focus:border-transparent"
-                           placeholder="Enter your username or email">
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-seait-orange focus:border-transparent transition-all duration-200 shadow-sm hover:border-seait-orange"
+                           placeholder="Enter your username or email" autocomplete="username">
                 </div>
 
-                <div>
+                <div class="relative">
                     <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
                     <input type="password" id="password" name="password" required
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange focus:border-transparent"
-                           placeholder="Enter your password">
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-seait-orange focus:border-transparent transition-all duration-200 shadow-sm hover:border-seait-orange pr-12"
+                           placeholder="Enter your password" autocomplete="current-password">
+                    <button type="button" tabindex="-1" onclick="togglePasswordVisibility()" class="absolute top-8 right-3 text-gray-400 hover:text-seait-orange focus:outline-none" aria-label="Show password">
+                        <i id="passwordToggleIcon" class="fas fa-eye"></i>
+                    </button>
                 </div>
 
-                <div class="flex space-x-3">
-                    <button type="submit" class="flex-1 bg-seait-orange text-white py-2 px-4 rounded-md hover:bg-orange-600 transition font-medium">
-                        Sign In
+                <div class="flex items-center justify-between">
+                    <div class="flex-1 h-px bg-gray-200"></div>
+                    <span class="mx-3 text-xs text-gray-400">or</span>
+                    <div class="flex-1 h-px bg-gray-200"></div>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <a href="#" class="text-xs text-seait-orange hover:underline focus:outline-none">Forgot Password?</a>
+                </div>
+
+                <div class="flex space-x-3 mt-2">
+                    <button type="submit" class="flex-1 bg-seait-orange text-white py-2 px-4 rounded-lg hover:bg-orange-600 transition font-semibold shadow focus:outline-none focus:ring-2 focus:ring-seait-orange focus:ring-offset-2">
+                        <i class="fas fa-sign-in-alt mr-2"></i>Sign In
                     </button>
-                    <button type="button" onclick="closeLoginModal()" class="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-300 transition font-medium">
+                    <button type="button" onclick="closeLoginModal()" class="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition font-semibold shadow focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2">
                         Cancel
                     </button>
                 </div>
@@ -313,6 +327,22 @@
 #mobile-menu-button {
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
+}
+
+nav.bg-transparent, nav.bg-transparent.sticky {
+    background: rgba(255,255,255,0.7) !important;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: none !important;
+    border: none !important;
+}
+
+@keyframes fadeInModal {
+    from { opacity: 0; transform: scale(0.97) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.animate-fade-in-modal {
+    animation: fadeInModal 0.4s cubic-bezier(0.4,0,0.2,1);
 }
 </style>
 

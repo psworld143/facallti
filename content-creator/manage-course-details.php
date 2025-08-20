@@ -1,4 +1,16 @@
 <?php
+// Error reporting to browser console
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    $msg = addslashes("PHP Error [$errno]: $errstr in $errfile on line $errline");
+    echo "<script>console.error('$msg');</script>";
+});
+set_exception_handler(function($exception) {
+    $msg = addslashes('Uncaught Exception: ' . $exception->getMessage());
+    echo "<script>console.error('$msg');</script>";
+});
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
@@ -12,6 +24,9 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'content_creator') {
 $user_id = $_SESSION['user_id'];
 $message = '';
 $error = '';
+
+// Add this after session_start() and before any HTML output
+$isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -175,7 +190,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Fetch courses
-$courses_query = "SELECT c.*, co.name as college_name
+$courses_query = "SELECT c.*, c.short_name as course_short_name, co.name as college_name
                   FROM courses c
                   JOIN colleges co ON c.college_id = co.id
                   WHERE c.is_active = 1
@@ -233,6 +248,213 @@ $curriculum_query = "SELECT cc.*, c.name as course_name,
                      ORDER BY c.name ASC, cc.year_level ASC, cc.semester ASC, cc.sort_order ASC
                      LIMIT $items_per_page OFFSET $curriculum_offset";
 $curriculum_result = mysqli_query($conn, $curriculum_query);
+
+// --- PHP: Build courses array and group curriculum by course_id ---
+// Reset courses_result pointer and build courses array
+mysqli_data_seek($courses_result, 0);
+$courses = [];
+// --- Fetch courses with error/empty check ---
+$courses = [];
+$courses_result = mysqli_query($conn, $courses_query);
+if ($courses_result && mysqli_num_rows($courses_result) > 0) {
+    while ($row = mysqli_fetch_assoc($courses_result)) {
+        $short = trim($row['course_short_name']);
+        if (!$short) {
+            // Abbreviate course name (first letter of each word, up to 4 chars)
+            $words = preg_split('/\s+/', $row['name']);
+            $abbr = '';
+            foreach ($words as $w) {
+                $abbr .= strtoupper(mb_substr($w, 0, 1));
+                if (strlen($abbr) >= 4) break;
+            }
+            $short = $abbr;
+        }
+        $courses[] = [
+            'id' => $row['id'],
+            'short_name' => $short,
+            'name' => $row['name'],
+        ];
+    }
+}
+// Group curriculum subjects by course_id
+$curriculum_by_course = [];
+mysqli_data_seek($curriculum_result, 0);
+// --- Fetch curriculum with error/empty check ---
+$curriculum_by_course = [];
+$curriculum_result = mysqli_query($conn, $curriculum_query);
+if ($curriculum_result && mysqli_num_rows($curriculum_result) > 0) {
+    while ($subject = mysqli_fetch_assoc($curriculum_result)) {
+        $curriculum_by_course[$subject['course_id']][] = $subject;
+    }
+}
+
+// --- PHP: Group requirements by course_id ---
+$requirements_by_course = [];
+mysqli_data_seek($requirements_result, 0);
+// --- Fetch requirements with error/empty check ---
+$requirements_by_course = [];
+$requirements_result = mysqli_query($conn, $requirements_query);
+if ($requirements_result && mysqli_num_rows($requirements_result) > 0) {
+    while ($req = mysqli_fetch_assoc($requirements_result)) {
+        $requirements_by_course[$req['course_id']][] = $req;
+    }
+}
+
+// Add mapping arrays for year levels and semesters
+$year_level_labels = [
+    'first_year' => 'First Year',
+    'second_year' => 'Second Year',
+    'third_year' => 'Third Year',
+    'fourth_year' => 'Fourth Year',
+];
+$semester_labels = [
+    'first_semester' => 'First Semester',
+    'second_semester' => 'Second Semester',
+    'summer' => 'Summer',
+];
+
+// After processing POST actions, before HTML output, add AJAX response for add_requirement
+if ($isAjax && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    if ($_POST['action'] === 'add_requirement') {
+        // Re-fetch requirements for the updated table
+        $requirements_query = "SELECT cr.*, c.name as course_name
+                              FROM course_requirements cr
+                              JOIN courses c ON cr.course_id = c.id
+                              ORDER BY c.name ASC, cr.requirement_type ASC, cr.sort_order ASC";
+        $requirements_result = mysqli_query($conn, $requirements_query);
+        $requirements_by_course = [];
+        if ($requirements_result && mysqli_num_rows($requirements_result) > 0) {
+            while ($req = mysqli_fetch_assoc($requirements_result)) {
+                $requirements_by_course[$req['course_id']][] = $req;
+            }
+        }
+        ob_start();
+        ?>
+        <?php foreach ($courses as $i => $course): ?>
+            <div class="requirements-course-content <?php echo $i === 0 ? '' : 'hidden'; ?>" id="requirements-course-<?php echo $course['id']; ?>">
+                <div class="bg-white rounded-lg shadow-lg p-4 lg:p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-lg lg:text-xl font-semibold text-seait-dark">Requirements for <?php echo htmlspecialchars($course['name']); ?></h2>
+                    </div>
+                    <div class="table-container">
+                        <table class="responsive-table" id="requirementsTable">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Title</th>
+                                    <th class="hidden md:table-cell">Description</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (!empty($requirements_by_course[$course['id']])): ?>
+                                    <?php foreach ($requirements_by_course[$course['id']] as $requirement): ?>
+                                        <tr>
+                                            <td data-label="Type"><?php echo ucfirst(htmlspecialchars($requirement['requirement_type'])); ?></td>
+                                            <td data-label="Title"><?php echo htmlspecialchars($requirement['title']); ?></td>
+                                            <td data-label="Description" class="hidden md:table-cell"><?php echo htmlspecialchars($requirement['description']); ?></td>
+                                            <td data-label="Actions" class="actions-cell">
+                                                <div class="flex space-x-2">
+                                                    <button onclick="editRequirement(<?php echo $requirement['id']; ?>)" class="text-seait-orange hover:text-orange-600 transition text-sm">
+                                                        <i class="fas fa-edit mr-1"></i>Edit
+                                                    </button>
+                                                    <button onclick="deleteRequirement(<?php echo $requirement['id']; ?>, '<?php echo addslashes($requirement['title']); ?>')" class="text-red-500 hover:text-red-700 transition text-sm">
+                                                        <i class="fas fa-trash mr-1"></i>Delete
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr><td colspan="4" class="text-center text-gray-400">No requirements for this course.</td></tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
+        <?php
+        echo ob_get_clean();
+        exit;
+    } elseif ($_POST['action'] === 'add_curriculum') {
+        // Re-fetch curriculum for the updated table
+        $curriculum_query = "SELECT cc.*, c.name as course_name,
+                             prereq.subject_code as prerequisite_code, prereq.subject_title as prerequisite_title
+                             FROM course_curriculum cc
+                             JOIN courses c ON cc.course_id = c.id
+                             LEFT JOIN course_curriculum prereq ON cc.prerequisite_id = prereq.id
+                             ORDER BY c.name ASC, cc.year_level ASC, cc.semester ASC, cc.sort_order ASC";
+        $curriculum_result = mysqli_query($conn, $curriculum_query);
+        $curriculum_by_course = [];
+        if ($curriculum_result && mysqli_num_rows($curriculum_result) > 0) {
+            while ($subject = mysqli_fetch_assoc($curriculum_result)) {
+                $curriculum_by_course[$subject['course_id']][] = $subject;
+            }
+        }
+        ob_start();
+        ?>
+        <?php foreach ($courses as $i => $course): ?>
+            <div class="curriculum-course-content <?php echo $i === 0 ? '' : 'hidden'; ?>" id="curriculum-course-<?php echo $course['id']; ?>">
+                <div class="bg-white rounded-lg shadow-lg p-4 lg:p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-lg lg:text-xl font-semibold text-seait-dark">Curriculum for <?php echo htmlspecialchars($course['name']); ?></h2>
+                    </div>
+                    <div class="table-container">
+                        <table class="responsive-table" id="curriculumTable">
+                            <thead>
+                                <tr>
+                                    <th>Year</th>
+                                    <th>Semester</th>
+                                    <th>Subject Code</th>
+                                    <th>Subject Title</th>
+                                    <th>Units</th>
+                                    <th class="hidden md:table-cell">Lecture</th>
+                                    <th class="hidden md:table-cell">Lab</th>
+                                    <th class="hidden md:table-cell">Prerequisite</th>
+                                    <th>Description</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (!empty($curriculum_by_course[$course['id']])): ?>
+                                    <?php foreach ($curriculum_by_course[$course['id']] as $subject): ?>
+                                        <tr>
+                                            <td data-label="Year"><?php echo htmlspecialchars($year_level_labels[$subject['year_level']] ?? $subject['year_level']); ?></td>
+                                            <td data-label="Semester"><?php echo htmlspecialchars($semester_labels[$subject['semester']] ?? $subject['semester']); ?></td>
+                                            <td data-label="Subject Code"><?php echo htmlspecialchars($subject['subject_code']); ?></td>
+                                            <td data-label="Subject Title"><?php echo htmlspecialchars($subject['subject_title']); ?></td>
+                                            <td data-label="Units"><?php echo htmlspecialchars($subject['units']); ?></td>
+                                            <td data-label="Lecture" class="hidden md:table-cell"><?php echo htmlspecialchars($subject['lecture_hours']); ?></td>
+                                            <td data-label="Lab" class="hidden md:table-cell"><?php echo htmlspecialchars($subject['laboratory_hours']); ?></td>
+                                            <td data-label="Prerequisite" class="hidden md:table-cell"><?php echo htmlspecialchars($subject['prerequisite_code'] ? $subject['prerequisite_code'] : '-'); ?></td>
+                                            <td data-label="Description"><?php echo htmlspecialchars($subject['description']); ?></td>
+                                            <td data-label="Actions" class="actions-cell">
+                                                <div class="flex space-x-2">
+                                                    <button onclick="editCurriculum(<?php echo $subject['id']; ?>)" class="text-seait-orange hover:text-orange-600 transition text-sm">
+                                                        <i class="fas fa-edit mr-1"></i>Edit
+                                                    </button>
+                                                    <button onclick="deleteCurriculum(<?php echo $subject['id']; ?>, '<?php echo addslashes($subject['subject_code']); ?>', '<?php echo addslashes($subject['subject_title']); ?>')" class="text-red-500 hover:text-red-700 transition text-sm">
+                                                        <i class="fas fa-trash mr-1"></i>Delete
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr><td colspan="10" class="text-center text-gray-400">No curriculum subjects for this course.</td></tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
+        <?php
+        echo ob_get_clean();
+        exit;
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -526,313 +748,191 @@ $curriculum_result = mysqli_query($conn, $curriculum_query);
 
                 <!-- Requirements Tab Content -->
                 <div id="requirements-content" class="tab-content">
-                    <!-- Add Course Requirement Form -->
-                    <div class="bg-white rounded-lg shadow-lg p-4 lg:p-6 mb-6 lg:mb-8">
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="flex items-center">
-                                <div class="p-2 bg-blue-100 rounded-full mr-3">
-                                    <i class="fas fa-list-check text-blue-600"></i>
-                                </div>
-                                <h2 class="text-lg lg:text-xl font-semibold text-seait-dark">Add Course Requirement</h2>
-                            </div>
-                            <button type="button" onclick="toggleForm('requirement-form')" class="text-seait-orange hover:text-orange-600 p-2 rounded-full hover:bg-orange-50 transition">
-                                <i class="fas fa-chevron-down" id="requirement-toggle-icon"></i>
+                    <?php if (empty($courses)): ?>
+                        <div class="bg-white rounded-lg shadow-lg p-6 text-center text-gray-500">
+                            No courses found. Please add a course first before managing requirements or curriculum.<br>
+                            <a href="manage-colleges.php" class="text-seait-orange underline">Go to Course Management</a>
+                        </div>
+                    <?php else: ?>
+                        <div class="flex justify-end mb-4">
+                            <button type="button" class="bg-seait-orange text-white px-4 py-2 rounded hover:bg-orange-600 transition text-sm font-semibold" onclick="openAddRequirementModal()" <?php if (empty($courses)) echo 'disabled'; ?>>
+                                <i class="fas fa-plus mr-2"></i>Add Requirement
                             </button>
                         </div>
-                        <form method="POST" id="requirement-form" class="space-y-4">
-                            <input type="hidden" name="action" value="add_requirement">
-
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Course <span class="text-red-500">*</span></label>
-                                <select name="course_id" id="add_course_id" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange">
-                                    <option value="">Select Course</option>
-                                    <?php mysqli_data_seek($courses_result, 0); ?>
-                                    <?php while($course = mysqli_fetch_assoc($courses_result)): ?>
-                                    <option value="<?php echo $course['id']; ?>"><?php echo htmlspecialchars($course['name']); ?> (<?php echo htmlspecialchars($course['college_name']); ?>)</option>
-                                    <?php endwhile; ?>
-                                </select>
+                        <div class="mb-4">
+                            <div class="flex flex-wrap gap-2 border-b border-gray-200">
+                                <?php foreach ($courses as $i => $course): ?>
+                                    <button type="button"
+                                        class="requirements-course-tab px-4 py-2 border-b-2 font-semibold text-sm focus:outline-none <?php echo $i === 0 ? 'active border-seait-orange text-seait-orange' : 'border-transparent text-gray-600'; ?>"
+                                        data-course-id="<?php echo $course['id']; ?>"
+                                        onclick="showRequirementsTab('<?php echo $course['id']; ?>', this)">
+                                        <?php echo htmlspecialchars($course['short_name']); ?>
+                                    </button>
+                                <?php endforeach; ?>
                             </div>
-
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Requirement Type <span class="text-red-500">*</span></label>
-                                    <select name="requirement_type" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange">
-                                        <option value="">Select Type</option>
-                                        <option value="admission">Admission</option>
-                                        <option value="graduation">Graduation</option>
-                                        <option value="prerequisite">Prerequisite</option>
-                                    </select>
+                        </div>
+                        <?php foreach ($courses as $i => $course): ?>
+                            <div class="requirements-course-content <?php echo $i === 0 ? '' : 'hidden'; ?>" id="requirements-course-<?php echo $course['id']; ?>">
+                                <div class="bg-white rounded-lg shadow-lg p-4 lg:p-6">
+                                    <div class="flex items-center justify-between mb-4">
+                                        <h2 class="text-lg lg:text-xl font-semibold text-seait-dark">Requirements for <?php echo htmlspecialchars($course['name']); ?></h2>
+                                    </div>
+                                    <div class="table-container">
+                                        <table class="responsive-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Type</th>
+                                                    <th>Title</th>
+                                                    <th class="hidden md:table-cell">Description</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php if (!empty($requirements_by_course[$course['id']])): ?>
+                                                    <?php foreach ($requirements_by_course[$course['id']] as $requirement): ?>
+                                                        <tr>
+                                                            <td data-label="Type"><?php echo ucfirst(htmlspecialchars($requirement['requirement_type'])); ?></td>
+                                                            <td data-label="Title"><?php echo htmlspecialchars($requirement['title']); ?></td>
+                                                            <td data-label="Description" class="hidden md:table-cell"><?php echo htmlspecialchars($requirement['description']); ?></td>
+                                                            <td data-label="Actions" class="actions-cell">
+                                                                <div class="flex space-x-2">
+                                                                    <button onclick="editRequirement(<?php echo $requirement['id']; ?>)" class="text-seait-orange hover:text-orange-600 transition text-sm">
+                                                                        <i class="fas fa-edit mr-1"></i>Edit
+                                                                    </button>
+                                                                    <button onclick="deleteRequirement(<?php echo $requirement['id']; ?>, '<?php echo addslashes($requirement['title']); ?>')" class="text-red-500 hover:text-red-700 transition text-sm">
+                                                                        <i class="fas fa-trash mr-1"></i>Delete
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    <?php endforeach; ?>
+                                                <?php else: ?>
+                                                    <tr><td colspan="4" class="text-center text-gray-400">No requirements for this course.</td></tr>
+                                                <?php endif; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
-
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Title <span class="text-red-500">*</span></label>
-                                    <input type="text" name="title" required placeholder="Enter requirement title" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange">
-                                </div>
                             </div>
-
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                                <textarea name="description" rows="3" placeholder="Enter requirement description" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange"></textarea>
-                            </div>
-
-                            <div class="pt-2">
-                                <button type="submit" class="w-full bg-seait-orange text-white px-4 lg:px-6 py-2 lg:py-3 rounded-md hover:bg-orange-600 transition text-sm lg:text-base">
-                                    <i class="fas fa-plus mr-2"></i>Add Requirement
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <!-- Requirements List -->
-                    <div class="bg-white rounded-lg shadow-lg p-4 lg:p-6">
-                        <div class="flex items-center justify-between mb-4">
-                            <h2 class="text-lg lg:text-xl font-semibold text-seait-dark">Manage Requirements</h2>
-                            <input type="text" id="requirementsSearch" placeholder="Search requirements..." class="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-seait-orange" style="max-width: 250px;">
-                        </div>
-                        <div class="table-container">
-                            <table class="responsive-table" id="requirementsTable">
-                                <thead>
-                                    <tr>
-                                        <th>Course</th>
-                                        <th>Type</th>
-                                        <th>Title</th>
-                                        <th class="hidden md:table-cell">Description</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php mysqli_data_seek($requirements_result, 0); ?>
-                                    <?php while($requirement = mysqli_fetch_assoc($requirements_result)): ?>
-                                    <tr>
-                                        <td data-label="Course"><?php echo htmlspecialchars($requirement['course_name']); ?></td>
-                                        <td data-label="Type"><?php echo ucfirst(htmlspecialchars($requirement['requirement_type'])); ?></td>
-                                        <td data-label="Title"><?php echo htmlspecialchars($requirement['title']); ?></td>
-                                        <td data-label="Description" class="hidden md:table-cell"><?php echo htmlspecialchars($requirement['description']); ?></td>
-                                        <td data-label="Actions" class="actions-cell">
-                                            <div class="flex space-x-2">
-                                                <button onclick="editRequirement(<?php echo $requirement['id']; ?>)" class="text-seait-orange hover:text-orange-600 transition text-sm">
-                                                    <i class="fas fa-edit mr-1"></i>Edit
-                                                </button>
-                                                <button onclick="deleteRequirement(<?php echo $requirement['id']; ?>, '<?php echo addslashes($requirement['title']); ?>')" class="text-red-500 hover:text-red-700 transition text-sm">
-                                                    <i class="fas fa-trash mr-1"></i>Delete
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    <?php endwhile; ?>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <!-- Requirements Pagination -->
-                        <?php if ($requirements_total_pages > 1): ?>
-                        <div class="mt-6 flex items-center justify-between">
-                            <div class="text-sm text-gray-700">
-                                Showing <?php echo (($requirements_page - 1) * $items_per_page) + 1; ?> to <?php echo min($requirements_page * $items_per_page, $requirements_total); ?> of <?php echo $requirements_total; ?> requirements
-                            </div>
-                            <div class="flex space-x-2">
-                                <?php if ($requirements_page > 1): ?>
-                                <a href="?requirements_page=<?php echo $requirements_page - 1; ?>&curriculum_page=<?php echo $curriculum_page; ?>" class="px-3 py-2 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition">Previous</a>
-                                <?php endif; ?>
-
-                                <?php for ($i = max(1, $requirements_page - 2); $i <= min($requirements_total_pages, $requirements_page + 2); $i++): ?>
-                                <a href="?requirements_page=<?php echo $i; ?>&curriculum_page=<?php echo $curriculum_page; ?>" class="px-3 py-2 text-sm rounded transition <?php echo $i == $requirements_page ? 'bg-seait-orange text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'; ?>">
-                                    <?php echo $i; ?>
-                                </a>
-                                <?php endfor; ?>
-
-                                <?php if ($requirements_page < $requirements_total_pages): ?>
-                                <a href="?requirements_page=<?php echo $requirements_page + 1; ?>&curriculum_page=<?php echo $curriculum_page; ?>" class="px-3 py-2 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition">Next</a>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                        <?php endif; ?>
-                    </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </div>
 
                 <!-- Curriculum Tab Content -->
                 <div id="curriculum-content" class="tab-content hidden">
-                    <!-- Add Curriculum Form -->
-                    <div class="bg-white rounded-lg shadow-lg p-4 lg:p-6 mb-6 lg:mb-8">
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="flex items-center">
-                                <div class="p-2 bg-green-100 rounded-full mr-3">
-                                    <i class="fas fa-graduation-cap text-green-600"></i>
-                                </div>
-                                <h2 class="text-lg lg:text-xl font-semibold text-seait-dark">Add Curriculum Subject</h2>
-                            </div>
-                            <button type="button" onclick="toggleForm('curriculum-form')" class="text-seait-orange hover:text-orange-600 p-2 rounded-full hover:bg-orange-50 transition">
-                                <i class="fas fa-chevron-down" id="curriculum-toggle-icon"></i>
+                    <?php if (empty($courses)): ?>
+                        <div class="bg-white rounded-lg shadow-lg p-6 text-center text-gray-500">
+                            No courses found. Please add a course first before managing requirements or curriculum.<br>
+                            <a href="manage-colleges.php" class="text-seait-orange underline">Go to Course Management</a>
+                        </div>
+                    <?php else: ?>
+                        <div class="flex justify-end mb-4">
+                            <button type="button" class="bg-seait-orange text-white px-4 py-2 rounded hover:bg-orange-600 transition text-sm font-semibold" onclick="openAddCurriculumModal()" <?php if (empty($courses)) echo 'disabled'; ?>>
+                                <i class="fas fa-plus mr-2"></i>Add Curriculum
                             </button>
                         </div>
-                        <form method="POST" id="curriculum-form" class="space-y-4">
-                            <input type="hidden" name="action" value="add_curriculum">
-
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Course <span class="text-red-500">*</span></label>
-                                <select name="course_id" id="curriculum_course_id" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange">
-                                    <option value="">Select Course</option>
-                                    <?php mysqli_data_seek($courses_result, 0); ?>
-                                    <?php while($course = mysqli_fetch_assoc($courses_result)): ?>
-                                    <option value="<?php echo $course['id']; ?>"><?php echo htmlspecialchars($course['name']); ?> (<?php echo htmlspecialchars($course['college_name']); ?>)</option>
-                                    <?php endwhile; ?>
-                                </select>
-                            </div>
-
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Year Level <span class="text-red-500">*</span></label>
-                                    <select name="year_level" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange">
-                                        <option value="">Select Year</option>
-                                        <option value="first_year">First Year</option>
-                                        <option value="second_year">Second Year</option>
-                                        <option value="third_year">Third Year</option>
-                                        <option value="fourth_year">Fourth Year</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Semester <span class="text-red-500">*</span></label>
-                                    <select name="semester" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange">
-                                        <option value="">Select Semester</option>
-                                        <option value="first_semester">First Semester</option>
-                                        <option value="second_semester">Second Semester</option>
-                                        <option value="summer">Summer</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Subject Code <span class="text-red-500">*</span></label>
-                                    <input type="text" name="subject_code" required placeholder="e.g., MATH101" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange">
-                                </div>
-
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Subject Title <span class="text-red-500">*</span></label>
-                                    <input type="text" name="subject_title" required placeholder="Enter subject title" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange">
-                                </div>
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Prerequisite Subject</label>
-                                <select name="prerequisite_id" id="prerequisite_id" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange">
-                                    <option value="">Select Prerequisite Subject (Optional)</option>
-                                    <!-- Prerequisite options will be populated here -->
-                                </select>
-                            </div>
-
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Units</label>
-                                    <input type="number" name="units" step="0.1" value="3.0" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange">
-                                </div>
-
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Lecture Hours</label>
-                                    <input type="number" name="lecture_hours" value="3" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange">
-                                </div>
-
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Laboratory Hours</label>
-                                    <input type="number" name="laboratory_hours" value="0" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange">
-                                </div>
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                                <textarea name="curriculum_description" rows="3" placeholder="Enter subject description" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange"></textarea>
-                            </div>
-
-                            <div class="pt-2">
-                                <button type="submit" class="w-full bg-seait-orange text-white px-4 lg:px-6 py-2 lg:py-3 rounded-md hover:bg-orange-600 transition text-sm lg:text-base">
-                                    <i class="fas fa-plus mr-2"></i>Add Curriculum Subject
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <!-- Curriculum List -->
-                    <div class="bg-white rounded-lg shadow-lg p-4 lg:p-6">
-                        <div class="flex items-center justify-between mb-4">
-                            <h2 class="text-lg lg:text-xl font-semibold text-seait-dark">Manage Curriculum</h2>
-                            <input type="text" id="curriculumSearch" placeholder="Search curriculum..." class="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-seait-orange" style="max-width: 250px;">
-                        </div>
-                        <div class="table-container">
-                            <table class="responsive-table" id="curriculumTable">
-                                <thead>
-                                    <tr>
-                                        <th>Course</th>
-                                        <th>Year</th>
-                                        <th>Semester</th>
-                                        <th>Subject Code</th>
-                                        <th class="hidden lg:table-cell">Subject Title</th>
-                                        <th class="hidden md:table-cell">Prerequisite</th>
-                                        <th>Units</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php mysqli_data_seek($curriculum_result, 0); ?>
-                                    <?php while($subject = mysqli_fetch_assoc($curriculum_result)): ?>
-                                    <tr>
-                                        <td data-label="Course"><?php echo htmlspecialchars($subject['course_name']); ?></td>
-                                        <td data-label="Year"><?php echo ucfirst(str_replace('_', ' ', $subject['year_level'])); ?></td>
-                                        <td data-label="Semester"><?php echo ucfirst(str_replace('_', ' ', $subject['semester'])); ?></td>
-                                        <td data-label="Subject Code"><?php echo htmlspecialchars($subject['subject_code']); ?></td>
-                                        <td data-label="Subject Title" class="hidden lg:table-cell"><?php echo htmlspecialchars($subject['subject_title']); ?></td>
-                                        <td data-label="Prerequisite" class="hidden md:table-cell">
-                                            <?php if ($subject['prerequisite_code'] && $subject['prerequisite_title']): ?>
-                                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                    <?php echo htmlspecialchars($subject['prerequisite_code']); ?>
-                                                </span>
-                                                <div class="text-xs text-gray-500 mt-1"><?php echo htmlspecialchars($subject['prerequisite_title']); ?></div>
-                                            <?php else: ?>
-                                                <span class="text-gray-400 text-xs">None</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td data-label="Units"><?php echo htmlspecialchars($subject['units']); ?></td>
-                                        <td data-label="Actions" class="actions-cell">
-                                            <div class="flex space-x-2">
-                                                <button onclick="editCurriculum(<?php echo $subject['id']; ?>)" class="text-seait-orange hover:text-orange-600 transition text-sm">
-                                                    <i class="fas fa-edit mr-1"></i>Edit
-                                                </button>
-                                                <button onclick="deleteCurriculum(<?php echo $subject['id']; ?>, '<?php echo addslashes($subject['subject_code']); ?>', '<?php echo addslashes($subject['subject_title']); ?>')" class="text-red-500 hover:text-red-700 transition text-sm">
-                                                    <i class="fas fa-trash mr-1"></i>Delete
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    <?php endwhile; ?>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <!-- Curriculum Pagination -->
-                        <?php if ($curriculum_total_pages > 1): ?>
-                        <div class="mt-6 flex items-center justify-between">
-                            <div class="text-sm text-gray-700">
-                                Showing <?php echo (($curriculum_page - 1) * $items_per_page) + 1; ?> to <?php echo min($curriculum_page * $items_per_page, $curriculum_total); ?> of <?php echo $curriculum_total; ?> curriculum subjects
-                            </div>
-                            <div class="flex space-x-2">
-                                <?php if ($curriculum_page > 1): ?>
-                                <a href="?requirements_page=<?php echo $requirements_page; ?>&curriculum_page=<?php echo $curriculum_page - 1; ?>" class="px-3 py-2 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition">Previous</a>
-                                <?php endif; ?>
-
-                                <?php for ($i = max(1, $curriculum_page - 2); $i <= min($curriculum_total_pages, $curriculum_page + 2); $i++): ?>
-                                <a href="?requirements_page=<?php echo $requirements_page; ?>&curriculum_page=<?php echo $i; ?>" class="px-3 py-2 text-sm rounded transition <?php echo $i == $curriculum_page ? 'bg-seait-orange text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'; ?>">
-                                    <?php echo $i; ?>
-                                </a>
-                                <?php endfor; ?>
-
-                                <?php if ($curriculum_page < $curriculum_total_pages): ?>
-                                <a href="?requirements_page=<?php echo $requirements_page; ?>&curriculum_page=<?php echo $curriculum_page + 1; ?>" class="px-3 py-2 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition">Next</a>
-                                <?php endif; ?>
+                        <div class="mb-4">
+                            <div class="flex flex-wrap gap-2 border-b border-gray-200">
+                                <?php foreach ($courses as $i => $course): ?>
+                                    <button type="button"
+                                        class="curriculum-course-tab px-4 py-2 border-b-2 font-semibold text-sm focus:outline-none <?php echo $i === 0 ? 'active border-seait-orange text-seait-orange' : 'border-transparent text-gray-600'; ?>"
+                                        data-course-id="<?php echo $course['id']; ?>"
+                                        onclick="showCurriculumTab('<?php echo $course['id']; ?>', this)">
+                                        <?php echo htmlspecialchars($course['short_name']); ?>
+                                    </button>
+                                <?php endforeach; ?>
                             </div>
                         </div>
-                        <?php endif; ?>
-                    </div>
+                        <?php foreach ($courses as $i => $course): ?>
+                            <div class="curriculum-course-content <?php echo $i === 0 ? '' : 'hidden'; ?>" id="curriculum-course-<?php echo $course['id']; ?>">
+                                <div class="bg-white rounded-lg shadow-lg p-4 lg:p-6">
+                                    <div class="flex items-center justify-between mb-4">
+                                        <h2 class="text-lg lg:text-xl font-semibold text-seait-dark">Curriculum for <?php echo htmlspecialchars($course['name']); ?></h2>
+                                    </div>
+                                    <div class="table-container">
+                                        <table class="responsive-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Year</th>
+                                                    <th>Semester</th>
+                                                    <th>Subject Code</th>
+                                                    <th>Subject Title</th>
+                                                    <th>Units</th>
+                                                    <th class="hidden md:table-cell">Lecture</th>
+                                                    <th class="hidden md:table-cell">Lab</th>
+                                                    <th class="hidden md:table-cell">Prerequisite</th>
+                                                    <th>Description</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php if (!empty($curriculum_by_course[$course['id']])): ?>
+                                                    <?php foreach ($curriculum_by_course[$course['id']] as $subject): ?>
+                                                        <tr>
+                                                            <td data-label="Year"><?php echo htmlspecialchars($year_level_labels[$subject['year_level']] ?? $subject['year_level']); ?></td>
+                                                            <td data-label="Semester"><?php echo htmlspecialchars($semester_labels[$subject['semester']] ?? $subject['semester']); ?></td>
+                                                            <td data-label="Subject Code"><?php echo htmlspecialchars($subject['subject_code']); ?></td>
+                                                            <td data-label="Subject Title"><?php echo htmlspecialchars($subject['subject_title']); ?></td>
+                                                            <td data-label="Units"><?php echo htmlspecialchars($subject['units']); ?></td>
+                                                            <td data-label="Lecture" class="hidden md:table-cell"><?php echo htmlspecialchars($subject['lecture_hours']); ?></td>
+                                                            <td data-label="Lab" class="hidden md:table-cell"><?php echo htmlspecialchars($subject['laboratory_hours']); ?></td>
+                                                            <td data-label="Prerequisite" class="hidden md:table-cell"><?php echo htmlspecialchars($subject['prerequisite_code'] ? $subject['prerequisite_code'] : '-'); ?></td>
+                                                            <td data-label="Description"><?php echo htmlspecialchars($subject['description']); ?></td>
+                                                            <td data-label="Actions" class="actions-cell">
+                                                                <div class="flex space-x-2">
+                                                                    <button onclick="editCurriculum(<?php echo $subject['id']; ?>)" class="text-seait-orange hover:text-orange-600 transition text-sm">
+                                                                        <i class="fas fa-edit mr-1"></i>Edit
+                                                                    </button>
+                                                                    <button onclick="deleteCurriculum(<?php echo $subject['id']; ?>, '<?php echo addslashes($subject['subject_code']); ?>', '<?php echo addslashes($subject['subject_title']); ?>')" class="text-red-500 hover:text-red-700 transition text-sm">
+                                                                        <i class="fas fa-trash mr-1"></i>Delete
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    <?php endforeach; ?>
+                                                <?php else: ?>
+                                                    <tr><td colspan="10" class="text-center text-gray-400">No curriculum subjects for this course.</td></tr>
+                                                <?php endif; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </div>
+                <script>
+                function showRequirementsTab(courseId, btn) {
+                    // Hide all course contents
+                    document.querySelectorAll('.requirements-course-content').forEach(function(el) {
+                        el.classList.add('hidden');
+                    });
+                    // Remove active from all tabs
+                    document.querySelectorAll('.requirements-course-tab').forEach(function(tab) {
+                        tab.classList.remove('active', 'border-seait-orange', 'text-seait-orange');
+                        tab.classList.add('border-transparent', 'text-gray-600');
+                    });
+                    // Show selected
+                    document.getElementById('requirements-course-' + courseId).classList.remove('hidden');
+                    btn.classList.add('active', 'border-seait-orange', 'text-seait-orange');
+                    btn.classList.remove('border-transparent', 'text-gray-600');
+                }
+                function showCurriculumTab(courseId, btn) {
+                    // Hide all course contents
+                    document.querySelectorAll('.curriculum-course-content').forEach(function(el) {
+                        el.classList.add('hidden');
+                    });
+                    // Remove active from all tabs
+                    document.querySelectorAll('.curriculum-course-tab').forEach(function(tab) {
+                        tab.classList.remove('active', 'border-seait-orange', 'text-seait-orange');
+                        tab.classList.add('border-transparent', 'text-gray-600');
+                    });
+                    // Show selected
+                    document.getElementById('curriculum-course-' + courseId).classList.remove('hidden');
+                    btn.classList.add('active', 'border-seait-orange', 'text-seait-orange');
+                    btn.classList.remove('border-transparent', 'text-gray-600');
+                }
+                </script>
             </div>
         </div>
 
@@ -926,10 +1026,9 @@ $curriculum_result = mysqli_query($conn, $curriculum_query);
                             <label class="block text-sm font-medium text-gray-700 mb-1">Year Level <span class="text-red-500">*</span></label>
                             <select name="year_level" id="edit_curriculum_year_level" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange">
                                 <option value="">Select Year</option>
-                                <option value="first_year">First Year</option>
-                                <option value="second_year">Second Year</option>
-                                <option value="third_year">Third Year</option>
-                                <option value="fourth_year">Fourth Year</option>
+                                <?php foreach ($year_level_labels as $value => $label): ?>
+                                    <option value="<?php echo $value; ?>"><?php echo $label; ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
 
@@ -937,9 +1036,9 @@ $curriculum_result = mysqli_query($conn, $curriculum_query);
                             <label class="block text-sm font-medium text-gray-700 mb-1">Semester <span class="text-red-500">*</span></label>
                             <select name="semester" id="edit_curriculum_semester" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange">
                                 <option value="">Select Semester</option>
-                                <option value="first_semester">First Semester</option>
-                                <option value="second_semester">Second Semester</option>
-                                <option value="summer">Summer</option>
+                                <?php foreach ($semester_labels as $value => $label): ?>
+                                    <option value="<?php echo $value; ?>"><?php echo $label; ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
                     </div>
@@ -1051,7 +1150,153 @@ $curriculum_result = mysqli_query($conn, $curriculum_query);
         </div>
     </div>
 
+    <!-- Add Requirement Modal (moved outside tab content) -->
+    <div id="addRequirementModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-seait-dark">Add Course Requirement</h3>
+                <button onclick="closeAddRequirementModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            </div>
+            <form method="POST" id="requirement-form" class="space-y-4">
+                <input type="hidden" name="action" value="add_requirement">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Course <span class="text-red-500">*</span></label>
+                    <select name="course_id" id="add_course_id" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange" <?php if (empty($courses)) echo 'disabled'; ?>>
+                        <?php if (empty($courses)): ?>
+                            <option value="">No courses available. Please add a course first.</option>
+                        <?php else: ?>
+                            <option value="">Select Course</option>
+                            <?php foreach ($courses as $course): ?>
+                                <option value="<?php echo $course['id']; ?>"><?php echo htmlspecialchars($course['name']); ?></option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </select>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Requirement Type <span class="text-red-500">*</span></label>
+                        <select name="requirement_type" id="add_requirement_type" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange">
+                            <option value="">Select Type</option>
+                            <option value="admission">Admission</option>
+                            <option value="graduation">Graduation</option>
+                            <option value="prerequisite">Prerequisite</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Title <span class="text-red-500">*</span></label>
+                        <input type="text" name="title" id="add_requirement_title" required placeholder="Enter requirement title" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea name="description" id="add_requirement_description" rows="3" placeholder="Enter requirement description" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange"></textarea>
+                </div>
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button type="button" onclick="closeAddRequirementModal()" class="px-4 py-2 text-gray-600 bg-gray-200 rounded-md hover:bg-gray-300 transition">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-seait-orange text-white rounded-md hover:bg-orange-600 transition"><i class="fas fa-plus mr-2"></i>Add Requirement</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- Add Curriculum Modal (moved outside tab content) -->
+    <div id="addCurriculumModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-seait-dark">Add Curriculum Subject</h3>
+                <button onclick="closeAddCurriculumModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            </div>
+            <form method="POST" id="curriculum-form" class="space-y-4">
+                <input type="hidden" name="action" value="add_curriculum">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Course <span class="text-red-500">*</span></label>
+                    <select name="course_id" id="curriculum_course_id" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange" <?php if (empty($courses)) echo 'disabled'; ?>>
+                        <?php if (empty($courses)): ?>
+                            <option value="">No courses available. Please add a course first.</option>
+                        <?php else: ?>
+                            <option value="">Select Course</option>
+                            <?php foreach ($courses as $course): ?>
+                                <option value="<?php echo $course['id']; ?>"><?php echo htmlspecialchars($course['name']); ?></option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </select>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Year Level <span class="text-red-500">*</span></label>
+                        <select name="year_level" id="curriculum_year_level" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange">
+                            <option value="">Select Year</option>
+                            <?php foreach ($year_level_labels as $value => $label): ?>
+                                <option value="<?php echo $value; ?>"><?php echo $label; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Semester <span class="text-red-500">*</span></label>
+                        <select name="semester" id="curriculum_semester" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange">
+                            <option value="">Select Semester</option>
+                            <?php foreach ($semester_labels as $value => $label): ?>
+                                <option value="<?php echo $value; ?>"><?php echo $label; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Subject Code <span class="text-red-500">*</span></label>
+                        <input type="text" name="subject_code" id="curriculum_subject_code" required placeholder="e.g., MATH101" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Subject Title <span class="text-red-500">*</span></label>
+                        <input type="text" name="subject_title" id="curriculum_subject_title" required placeholder="Enter subject title" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Prerequisite Subject</label>
+                    <select name="prerequisite_id" id="prerequisite_id" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange">
+                        <option value="">Select Prerequisite Subject (Optional)</option>
+                        <!-- Prerequisite options will be populated here -->
+                    </select>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Units</label>
+                        <input type="number" name="units" id="curriculum_units" step="0.1" value="3.0" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Lecture Hours</label>
+                        <input type="number" name="lecture_hours" id="curriculum_lecture_hours" value="3" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Laboratory Hours</label>
+                        <input type="number" name="laboratory_hours" id="curriculum_laboratory_hours" value="0" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea name="curriculum_description" id="curriculum_description" rows="3" placeholder="Enter subject description" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange"></textarea>
+                </div>
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button type="button" onclick="closeAddCurriculumModal()" class="px-4 py-2 text-gray-600 bg-gray-200 rounded-md hover:bg-gray-300 transition">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-seait-orange text-white rounded-md hover:bg-orange-600 transition"><i class="fas fa-plus mr-2"></i>Add Curriculum Subject</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
+        // Add these mappings at the very top of the script for use everywhere
+        const yearLevelLabels = {
+            'first_year': 'First Year',
+            'second_year': 'Second Year',
+            'third_year': 'Third Year',
+            'fourth_year': 'Fourth Year',
+        };
+        const semesterLabels = {
+            'first_semester': 'First Semester',
+            'second_semester': 'Second Semester',
+            'summer': 'Summer',
+        };
+
         // Tab Switching Function
         function switchTab(tabName) {
             // Hide all tab contents
@@ -1077,6 +1322,11 @@ $curriculum_result = mysqli_query($conn, $curriculum_query);
             if (selectedButton) {
                 selectedButton.classList.add('active');
             }
+
+            // Update the URL with the tab parameter (without reloading)
+            const url = new URL(window.location);
+            url.searchParams.set('tab', tabName);
+            window.history.replaceState({}, '', url);
         }
 
         function toggleForm(formId) {
@@ -1138,8 +1388,40 @@ $curriculum_result = mysqli_query($conn, $curriculum_query);
                         const curriculum = data.curriculum;
                         document.getElementById('edit_curriculum_id').value = curriculum.id;
                         document.getElementById('edit_curriculum_course_id').value = curriculum.course_id;
-                        document.getElementById('edit_curriculum_year_level').value = curriculum.year_level;
-                        document.getElementById('edit_curriculum_semester').value = curriculum.semester;
+                        // Defensive: set year_level and semester by value, fallback to label if needed
+                        const yearLevelSelect = document.getElementById('edit_curriculum_year_level');
+                        const semesterSelect = document.getElementById('edit_curriculum_semester');
+                        yearLevelSelect.value = curriculum.year_level;
+                        if (yearLevelSelect.value !== curriculum.year_level) {
+                            // fallback: try to match by label
+                            for (let opt of yearLevelSelect.options) {
+                                if (opt.text === curriculum.year_level) {
+                                    yearLevelSelect.value = opt.value;
+                                    break;
+                                }
+                            }
+                        }
+                        // Force label update for selected year_level
+                        for (let opt of yearLevelSelect.options) {
+                            if (opt.value === yearLevelSelect.value && opt.text !== yearLevelLabels[opt.value]) {
+                                opt.text = yearLevelLabels[opt.value] || opt.text;
+                            }
+                        }
+                        semesterSelect.value = curriculum.semester;
+                        if (semesterSelect.value !== curriculum.semester) {
+                            for (let opt of semesterSelect.options) {
+                                if (opt.text === curriculum.semester) {
+                                    semesterSelect.value = opt.value;
+                                    break;
+                                }
+                            }
+                        }
+                        // Force label update for selected semester
+                        for (let opt of semesterSelect.options) {
+                            if (opt.value === semesterSelect.value && opt.text !== semesterLabels[opt.value]) {
+                                opt.text = semesterLabels[opt.value] || opt.text;
+                            }
+                        }
                         document.getElementById('edit_curriculum_subject_code').value = curriculum.subject_code;
                         document.getElementById('edit_curriculum_subject_title').value = curriculum.subject_title;
                         document.getElementById('edit_curriculum_units').value = curriculum.units;
@@ -1419,7 +1701,101 @@ $curriculum_result = mysqli_query($conn, $curriculum_query);
         document.addEventListener('DOMContentLoaded', function() {
             setupTableSearch('requirementsSearch', 'requirementsTable');
             setupTableSearch('curriculumSearch', 'curriculumTable');
+
+            // On page load, activate the correct tab based on the 'tab' query parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            const tab = urlParams.get('tab') || 'requirements';
+            switchTab(tab);
         });
+
+        function openAddRequirementModal() {
+            document.getElementById('addRequirementModal').classList.remove('hidden');
+        }
+        function closeAddRequirementModal() {
+            document.getElementById('addRequirementModal').classList.add('hidden');
+        }
+        function openAddCurriculumModal() {
+            document.getElementById('addCurriculumModal').classList.remove('hidden');
+        }
+        function closeAddCurriculumModal() {
+            document.getElementById('addCurriculumModal').classList.add('hidden');
+        }
+    </script>
+    <!-- Add this before </body> (or in your main <script> section) -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // AJAX for Add Requirement
+            const addRequirementForm = document.getElementById('requirement-form');
+            if (addRequirementForm) {
+                addRequirementForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const formData = new FormData(addRequirementForm);
+                    fetch('manage-course-details.php', {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        body: formData
+                    })
+                    .then(response => response.text())
+                    .then(html => {
+                        // Replace all requirements-course-content blocks
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        const newContents = doc.querySelectorAll('.requirements-course-content');
+                        if (newContents.length) {
+                            document.querySelectorAll('.requirements-course-content').forEach((el, idx) => {
+                                if (newContents[idx]) el.innerHTML = newContents[idx].innerHTML;
+                            });
+                        }
+                        closeAddRequirementModal();
+                        showNotification('Requirement added successfully!');
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showNotification('Error adding requirement.', true);
+                    });
+                });
+            }
+            // AJAX for Add Curriculum
+            const addCurriculumForm = document.getElementById('curriculum-form');
+            if (addCurriculumForm) {
+                addCurriculumForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const formData = new FormData(addCurriculumForm);
+                    fetch('manage-course-details.php', {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        body: formData
+                    })
+                    .then(response => response.text())
+                    .then(html => {
+                        // Replace all curriculum-course-content blocks
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        const newContents = doc.querySelectorAll('.curriculum-course-content');
+                        if (newContents.length) {
+                            document.querySelectorAll('.curriculum-course-content').forEach((el, idx) => {
+                                if (newContents[idx]) el.innerHTML = newContents[idx].innerHTML;
+                            });
+                        }
+                        closeAddCurriculumModal();
+                        showNotification('Curriculum subject added successfully!');
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showNotification('Error adding curriculum subject.', true);
+                    });
+                });
+            }
+        });
+        // Notification function
+        function showNotification(message, isError = false) {
+            const notif = document.createElement('div');
+            notif.className = 'fixed top-20 right-4 z-50 px-6 py-3 rounded shadow-lg ' +
+                (isError ? 'bg-red-500 text-white' : 'bg-green-500 text-white');
+            notif.textContent = message;
+            document.body.appendChild(notif);
+            setTimeout(() => notif.remove(), 3000);
+        }
     </script>
 </body>
 </html>

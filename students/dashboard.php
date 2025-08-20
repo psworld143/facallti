@@ -19,11 +19,11 @@ $student_id = get_student_id($conn, $_SESSION['email']);
 // Get student's enrolled classes
 $enrolled_classes_query = "SELECT ce.*, tc.section, tc.join_code, tc.status as class_status,
                           cc.subject_title, cc.subject_code, cc.units,
-                          u.first_name as teacher_first_name, u.last_name as teacher_last_name
+                          f.first_name as teacher_first_name, f.last_name as teacher_last_name
                           FROM class_enrollments ce
                           JOIN teacher_classes tc ON ce.class_id = tc.id
                           JOIN course_curriculum cc ON tc.subject_id = cc.id
-                          JOIN users u ON tc.teacher_id = u.id
+                          JOIN faculty f ON tc.teacher_id = f.id
                           WHERE ce.student_id = ? AND ce.status = 'enrolled'
                           ORDER BY ce.join_date DESC
                           LIMIT 5";
@@ -43,11 +43,11 @@ $total_classes = mysqli_fetch_assoc(mysqli_stmt_get_result($total_classes_stmt))
 // Get evaluation opportunities (classes where student can evaluate teacher)
 $evaluation_opportunities_query = "SELECT ce.*, tc.section, tc.join_code,
                                   cc.subject_title, cc.subject_code,
-                                  u.first_name as teacher_first_name, u.last_name as teacher_last_name
+                                  f.first_name as teacher_first_name, f.last_name as teacher_last_name
                                   FROM class_enrollments ce
                                   JOIN teacher_classes tc ON ce.class_id = tc.id
                                   JOIN course_curriculum cc ON tc.subject_id = cc.id
-                                  JOIN users u ON tc.teacher_id = u.id
+                                  JOIN faculty f ON tc.teacher_id = f.id
                                   WHERE ce.student_id = ? AND ce.status = 'enrolled'
                                   AND tc.status = 'active'
                                   ORDER BY ce.join_date DESC
@@ -59,10 +59,10 @@ $eval_opp_result = mysqli_stmt_get_result($eval_opp_stmt);
 
 // Get student's evaluation history
 $evaluation_history_query = "SELECT es.*, mec.name as category_name,
-                            u.first_name as teacher_first_name, u.last_name as teacher_last_name
+                            f.first_name as teacher_first_name, f.last_name as teacher_last_name
                             FROM evaluation_sessions es
                             JOIN main_evaluation_categories mec ON es.main_category_id = mec.id
-                            JOIN users u ON es.evaluatee_id = u.id
+                            JOIN faculty f ON es.evaluatee_id = f.id
                             WHERE es.evaluator_id = ? AND mec.evaluation_type = 'student_to_teacher'
                             ORDER BY es.created_at DESC
                             LIMIT 5";

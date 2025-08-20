@@ -454,7 +454,7 @@ $pending_count = get_pending_posts_count($conn);
                                         </div>
                                     </div>
                                     <div class="flex flex-wrap gap-2 lg:flex-col lg:gap-2 lg:ml-4">
-                                        <button onclick="approvePost(<?php echo $post['id']; ?>)"
+                                        <button onclick="openApproveModal(<?php echo $post['id']; ?>)"
                                                 class="bg-green-500 text-white px-3 py-2 rounded hover:bg-green-600 transition text-sm">
                                             <i class="fas fa-check mr-1"></i><span class="hidden sm:inline">Approve</span>
                                         </button>
@@ -477,10 +477,15 @@ $pending_count = get_pending_posts_count($conn);
                                     <h5 class="font-medium mb-2">Content Preview:</h5>
                                     <div class="bg-gray-50 p-4 rounded border-l-4 border-blue-500 overflow-hidden">
                                         <div class="break-words">
-                                            <?php echo nl2br(htmlspecialchars(substr($post['content'], 0, 300))); ?>
-                                            <?php if (strlen($post['content']) > 300): ?>
-                                                <span class="text-blue-600">...</span>
-                                            <?php endif; ?>
+                                            <?php
+                                                $allowed_tags = '<b><i><strong><em><ul><ol><li><p><br><a>'; // allow basic formatting
+                                                $preview = strip_tags($post['content'], $allowed_tags);
+                                                if (mb_strlen($preview) > 300) {
+                                                    echo mb_substr($preview, 0, 300) . '<span class="text-blue-600">...</span>';
+                                                } else {
+                                                    echo $preview;
+                                                }
+                                            ?>
                                         </div>
                                     </div>
                                 </div>
@@ -488,7 +493,7 @@ $pending_count = get_pending_posts_count($conn);
                                 <?php if (!empty($post['image_url'])): ?>
                                 <div class="mb-4">
                                     <h5 class="font-medium mb-2">Attached Image:</h5>
-                                    <img src="<?php echo htmlspecialchars($post['image_url']); ?>"
+                                    <img src="../<?php echo htmlspecialchars($post['image_url']); ?>"
                                          alt="Post image"
                                          class="max-w-full sm:max-w-xs rounded border">
                                 </div>
@@ -588,6 +593,50 @@ $pending_count = get_pending_posts_count($conn);
                         <button type="button" onclick="confirmDelete()"
                                 class="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 font-semibold">
                             <i class="fas fa-trash mr-2"></i>Delete Permanently
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Approve Confirmation Modal -->
+    <div id="approveModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-bounce-in">
+                <div class="p-6 text-center">
+                    <div class="mb-4">
+                        <div class="p-4 rounded-full bg-green-100 text-green-600 inline-block mb-4">
+                            <i class="fas fa-check-circle text-3xl"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-2">Approve Post</h3>
+                        <p class="text-gray-600 mb-4">Are you sure you want to approve this pending post? This action will publish the post on the website.</p>
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                            <div class="flex items-center text-green-800">
+                                <i class="fas fa-check mr-2"></i>
+                                <span class="text-sm font-medium">Confirmation:</span>
+                            </div>
+                            <ul class="text-sm text-green-700 mt-2 text-left space-y-1">
+                                <li class="flex items-center">
+                                    <i class="fas fa-globe mr-2 text-green-500"></i>
+                                    Post will be visible to users
+                                </li>
+                                <li class="flex items-center">
+                                    <i class="fas fa-check-circle mr-2 text-green-500"></i>
+                                    Marked as approved
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="flex justify-center space-x-3">
+                        <input type="hidden" id="approvePostId" value="">
+                        <button type="button" onclick="closeApproveModal()"
+                                class="px-6 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200">
+                            <i class="fas fa-times mr-2"></i>Cancel
+                        </button>
+                        <button type="button" onclick="confirmApprove()"
+                                class="px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 font-semibold">
+                            <i class="fas fa-check mr-2"></i>Approve
                         </button>
                     </div>
                 </div>
@@ -697,6 +746,26 @@ $pending_count = get_pending_posts_count($conn);
             window.location.reload();
         }
 
+        function openApproveModal(postId) {
+            document.getElementById('approvePostId').value = postId;
+            document.getElementById('approveModal').classList.remove('hidden');
+        }
+        function closeApproveModal() {
+            document.getElementById('approveModal').classList.add('hidden');
+            document.getElementById('approvePostId').value = '';
+        }
+        function confirmApprove() {
+            const postId = document.getElementById('approvePostId').value;
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.innerHTML = `
+                <input type="hidden" name="action" value="approve">
+                <input type="hidden" name="post_id" value="${postId}">
+            `;
+            document.body.appendChild(form);
+            form.submit();
+        }
+
         // Close modal when clicking outside
         document.getElementById('rejectionModal').addEventListener('click', function(e) {
             if (e.target === this) {
@@ -707,6 +776,11 @@ $pending_count = get_pending_posts_count($conn);
         document.getElementById('deleteModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closeDeleteModal();
+            }
+        });
+        document.getElementById('approveModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeApproveModal();
             }
         });
     </script>
