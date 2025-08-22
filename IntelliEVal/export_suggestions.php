@@ -23,7 +23,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'guidance_officer') {
     echo "user_id: " . (isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 'NOT SET') . "<br>";
     echo "role: " . (isset($_SESSION['role']) ? $_SESSION['role'] : 'NOT SET') . "<br>";
     echo "Redirecting to login...<br>";
-    header('Location: ../login.php');
+    header('Location: ../index.php');
     exit();
 }
 

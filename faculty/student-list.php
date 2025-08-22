@@ -346,63 +346,13 @@ include 'includes/unified-header.php';
     <?php endif; ?>
 </div>
 
-<!-- Remove Student Confirmation Modal -->
-<div id="removeStudentModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4 animate-fade-in-modal">
-    <div class="bg-white rounded-xl shadow-xl w-full max-w-sm mx-auto overflow-hidden animate-modal-scale-in">
-        <div class="p-6 text-center">
-            <div class="mb-4">
-                <i class="fas fa-user-minus text-red-500 text-4xl mb-2"></i>
-                <h3 class="text-lg font-semibold text-seait-dark mb-2">Remove Student?</h3>
-                <p class="text-gray-600">Are you sure you want to remove this student from the class? This action cannot be undone.</p>
-            </div>
-            <form id="removeStudentForm" method="POST">
-                <input type="hidden" name="action" value="remove_student">
-                <input type="hidden" name="enrollment_id" id="remove_enrollment_id">
-                <div class="flex space-x-3 mt-6">
-                    <button type="submit" class="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition font-semibold">Remove</button>
-                    <button type="button" onclick="closeRemoveStudentModal()" class="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition font-semibold">Cancel</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<style>
-@keyframes fadeInModal {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-.animate-fade-in-modal {
-    animation: fadeInModal 0.3s cubic-bezier(0.4,0,0.2,1);
-}
-@keyframes modalScaleIn {
-    from { opacity: 0; transform: scale(0.95) translateY(20px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
-}
-.animate-modal-scale-in {
-    animation: modalScaleIn 0.35s cubic-bezier(0.4,0,0.2,1);
-}
-</style>
-
 <script>
 function removeStudent(enrollmentId) {
-    document.getElementById('remove_enrollment_id').value = enrollmentId;
-    document.getElementById('removeStudentModal').classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
+    if (confirm('Are you sure you want to remove this student from the class? This action cannot be undone.')) {
+        // This would need to be implemented with AJAX or form submission
+        alert('Student removal functionality will be implemented here.');
+    }
 }
-function closeRemoveStudentModal() {
-    document.getElementById('removeStudentModal').classList.add('hidden');
-    document.body.style.overflow = '';
-}
-// Close modal on Escape key
-window.addEventListener('keydown', function(event) {
-    if (event.key === 'Escape') closeRemoveStudentModal();
-});
-// Close modal when clicking outside
-window.addEventListener('click', function(event) {
-    const modal = document.getElementById('removeStudentModal');
-    if (event.target === modal) closeRemoveStudentModal();
-});
 </script>
 
 <?php

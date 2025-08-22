@@ -20,7 +20,7 @@ use PhpOffice\PhpSpreadsheet\Style\Color;
 try {
     // Check if user is logged in and has guidance_officer role
     if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'guidance_officer') {
-        header('Location: ../login.php');
+        header('Location: ../index.php');
         exit();
     }
 

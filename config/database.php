@@ -6,7 +6,7 @@ $username = 'seaitedu_seait_website';
 $password = '020894Website';
 
 // Create connection
-$conn = mysqli_connect($host, $username, $password, $dbname, 3306, '/Applications/XAMPP/xamppfiles/var/mysql/mysql.sock');
+$conn = mysqli_connect($host, $username, $password, $dbname);
 
 // Check connection
 if (!$conn) {

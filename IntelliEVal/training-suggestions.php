@@ -5,7 +5,7 @@ require_once '../includes/functions.php';
 
 // Check if user is logged in and has guidance_officer role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'guidance_officer') {
-    header('Location: ../login.php');
+    header('Location: ../index.php');
     exit();
 }
 
@@ -290,7 +290,7 @@ include 'includes/header.php';
                 <div class="border border-gray-200 rounded-lg overflow-hidden">
                     <!-- Faculty Member Header (Accordion Trigger) -->
                     <button class="accordion-trigger w-full p-4 text-left bg-gray-50 hover:bg-gray-100 transition-colors duration-200" 
-                            onclick="toggleAccordion(<?php echo $accordion_id; ?>)">
+                            data-accordion-id="<?php echo $accordion_id; ?>">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center">
                                 <div class="mr-3">
@@ -313,7 +313,7 @@ include 'includes/header.php';
                     </button>
                     
                     <!-- Accordion Content -->
-                    <div class="accordion-content hidden bg-white" id="content-<?php echo $accordion_id; ?>">
+                    <div class="accordion-content bg-white" id="content-<?php echo $accordion_id; ?>">
                         <div class="p-4 border-t border-gray-200">
                             <!-- Individual Categories -->
                             <?php
@@ -576,15 +576,12 @@ include 'includes/footer.php';
 function toggleAccordion(id) {
     const content = document.getElementById('content-' + id);
     const icon = document.getElementById('icon-' + id);
-    
-    if (content.classList.contains('hidden')) {
-        // Open accordion
-        content.classList.remove('hidden');
-        icon.style.transform = 'rotate(180deg)';
-    } else {
-        // Close accordion
-        content.classList.add('hidden');
+    if (content.classList.contains('show')) {
+        content.classList.remove('show');
         icon.style.transform = 'rotate(0deg)';
+    } else {
+        content.classList.add('show');
+        icon.style.transform = 'rotate(180deg)';
     }
 }
 
@@ -596,6 +593,15 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+// Event delegation for accordion triggers
+document.addEventListener('click', function(event) {
+    const btn = event.target.closest('.accordion-trigger');
+    if (btn) {
+        const id = btn.getAttribute('data-accordion-id');
+        toggleAccordion(id);
+    }
+});
+
 function toggleExportDropdown() {
     const dropdown = document.getElementById('exportDropdown');
     dropdown.classList.toggle('hidden');
@@ -605,7 +611,6 @@ function toggleExportDropdown() {
 document.addEventListener('click', function(event) {
     const dropdown = document.getElementById('exportDropdown');
     const dropdownButton = event.target.closest('.dropdown');
-    
     if (!dropdownButton && !dropdown.classList.contains('hidden')) {
         dropdown.classList.add('hidden');
     }

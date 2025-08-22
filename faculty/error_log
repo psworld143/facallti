@@ -1,0 +1,10 @@
+[19-Aug-2025 06:24:54 UTC] PHP Fatal error:  Uncaught ValueError: max(): Argument #1 ($value) must contain at least one element in /home/seaitedu/home.seait-edu.ph/faculty/class-analytics.php:270
+Stack trace:
+#0 /home/seaitedu/home.seait-edu.ph/faculty/class-analytics.php(270): max(Array)
+#1 {main}
+  thrown in /home/seaitedu/home.seait-edu.ph/faculty/class-analytics.php on line 270
+[20-Aug-2025 02:07:14 UTC] PHP Fatal error:  Uncaught mysqli_sql_exception: Table 'seaitedu_seait_website.class_syllabus' doesn't exist in /home/seaitedu/home.seait-edu.ph/faculty/class_syllabus.php:160
+Stack trace:
+#0 /home/seaitedu/home.seait-edu.ph/faculty/class_syllabus.php(160): mysqli_prepare(Object(mysqli), 'SELECT * FROM c...')
+#1 {main}
+  thrown in /home/seaitedu/home.seait-edu.ph/faculty/class_syllabus.php on line 160

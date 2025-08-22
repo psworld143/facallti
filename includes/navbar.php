@@ -11,7 +11,7 @@
                 <img src="assets/images/seait-logo.png" alt="SEAIT Logo" class="h-6 sm:h-8 md:h-12 w-auto">
                 <div class="min-w-0">
                     <h1 class="text-sm sm:text-lg md:text-2xl font-bold text-seait-dark truncate">SEAIT</h1>
-                    <p class="text-xs md:text-sm text-gray-600 hidden sm:block truncate">South East Asian Institute of Technology, Inc.</p>
+                    <!-- <p class="text-xs md:text-sm text-gray-600 hidden sm:block truncate">South East Asian Institute of Technology, Inc.</p> -->
                 </div>
             </div>
 
