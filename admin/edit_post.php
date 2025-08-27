@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 check_admin();
 
@@ -13,7 +14,7 @@ if (!isset($_GET['id'])) {
     exit;
 }
 
-$post_id = (int)$_GET['id'];
+$post_id = safe_decrypt_id($_GET['id']);
 
 // Get post data
 $query = "SELECT * FROM posts WHERE id = ?";

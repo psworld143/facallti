@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 // Check if user is logged in and has teacher role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
@@ -9,7 +10,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
     exit();
 }
 
-$lesson_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$lesson_id = safe_decrypt_id($_GET['id']);
 $message = '';
 $message_type = '';
 
@@ -164,7 +165,7 @@ include 'includes/unified-header.php';
             <p class="text-sm sm:text-base text-gray-600">Modify lesson content and settings</p>
         </div>
         <div class="flex space-x-2">
-            <a href="view-lesson.php?id=<?php echo $lesson_id; ?>" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
+            <a href="view-lesson.php?id=<?php echo encrypt_id($lesson_id); ?>" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
                 <i class="fas fa-eye mr-2"></i>View Lesson
             </a>
             <a href="lessons.php" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition">

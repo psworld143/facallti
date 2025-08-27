@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 // Check if user is logged in and has teacher role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
@@ -10,7 +11,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
 }
 
 // Get training ID
-$training_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$training_id = safe_decrypt_id($_GET['id']);
 
 if (!$training_id) {
     $_SESSION['message'] = 'Invalid training ID provided.';
@@ -87,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
             if (mysqli_stmt_execute($stmt)) {
                 $_SESSION['message'] = 'Successfully registered for the training!';
                 $_SESSION['message_type'] = 'success';
-                header('Location: view-training.php?id=' . $training_id);
+                header('Location: view-training.php?id=' . encrypt_id($training_id));
                 exit();
             } else {
                 $_SESSION['message'] = 'Failed to register for the training. Please try again.';
@@ -114,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_registration']
         if (mysqli_stmt_execute($stmt)) {
             $_SESSION['message'] = 'Registration cancelled successfully.';
             $_SESSION['message_type'] = 'success';
-            header('Location: view-training.php?id=' . $training_id);
+            header('Location: view-training.php?id=' . encrypt_id($training_id));
             exit();
         } else {
             $_SESSION['message'] = 'Failed to cancel registration. Please try again.';

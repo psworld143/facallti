@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 // Check if user is logged in and has teacher role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
@@ -10,7 +11,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
 }
 
 // Get class_id from URL
-$class_id = isset($_GET['class_id']) ? (int)$_GET['class_id'] : null;
+$class_id = safe_decrypt_id($_GET['class_id']);
 
 if (!$class_id) {
     header('Location: class-management.php');
@@ -168,7 +169,7 @@ include 'includes/lms_header.php';
         <div class="px-6 py-4 border-b border-gray-200">
             <div class="flex items-center justify-between">
                 <h2 class="text-lg font-medium text-gray-900">Recent Announcements</h2>
-                <a href="class_announcements.php?class_id=<?php echo $class_id; ?>" class="text-seait-orange hover:text-orange-600 text-sm font-medium">
+                <a href="class_announcements.php?class_id=<?php echo encrypt_id($class_id); ?>" class="text-seait-orange hover:text-orange-600 text-sm font-medium">
                     View all <i class="fas fa-arrow-right ml-1"></i>
                 </a>
             </div>
@@ -188,7 +189,7 @@ include 'includes/lms_header.php';
                     <?php endwhile; ?>
                 </div>
                 <div class="mt-4">
-                    <a href="class_announcements.php?class_id=<?php echo $class_id; ?>" class="mt-4 inline-block bg-seait-orange text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition">
+                    <a href="class_announcements.php?class_id=<?php echo encrypt_id($class_id); ?>" class="mt-4 inline-block bg-seait-orange text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition">
                         Post New Announcement
                     </a>
                 </div>
@@ -201,7 +202,7 @@ include 'includes/lms_header.php';
         <div class="px-6 py-4 border-b border-gray-200">
             <div class="flex items-center justify-between">
                 <h2 class="text-lg font-medium text-gray-900">Upcoming Events</h2>
-                <a href="class_calendar.php?class_id=<?php echo $class_id; ?>" class="text-seait-orange hover:text-orange-600 text-sm font-medium">
+                <a href="class_calendar.php?class_id=<?php echo encrypt_id($class_id); ?>" class="text-seait-orange hover:text-orange-600 text-sm font-medium">
                     View calendar <i class="fas fa-arrow-right ml-1"></i>
                 </a>
             </div>
@@ -226,7 +227,7 @@ include 'includes/lms_header.php';
                     <?php endwhile; ?>
                 </div>
                 <div class="mt-4">
-                    <a href="class_calendar.php?class_id=<?php echo $class_id; ?>" class="mt-4 inline-block bg-seait-orange text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition">
+                    <a href="class_calendar.php?class_id=<?php echo encrypt_id($class_id); ?>" class="mt-4 inline-block bg-seait-orange text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition">
                         Schedule New Event
                     </a>
                 </div>
@@ -239,7 +240,7 @@ include 'includes/lms_header.php';
 <div class="mt-8 bg-white rounded-lg shadow-md p-6">
     <h2 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <a href="class_announcements.php?class_id=<?php echo $class_id; ?>&action=create" class="bg-blue-50 p-4 rounded-lg hover:bg-blue-100 transition">
+        <a href="class_announcements.php?class_id=<?php echo encrypt_id($class_id); ?>&action=create" class="bg-blue-50 p-4 rounded-lg hover:bg-blue-100 transition">
             <div class="flex items-center">
                 <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
                     <i class="fas fa-bullhorn text-blue-600"></i>
@@ -251,7 +252,7 @@ include 'includes/lms_header.php';
             </div>
         </a>
 
-        <a href="class_materials.php?class_id=<?php echo $class_id; ?>&action=create" class="bg-green-50 p-4 rounded-lg hover:bg-green-100 transition">
+        <a href="class_materials.php?class_id=<?php echo encrypt_id($class_id); ?>&action=create" class="bg-green-50 p-4 rounded-lg hover:bg-green-100 transition">
             <div class="flex items-center">
                 <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
                     <i class="fas fa-book text-green-600"></i>
@@ -263,7 +264,7 @@ include 'includes/lms_header.php';
             </div>
         </a>
 
-        <a href="class_assignments.php?class_id=<?php echo $class_id; ?>&action=create" class="bg-purple-50 p-4 rounded-lg hover:bg-purple-100 transition">
+        <a href="class_assignments.php?class_id=<?php echo encrypt_id($class_id); ?>&action=create" class="bg-purple-50 p-4 rounded-lg hover:bg-purple-100 transition">
             <div class="flex items-center">
                 <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
                     <i class="fas fa-tasks text-purple-600"></i>
@@ -275,7 +276,7 @@ include 'includes/lms_header.php';
             </div>
         </a>
 
-        <a href="class_calendar.php?class_id=<?php echo $class_id; ?>&action=create" class="bg-orange-50 p-4 rounded-lg hover:bg-orange-100 transition">
+        <a href="class_calendar.php?class_id=<?php echo encrypt_id($class_id); ?>&action=create" class="bg-orange-50 p-4 rounded-lg hover:bg-orange-100 transition">
             <div class="flex items-center">
                 <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
                     <i class="fas fa-calendar-plus text-orange-600"></i>
@@ -283,6 +284,18 @@ include 'includes/lms_header.php';
                 <div>
                     <h3 class="text-sm font-medium text-gray-900">Schedule Event</h3>
                     <p class="text-xs text-gray-600">Add to class calendar</p>
+                </div>
+            </div>
+        </a>
+
+        <a href="class_syllabus.php?class_id=<?php echo encrypt_id($class_id); ?>" class="bg-indigo-50 p-4 rounded-lg hover:bg-indigo-100 transition">
+            <div class="flex items-center">
+                <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
+                    <i class="fas fa-file-alt text-indigo-600"></i>
+                </div>
+                <div>
+                    <h3 class="text-sm font-medium text-gray-900">Manage Syllabus</h3>
+                    <p class="text-xs text-gray-600">Edit course syllabus</p>
                 </div>
             </div>
         </a>

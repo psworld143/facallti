@@ -3,13 +3,18 @@
 // This file provides a consistent sidebar across all faculty pages
 // Usage: include this file and set $sidebar_context before including
 
+// Include encryption utilities
+require_once '../includes/id_encryption.php';
+
 // Default context if not set
 if (!isset($sidebar_context)) {
     $sidebar_context = 'main'; // 'main' for regular faculty pages, 'lms' for class pages
 }
 
 // Get current page name for active state
-$current_page = basename($_SERVER['PHP_SELF']);
+if (!isset($current_page)) {
+    $current_page = basename($_SERVER['PHP_SELF']);
+}
 ?>
 
 <!-- Sidebar Overlay -->
@@ -163,7 +168,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <div class="animate-fadeInUp" style="animation-delay: 0.1s;">
                 <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Class Overview</h3>
                 <div class="space-y-1">
-                    <a href="class_dashboard.php?class_id=<?php echo $class_id; ?>" class="flex items-center <?php echo $current_page === 'class_dashboard.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                    <a href="class_dashboard.php?class_id=<?php echo encrypt_id($class_id); ?>" class="flex items-center <?php echo $current_page === 'class_dashboard.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
                         <i class="fas fa-tachometer-alt mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Dashboard
                     </a>
                 </div>
@@ -173,11 +178,11 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <div class="animate-fadeInUp" style="animation-delay: 0.2s;">
                 <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Student Management</h3>
                 <div class="space-y-1">
-                    <a href="class_students.php?class_id=<?php echo $class_id; ?>" class="flex items-center <?php echo $current_page === 'class_students.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                    <a href="class_students.php?class_id=<?php echo encrypt_id($class_id); ?>" class="flex items-center <?php echo $current_page === 'class_students.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
                         <i class="fas fa-users mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Students
                     </a>
                     
-                    <a href="import_students.php?class_id=<?php echo $class_id; ?>" class="flex items-center <?php echo $current_page === 'import_students.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                    <a href="import_students.php?class_id=<?php echo encrypt_id($class_id); ?>" class="flex items-center <?php echo $current_page === 'import_students.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
                         <i class="fas fa-file-import mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Import Students
                     </a>
                 </div>
@@ -187,27 +192,27 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <div class="animate-fadeInUp" style="animation-delay: 0.3s;">
                 <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Content Management</h3>
                 <div class="space-y-1">
-                    <a href="class_announcements.php?class_id=<?php echo $class_id; ?>" class="flex items-center <?php echo $current_page === 'class_announcements.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                    <a href="class_announcements.php?class_id=<?php echo encrypt_id($class_id); ?>" class="flex items-center <?php echo $current_page === 'class_announcements.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
                         <i class="fas fa-bullhorn mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Announcements
                     </a>
 
-                    <a href="class_materials.php?class_id=<?php echo $class_id; ?>" class="flex items-center <?php echo $current_page === 'class_materials.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                    <a href="class_materials.php?class_id=<?php echo encrypt_id($class_id); ?>" class="flex items-center <?php echo $current_page === 'class_materials.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
                         <i class="fas fa-book mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Learning Materials
                     </a>
 
-                    <a href="class_syllabus.php?class_id=<?php echo $class_id; ?>" class="flex items-center <?php echo $current_page === 'class_syllabus.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                    <a href="class_syllabus.php?class_id=<?php echo encrypt_id($class_id); ?>" class="flex items-center <?php echo in_array($current_page, ['class_syllabus.php', 'syllabus_topics.php', 'preview_syllabus.php']) ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
                         <i class="fas fa-list-alt mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Syllabus
                     </a>
 
-                    <a href="class_assignments.php?class_id=<?php echo $class_id; ?>" class="flex items-center <?php echo $current_page === 'class_assignments.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                    <a href="class_assignments.php?class_id=<?php echo encrypt_id($class_id); ?>" class="flex items-center <?php echo $current_page === 'class_assignments.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
                         <i class="fas fa-tasks mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Assignments
                     </a>
 
-                    <a href="class_quizzes.php?class_id=<?php echo $class_id; ?>" class="flex items-center <?php echo $current_page === 'class_quizzes.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                    <a href="class_quizzes.php?class_id=<?php echo encrypt_id($class_id); ?>" class="flex items-center <?php echo $current_page === 'class_quizzes.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
                         <i class="fas fa-question-circle mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Quizzes
                     </a>
 
-                    <a href="class_discussions.php?class_id=<?php echo $class_id; ?>" class="flex items-center <?php echo $current_page === 'class_discussions.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                    <a href="class_discussions.php?class_id=<?php echo encrypt_id($class_id); ?>" class="flex items-center <?php echo $current_page === 'class_discussions.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
                         <i class="fas fa-comments mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Discussions
                     </a>
                 </div>
@@ -217,11 +222,11 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <div class="animate-fadeInUp" style="animation-delay: 0.4s;">
                 <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Assessment & Analytics</h3>
                 <div class="space-y-1">
-                    <a href="class_grades.php?class_id=<?php echo $class_id; ?>" class="flex items-center <?php echo $current_page === 'class_grades.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                    <a href="class_grades.php?class_id=<?php echo encrypt_id($class_id); ?>" class="flex items-center <?php echo $current_page === 'class_grades.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
                         <i class="fas fa-chart-line mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Grades & Progress
                     </a>
 
-                    <a href="class_evaluations.php?class_id=<?php echo $class_id; ?>" class="flex items-center <?php echo $current_page === 'class_evaluations.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                    <a href="class_evaluations.php?class_id=<?php echo encrypt_id($class_id); ?>" class="flex items-center <?php echo $current_page === 'class_evaluations.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
                         <i class="fas fa-clipboard-check mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Student Evaluations
                     </a>
                 </div>
@@ -231,7 +236,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <div class="animate-fadeInUp" style="animation-delay: 0.5s;">
                 <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Tools</h3>
                 <div class="space-y-1">
-                    <a href="class_calendar.php?class_id=<?php echo $class_id; ?>" class="flex items-center <?php echo $current_page === 'class_calendar.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                    <a href="class_calendar.php?class_id=<?php echo encrypt_id($class_id); ?>" class="flex items-center <?php echo $current_page === 'class_calendar.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
                         <i class="fas fa-calendar-alt mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Class Calendar
                     </a>
                 </div>
@@ -372,8 +377,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Restore scroll position on page load
-    restoreScrollPosition();
+    // Only restore scroll position if we're navigating from a different page (not form submission)
+    const isFormSubmission = sessionStorage.getItem('formSubmitted');
+    if (!isFormSubmission) {
+        restoreScrollPosition();
+    } else {
+        // Clear the form submission flag
+        sessionStorage.removeItem('formSubmitted');
+    }
 
     // Ensure sidebar is in correct state on load
     if (sidebar) {
@@ -434,6 +445,17 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+});
+
+// Detect form submissions to prevent sidebar scroll restoration
+document.addEventListener('DOMContentLoaded', function() {
+    // Add form submission detection
+    const forms = document.querySelectorAll('form');
+    forms.forEach(form => {
+        form.addEventListener('submit', function() {
+            sessionStorage.setItem('formSubmitted', 'true');
+        });
+    });
 });
 
 // Prevent any zooming or scaling issues

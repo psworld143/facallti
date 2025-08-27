@@ -5,12 +5,21 @@ require_once '../includes/functions.php';
 
 // Check if user is logged in and has guidance_officer role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'guidance_officer') {
+    // Add error message to session for better user feedback
+    session_start();
+    $_SESSION['error_message'] = 'You must be logged in as a Guidance Officer to access this page.';
+    $_SESSION['error_type'] = 'error';
     header('Location: ../index.php');
     exit();
 }
 
+
+
 // Set page title
 $page_title = 'Students';
+
+// Debug mode - set to true to enable debugging
+$debug_mode = false;
 
 $message = '';
 $message_type = '';
@@ -18,9 +27,13 @@ $message_type = '';
 // Get courses for dropdown
 $courses_query = "SELECT id, name, short_name FROM courses WHERE is_active = 1 ORDER BY name ASC";
 $courses_result = mysqli_query($conn, $courses_query);
-$courses = [];
-while ($row = mysqli_fetch_assoc($courses_result)) {
-    $courses[] = $row;
+if (!$courses_result) {
+    $courses = [];
+} else {
+    $courses = [];
+    while ($row = mysqli_fetch_assoc($courses_result)) {
+        $courses[] = $row;
+    }
 }
 
 // Handle form submissions
@@ -77,14 +90,14 @@ $params = [];
 $param_types = '';
 
 if ($search) {
-    $where_conditions[] = "(first_name LIKE ? OR last_name LIKE ? OR student_id LIKE ? OR email LIKE ?)";
+    $where_conditions[] = "(s.first_name LIKE ? OR s.last_name LIKE ? OR s.student_id LIKE ? OR s.email LIKE ?)";
     $search_param = "%$search%";
     $params = array_merge($params, [$search_param, $search_param, $search_param, $search_param]);
     $param_types .= 'ssss';
 }
 
 if ($status_filter) {
-    $where_conditions[] = "status = ?";
+    $where_conditions[] = "s.status = ?";
     $params[] = $status_filter;
     $param_types .= 's';
 }
@@ -95,7 +108,7 @@ if (!empty($where_conditions)) {
 }
 
 // Get total count for pagination
-$count_query = "SELECT COUNT(*) as total FROM students s $where_clause";
+$count_query = "SELECT COUNT(*) as total FROM students s LEFT JOIN student_profiles sp ON s.id = sp.student_id LEFT JOIN student_academic_info sai ON s.id = sai.student_id $where_clause";
 if (!empty($params)) {
     $count_stmt = mysqli_prepare($conn, $count_query);
     mysqli_stmt_bind_param($count_stmt, $param_types, ...$params);
@@ -144,7 +157,7 @@ include 'includes/header.php';
 
 <!-- Search and Filter -->
 <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6">
-    <form method="GET" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <form method="GET" action="" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Search</label>
             <input type="text" name="search" value="<?php echo htmlspecialchars($search); ?>"
@@ -447,6 +460,8 @@ document.addEventListener('click', function(event) {
         modal.classList.add('hidden');
     }
 });
+
+
 </script>
 
 <?php

@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 // Check if user is logged in and has teacher role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
@@ -24,7 +25,7 @@ if (isset($_SESSION['message'])) {
 }
 
 // Get evaluation session ID from URL
-$session_id = isset($_GET['session_id']) ? (int)$_GET['session_id'] : 0;
+$session_id = safe_decrypt_id($_GET['session_id']);
 
 if (!$session_id) {
     $_SESSION['message'] = 'Invalid evaluation session ID provided.';
@@ -119,7 +120,7 @@ include 'includes/unified-header.php';
                 <i class="fas fa-arrow-left mr-2"></i>Back
             </a>
             <?php if ($evaluation_session['status'] === 'draft'): ?>
-            <a href="edit-peer-evaluation.php?session_id=<?php echo $session_id; ?>" class="action-btn btn-primary px-4 py-2 rounded-lg transition flex items-center justify-center">
+            <a href="edit-peer-evaluation.php?session_id=<?php echo encrypt_id($session_id); ?>" class="action-btn btn-primary px-4 py-2 rounded-lg transition flex items-center justify-center">
                 <i class="fas fa-edit mr-2"></i>Continue Evaluation
             </a>
             <?php endif; ?>
@@ -221,7 +222,7 @@ include 'includes/unified-header.php';
             <h3 class="text-xl font-medium text-gray-700 mb-2">No Responses Found</h3>
             <p class="text-gray-500 mb-6">No evaluation responses have been submitted for this session yet.</p>
             <?php if ($evaluation_session['status'] === 'draft'): ?>
-            <a href="edit-peer-evaluation.php?session_id=<?php echo $session_id; ?>" class="action-btn btn-primary px-6 py-3 rounded-lg transition inline-flex items-center">
+            <a href="edit-peer-evaluation.php?session_id=<?php echo encrypt_id($session_id); ?>" class="action-btn btn-primary px-6 py-3 rounded-lg transition inline-flex items-center">
                 <i class="fas fa-edit mr-2"></i>Start Evaluation
             </a>
             <?php endif; ?>

@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 // Check if user is logged in and has teacher role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
@@ -10,7 +11,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
 }
 
 // Get class_id from URL
-$class_id = isset($_GET['class_id']) ? (int)$_GET['class_id'] : null;
+$class_id = safe_decrypt_id($_GET['class_id']);
 
 if (!$class_id) {
     header('Location: class-management.php');
@@ -129,7 +130,7 @@ include 'includes/lms_header.php';
             <p class="text-gray-600 mt-1">Manage enrolled students in <?php echo htmlspecialchars($class_data['subject_title'] . ' - ' . $class_data['section']); ?></p>
         </div>
         <div class="mt-4 sm:mt-0 flex space-x-2">
-            <a href="class_dashboard.php?class_id=<?php echo $class_id; ?>" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition">
+            <a href="class_dashboard.php?class_id=<?php echo encrypt_id($class_id); ?>" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition">
                 <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
             </a>
         </div>
@@ -137,15 +138,22 @@ include 'includes/lms_header.php';
 </div>
 
 <?php if ($message): ?>
-<div class="mb-6 p-4 rounded-lg <?php echo $message_type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'; ?>">
-    <?php echo $message; ?>
+<div class="mb-6 p-4 rounded-lg border <?php echo $message_type === 'success' ? 'bg-seait-orange bg-opacity-10 border-seait-orange text-seait-orange' : 'bg-gray-100 border-gray-300 text-gray-700'; ?>">
+    <div class="flex">
+        <div class="flex-shrink-0">
+            <i class="fas <?php echo $message_type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'; ?>"></i>
+        </div>
+        <div class="ml-3">
+            <p class="text-sm font-medium"><?php echo $message; ?></p>
+        </div>
+    </div>
 </div>
 <?php endif; ?>
 
 <!-- Filters -->
 <div class="bg-white rounded-lg shadow-md p-6 mb-6">
     <form method="GET" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <input type="hidden" name="class_id" value="<?php echo $class_id; ?>">
+        <input type="hidden" name="class_id" value="<?php echo encrypt_id($class_id); ?>">
 
         <div>
             <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Search</label>
@@ -188,98 +196,97 @@ include 'includes/lms_header.php';
         <i class="fas fa-users text-gray-300 text-4xl mb-4"></i>
         <p class="text-gray-500 mb-4">No students found matching your criteria.</p>
         <?php if ($search || $status_filter): ?>
-        <a href="?class_id=<?php echo $class_id; ?>" class="bg-seait-orange text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition">
+        <a href="?class_id=<?php echo encrypt_id($class_id); ?>" class="bg-seait-orange text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition">
             Clear Filters
         </a>
         <?php endif; ?>
     </div>
     <?php else: ?>
-    <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student ID</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Enrolled</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-                <?php while ($student = mysqli_fetch_assoc($students_result)): ?>
-                <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="flex items-center">
-                            <div class="h-10 w-10 rounded-full bg-seait-orange flex items-center justify-center mr-3">
-                                <span class="text-white font-medium"><?php echo strtoupper(substr($student['first_name'], 0, 1) . substr($student['last_name'], 0, 1)); ?></span>
-                            </div>
-                            <div>
-                                <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?></div>
-                                <div class="text-sm text-gray-500"><?php echo htmlspecialchars($student['email']); ?></div>
-                            </div>
+    <!-- Students Grid -->
+    <div class="p-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <?php while ($student = mysqli_fetch_assoc($students_result)): ?>
+            <div class="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
+                <!-- Card Header -->
+                <div class="p-4 border-b border-gray-100">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="h-12 w-12 rounded-full bg-seait-orange flex items-center justify-center">
+                            <span class="text-white font-semibold text-lg"><?php echo strtoupper(substr($student['first_name'], 0, 1) . substr($student['last_name'], 0, 1)); ?></span>
                         </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900"><?php echo htmlspecialchars($student['student_id']); ?></div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900"><?php echo htmlspecialchars($student['email']); ?></div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full
-                            <?php
-                            switch($student['status']) {
-                                case 'enrolled':
-                                    echo 'bg-green-100 text-green-800';
-                                    break;
-                                case 'dropped':
-                                    echo 'bg-red-100 text-red-800';
-                                    break;
-                                case 'completed':
-                                    echo 'bg-blue-100 text-blue-800';
-                                    break;
-                                default:
-                                    echo 'bg-gray-100 text-gray-800';
-                            }
-                            ?>">
-                            <?php echo ucfirst($student['status']); ?>
-                        </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <?php echo date('M j, Y', strtotime($student['created_at'])); ?>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <?php if ($student['status'] === 'enrolled'): ?>
-                        <button onclick="removeStudent(<?php echo $student['id']; ?>)"
-                                class="text-red-600 hover:text-red-800" title="Remove from class">
-                            <i class="fas fa-user-minus"></i>
-                        </button>
-                        <?php else: ?>
-                        <span class="text-gray-400">Removed</span>
+                        <div class="flex items-center space-x-2">
+                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full
+                                <?php
+                                switch($student['status']) {
+                                    case 'enrolled':
+                                        echo 'bg-seait-orange bg-opacity-10 text-seait-orange';
+                                        break;
+                                    case 'dropped':
+                                        echo 'bg-gray-100 text-gray-700';
+                                        break;
+                                    case 'completed':
+                                        echo 'bg-seait-orange bg-opacity-10 text-seait-orange';
+                                        break;
+                                    default:
+                                        echo 'bg-gray-100 text-gray-700';
+                                }
+                                ?>">
+                                <?php echo ucfirst($student['status']); ?>
+                            </span>
+                            <?php if ($student['status'] === 'enrolled'): ?>
+                            <button onclick="removeStudent(<?php echo $student['id']; ?>)"
+                                    class="text-gray-400 hover:text-red-600 transition-colors" title="Remove from class">
+                                <i class="fas fa-user-minus text-sm"></i>
+                            </button>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-1"><?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?></h3>
+                    <p class="text-sm text-gray-600"><?php echo htmlspecialchars($student['student_id']); ?></p>
+                </div>
+                
+                <!-- Card Body -->
+                <div class="p-4">
+                    <div class="space-y-3">
+                        <div class="flex items-center">
+                            <i class="fas fa-envelope text-gray-400 w-4 mr-3"></i>
+                            <span class="text-sm text-gray-700 truncate"><?php echo htmlspecialchars($student['email']); ?></span>
+                        </div>
+                        <div class="flex items-center">
+                            <i class="fas fa-calendar-alt text-gray-400 w-4 mr-3"></i>
+                            <span class="text-sm text-gray-700">Enrolled: <?php echo date('M j, Y', strtotime($student['created_at'])); ?></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Card Footer -->
+                <div class="px-4 py-3 bg-gray-50 border-t border-gray-100 rounded-b-lg">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-gray-500">Student ID: <?php echo htmlspecialchars($student['student_id']); ?></span>
+                        <?php if ($student['status'] !== 'enrolled'): ?>
+                        <span class="text-xs text-gray-400 italic">Removed</span>
                         <?php endif; ?>
-                    </td>
-                </tr>
-                <?php endwhile; ?>
-            </tbody>
-        </table>
+                    </div>
+                </div>
+            </div>
+            <?php endwhile; ?>
+        </div>
     </div>
 
     <!-- Pagination -->
     <?php if ($total_pages > 1): ?>
-    <div class="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
+    <div class="bg-white px-6 py-4 border-t border-gray-200">
         <div class="flex items-center justify-between">
             <div class="flex-1 flex justify-between sm:hidden">
                 <?php if ($page > 1): ?>
                 <a href="?<?php echo http_build_query(array_merge($_GET, ['page' => $page - 1])); ?>"
-                   class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                    Previous
+                   class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+                    <i class="fas fa-chevron-left mr-2"></i>Previous
                 </a>
                 <?php endif; ?>
                 <?php if ($page < $total_pages): ?>
                 <a href="?<?php echo http_build_query(array_merge($_GET, ['page' => $page + 1])); ?>"
-                   class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                    Next
+                   class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+                    Next<i class="fas fa-chevron-right ml-2"></i>
                 </a>
                 <?php endif; ?>
             </div>
@@ -288,17 +295,31 @@ include 'includes/lms_header.php';
                     <p class="text-sm text-gray-700">
                         Showing <span class="font-medium"><?php echo $offset + 1; ?></span> to
                         <span class="font-medium"><?php echo min($offset + $per_page, $total_records); ?></span> of
-                        <span class="font-medium"><?php echo $total_records; ?></span> results
+                        <span class="font-medium"><?php echo $total_records; ?></span> students
                     </p>
                 </div>
                 <div>
-                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                        <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                    <nav class="relative z-0 inline-flex rounded-lg shadow-sm -space-x-px">
+                        <?php if ($page > 1): ?>
+                        <a href="?<?php echo http_build_query(array_merge($_GET, ['page' => $page - 1])); ?>"
+                           class="relative inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium text-gray-500 bg-white hover:bg-gray-50 transition-colors">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                        <?php endif; ?>
+                        
+                        <?php for ($i = max(1, $page - 2); $i <= min($total_pages, $page + 2); $i++): ?>
                         <a href="?<?php echo http_build_query(array_merge($_GET, ['page' => $i])); ?>"
-                           class="relative inline-flex items-center px-4 py-2 border text-sm font-medium <?php echo $i === $page ? 'z-10 bg-seait-orange border-seait-orange text-white' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'; ?>">
+                           class="relative inline-flex items-center px-3 py-2 border text-sm font-medium <?php echo $i === $page ? 'z-10 bg-seait-orange border-seait-orange text-white' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50 transition-colors'; ?>">
                             <?php echo $i; ?>
                         </a>
                         <?php endfor; ?>
+                        
+                        <?php if ($page < $total_pages): ?>
+                        <a href="?<?php echo http_build_query(array_merge($_GET, ['page' => $page + 1])); ?>"
+                           class="relative inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium text-gray-500 bg-white hover:bg-gray-50 transition-colors">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                        <?php endif; ?>
                     </nav>
                 </div>
             </div>
@@ -313,7 +334,7 @@ include 'includes/lms_header.php';
     <div class="bg-white rounded-xl shadow-xl w-full max-w-sm mx-auto overflow-hidden animate-modal-scale-in">
         <div class="p-6 text-center">
             <div class="mb-4">
-                <i class="fas fa-user-minus text-red-500 text-4xl mb-2"></i>
+                <i class="fas fa-user-minus text-seait-orange text-4xl mb-2"></i>
                 <h3 class="text-lg font-semibold text-seait-dark mb-2">Remove Student?</h3>
                 <p class="text-gray-600">Are you sure you want to remove this student from the class? This action cannot be undone.</p>
             </div>
@@ -321,8 +342,8 @@ include 'includes/lms_header.php';
                 <input type="hidden" name="action" value="remove_student">
                 <input type="hidden" name="enrollment_id" id="remove_enrollment_id">
                 <div class="flex space-x-3 mt-6">
-                    <button type="submit" class="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition font-semibold">Remove</button>
-                    <button type="button" onclick="closeRemoveStudentModal()" class="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition font-semibold">Cancel</button>
+                    <button type="submit" class="flex-1 bg-seait-orange text-white py-2 px-4 rounded-lg hover:bg-orange-600 transition-colors font-semibold">Remove</button>
+                    <button type="button" onclick="closeRemoveStudentModal()" class="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors font-semibold">Cancel</button>
                 </div>
             </form>
         </div>

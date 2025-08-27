@@ -2,9 +2,10 @@
 session_start();
 require_once 'config/database.php';
 require_once 'includes/functions.php';
+require_once 'includes/id_encryption.php';
 
 // Get course ID from URL
-$course_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$course_id = safe_decrypt_id($_GET['id']);
 
 if ($course_id <= 0) {
     header('Location: index.php');

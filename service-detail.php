@@ -2,9 +2,10 @@
 session_start();
 require_once 'config/database.php';
 require_once 'includes/services_crud.php';
+require_once 'includes/id_encryption.php';
 
 // Get service ID from URL
-$service_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$service_id = safe_decrypt_id($_GET['id']);
 
 if (!$service_id) {
     header('Location: services.php');

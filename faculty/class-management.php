@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 // Check if user is logged in and has teacher role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
@@ -383,7 +384,7 @@ include 'includes/unified-header.php';
                         <!-- Actions and Secondary Actions at the bottom -->
                         <div class="mt-auto">
                             <div class="flex space-x-2">
-                                <a href="class_dashboard.php?class_id=<?php echo $class['id']; ?>"
+                                <a href="class_dashboard.php?class_id=<?php echo encrypt_id($class['id']); ?>"
                                    class="flex-1 bg-seait-orange text-white text-center py-2 px-3 rounded-md hover:bg-orange-600 transition text-sm font-medium action-btn">
                                     <i class="fas fa-tachometer-alt mr-1"></i>Dashboard
                                 </a>

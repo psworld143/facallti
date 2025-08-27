@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 // Check if user is logged in and has teacher role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
@@ -9,7 +10,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
     exit();
 }
 
-$quiz_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$quiz_id = safe_decrypt_id($_GET['id']);
 $message = '';
 $message_type = '';
 
@@ -242,7 +243,7 @@ include 'includes/unified-header.php';
             <p class="text-sm sm:text-base text-gray-600">Modify quiz settings and assignments</p>
         </div>
         <div class="flex flex-wrap gap-2 lg:gap-3">
-            <a href="view-quiz.php?id=<?php echo $quiz_id; ?>" class="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-blue-700 transition text-sm">
+            <a href="view-quiz.php?id=<?php echo encrypt_id($quiz_id); ?>" class="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-blue-700 transition text-sm">
                 <i class="fas fa-eye mr-1 sm:mr-2"></i><span class="hidden sm:inline">View Quiz</span><span class="sm:hidden">View</span>
             </a>
             <button onclick="duplicateQuiz(<?php echo $quiz_id; ?>)" class="bg-purple-600 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-purple-700 transition text-sm">
@@ -254,7 +255,7 @@ include 'includes/unified-header.php';
                 <span class="hidden sm:inline"><?php echo $quiz['status'] === 'published' ? 'Unpublish' : 'Publish'; ?></span>
                 <span class="sm:hidden"><?php echo $quiz['status'] === 'published' ? 'Hide' : 'Show'; ?></span>
             </button>
-            <a href="quiz-statistics.php?id=<?php echo $quiz_id; ?>" class="bg-indigo-600 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-indigo-700 transition text-sm">
+            <a href="quiz-statistics.php?id=<?php echo encrypt_id($quiz_id); ?>" class="bg-indigo-600 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-indigo-700 transition text-sm">
                 <i class="fas fa-chart-bar mr-1 sm:mr-2"></i><span class="hidden sm:inline">Statistics</span><span class="sm:hidden">Stats</span>
             </a>
             <a href="quizzes.php" class="bg-gray-500 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-gray-600 transition text-sm">
@@ -438,7 +439,7 @@ include 'includes/unified-header.php';
                 <h2 class="text-lg font-medium text-gray-900">Quick Actions</h2>
             </div>
             <div class="p-4 sm:p-6 space-y-3">
-                <a href="view-quiz.php?id=<?php echo $quiz_id; ?>" class="flex items-center text-blue-600 hover:text-blue-800 text-sm">
+                <a href="view-quiz.php?id=<?php echo encrypt_id($quiz_id); ?>" class="flex items-center text-blue-600 hover:text-blue-800 text-sm">
                     <i class="fas fa-eye mr-2"></i>
                     <span>View Questions</span>
                 </a>

@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 check_admin();
 
@@ -274,25 +275,25 @@ $total_posts = count($posts_array);
                                     </td>
                                     <td class="px-6 py-4 text-sm font-medium">
                                         <div class="flex space-x-2">
-                                            <button onclick="viewPost(<?php echo $post['id']; ?>)"
+                                            <button onclick="viewPost('<?php echo encrypt_id($post['id']); ?>')"
                                                     class="text-blue-600 hover:text-blue-900">
                                                 <i class="fas fa-eye"></i>
                                             </button>
-                                            <button onclick="editPost(<?php echo $post['id']; ?>)"
+                                            <button onclick="editPost('<?php echo encrypt_id($post['id']); ?>')"
                                                     class="text-green-600 hover:text-green-900">
                                                 <i class="fas fa-edit"></i>
                                             </button>
                                             <?php if (($post['status'] ?? '') === 'pending'): ?>
-                                            <button onclick="updateStatus(<?php echo $post['id']; ?>, 'approved')"
+                                            <button onclick="updateStatus('<?php echo encrypt_id($post['id']); ?>', 'approved')"
                                                     class="text-green-600 hover:text-green-900">
                                                 <i class="fas fa-check"></i>
                                             </button>
-                                            <button onclick="updateStatus(<?php echo $post['id']; ?>, 'rejected')"
+                                            <button onclick="updateStatus('<?php echo encrypt_id($post['id']); ?>', 'rejected')"
                                                     class="text-red-600 hover:text-red-900">
                                                 <i class="fas fa-times"></i>
                                             </button>
                                             <?php endif; ?>
-                                            <button onclick="deletePost(<?php echo $post['id']; ?>)"
+                                            <button onclick="deletePost('<?php echo encrypt_id($post['id']); ?>')"
                                                     class="text-red-600 hover:text-red-900">
                                                 <i class="fas fa-trash"></i>
                                             </button>

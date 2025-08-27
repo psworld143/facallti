@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 // Check if user is logged in and has teacher role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
@@ -10,7 +11,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
 }
 
 // Get class_id from URL
-$class_id = isset($_GET['class_id']) ? (int)$_GET['class_id'] : null;
+$class_id = safe_decrypt_id($_GET['class_id']);
 
 if (!$class_id) {
     header('Location: class-management.php');
@@ -435,10 +436,10 @@ include 'includes/lms_header.php'; ?>
             <button onclick="openUploadModal()" class="bg-seait-orange text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition">
                 <i class="fas fa-upload mr-2"></i>Upload Material
             </button>
-            <button onclick="openCategoryModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+            <button onclick="openCategoryModal()" class="bg-seait-orange text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition">
                 <i class="fas fa-folder-plus mr-2"></i>Manage Categories
             </button>
-            <a href="class_dashboard.php?class_id=<?php echo $class_id; ?>" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition">
+            <a href="class_dashboard.php?class_id=<?php echo encrypt_id($class_id); ?>" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition">
                 <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
             </a>
         </div>
@@ -446,7 +447,7 @@ include 'includes/lms_header.php'; ?>
 </div>
 
 <?php if ($message): ?>
-<div class="mb-6 p-4 rounded-lg <?php echo $message_type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'; ?>">
+<div class="mb-6 p-4 rounded-lg <?php echo $message_type === 'success' ? 'bg-seait-orange bg-opacity-10 border border-seait-orange text-seait-orange' : 'bg-gray-100 border border-gray-300 text-gray-700'; ?>">
     <?php echo $message; ?>
 </div>
 <?php endif; ?>
@@ -457,7 +458,7 @@ include 'includes/lms_header.php'; ?>
         <div class="p-4 sm:p-5">
             <div class="flex items-center min-w-0 flex-1">
                 <div class="flex-shrink-0">
-                    <div class="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
+                    <div class="w-8 h-8 bg-seait-orange rounded-md flex items-center justify-center">
                         <i class="fas fa-file-alt text-white"></i>
                     </div>
                 </div>
@@ -475,7 +476,7 @@ include 'includes/lms_header.php'; ?>
         <div class="p-4 sm:p-5">
             <div class="flex items-center min-w-0 flex-1">
                 <div class="flex-shrink-0">
-                    <div class="w-8 h-8 bg-green-500 rounded-md flex items-center justify-center">
+                    <div class="w-8 h-8 bg-seait-orange rounded-md flex items-center justify-center">
                         <i class="fas fa-eye text-white"></i>
                     </div>
                 </div>
@@ -493,7 +494,7 @@ include 'includes/lms_header.php'; ?>
         <div class="p-4 sm:p-5">
             <div class="flex items-center min-w-0 flex-1">
                 <div class="flex-shrink-0">
-                    <div class="w-8 h-8 bg-yellow-500 rounded-md flex items-center justify-center">
+                    <div class="w-8 h-8 bg-gray-600 rounded-md flex items-center justify-center">
                         <i class="fas fa-lock text-white"></i>
                     </div>
                 </div>
@@ -511,7 +512,7 @@ include 'includes/lms_header.php'; ?>
         <div class="p-4 sm:p-5">
             <div class="flex items-center min-w-0 flex-1">
                 <div class="flex-shrink-0">
-                    <div class="w-8 h-8 bg-purple-500 rounded-md flex items-center justify-center">
+                    <div class="w-8 h-8 bg-gray-600 rounded-md flex items-center justify-center">
                         <i class="fas fa-hdd text-white"></i>
                     </div>
                 </div>
@@ -529,7 +530,7 @@ include 'includes/lms_header.php'; ?>
         <div class="p-4 sm:p-5">
             <div class="flex items-center min-w-0 flex-1">
                 <div class="flex-shrink-0">
-                    <div class="w-8 h-8 bg-indigo-500 rounded-md flex items-center justify-center">
+                    <div class="w-8 h-8 bg-seait-orange rounded-md flex items-center justify-center">
                         <i class="fas fa-book text-white"></i>
                     </div>
                 </div>
@@ -579,7 +580,7 @@ include 'includes/lms_header.php'; ?>
         </div>
 
         <div class="flex items-end">
-            <a href="?class_id=<?php echo $class_id; ?>" class="w-full bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition text-center">
+            <a href="?class_id=<?php echo encrypt_id($class_id); ?>" class="w-full bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition text-center">
                 <i class="fas fa-times mr-2"></i>Clear
             </a>
         </div>
@@ -600,131 +601,144 @@ include 'includes/lms_header.php'; ?>
     <div class="p-6">
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             <?php foreach ($filtered_items as $item): ?>
-            <div class="bg-gray-50 rounded-lg p-4 hover:shadow-md transition-shadow min-h-[200px] flex flex-col overflow-hidden">
-                <div class="flex items-start justify-between mb-3">
-                    <div class="flex items-center min-w-0 flex-1">
-                        <div class="w-10 h-10 rounded-lg <?php echo $item['type'] === 'lesson' ? 'bg-gradient-to-br from-indigo-500 to-purple-600' : 'bg-seait-orange'; ?> flex items-center justify-center mr-3">
-                            <i class="fas <?php echo $item['type'] === 'lesson' ? 'fa-graduation-cap' : getFileIconByExtension(pathinfo($item['file_name'], PATHINFO_EXTENSION)); ?> text-white"></i>
-                        </div>
-                        <div class="min-w-0 flex-1">
-                            <h3 class="text-sm font-medium text-gray-900 truncate" title="<?php echo htmlspecialchars($item['title']); ?>">
-                                <?php echo htmlspecialchars($item['title']); ?>
-                                <?php if ($item['type'] === 'lesson'): ?>
-                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 ml-1 border border-indigo-200">
-                                        <i class="fas fa-book-open mr-1"></i>Lesson
-                                    </span>
-                                <?php endif; ?>
-                            </h3>
-                            <p class="text-xs text-gray-500">
-                                <?php if ($item['type'] === 'lesson'): ?>
-                                    <i class="fas fa-clock mr-1 text-indigo-500"></i><?php echo ucfirst($item['status'] ?? 'draft'); ?>
-                                    <?php if (isset($item['order_number']) && $item['order_number'] > 0): ?>
-                                        <span class="ml-2 bg-indigo-200 text-indigo-800 px-1.5 py-0.5 rounded text-xs">
-                                            Lesson <?php echo $item['order_number']; ?>
+            <div class="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 min-h-[220px] flex flex-col overflow-hidden">
+                <!-- Card Header -->
+                <div class="p-4 border-b border-gray-100">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="flex items-center min-w-0 flex-1">
+                            <div class="w-12 h-12 rounded-lg <?php echo $item['type'] === 'lesson' ? 'bg-seait-orange' : 'bg-gray-600'; ?> flex items-center justify-center mr-3 shadow-sm">
+                                <i class="fas <?php echo $item['type'] === 'lesson' ? 'fa-graduation-cap' : getFileIconByExtension(pathinfo($item['file_name'], PATHINFO_EXTENSION)); ?> text-white text-lg"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <h3 class="text-sm font-semibold text-gray-900 truncate" title="<?php echo htmlspecialchars($item['title']); ?>">
+                                    <?php echo htmlspecialchars($item['title']); ?>
+                                </h3>
+                                <div class="flex items-center mt-1 space-x-2">
+                                    <?php if ($item['type'] === 'lesson'): ?>
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-seait-orange bg-opacity-10 text-seait-orange border border-seait-orange border-opacity-20">
+                                            <i class="fas fa-book-open mr-1"></i>Lesson
+                                        </span>
+                                        <?php if (isset($item['order_number']) && $item['order_number'] > 0): ?>
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                                                #<?php echo $item['order_number']; ?>
+                                            </span>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        <span class="text-xs text-gray-500">
+                                            <i class="fas fa-file mr-1"></i><?php echo formatFileSize($item['file_size'] ?? 0); ?>
                                         </span>
                                     <?php endif; ?>
-                                <?php else: ?>
-                                    <i class="fas fa-file mr-1"></i><?php echo formatFileSize($item['file_size'] ?? 0); ?>
-                                <?php endif; ?>
-                            </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-1">
+                            <?php if ($item['type'] === 'material' && ($item['is_public'] ?? false)): ?>
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-seait-orange bg-opacity-10 text-seait-orange border border-seait-orange border-opacity-20">
+                                <i class="fas fa-eye mr-1"></i>Public
+                            </span>
+                            <?php elseif ($item['type'] === 'material' && !($item['is_public'] ?? false)): ?>
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
+                                <i class="fas fa-lock mr-1"></i>Private
+                            </span>
+                            <?php elseif ($item['type'] === 'lesson'): ?>
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium <?php echo $item['status'] === 'published' ? 'bg-seait-orange bg-opacity-10 text-seait-orange border border-seait-orange border-opacity-20' : 'bg-gray-100 text-gray-700 border border-gray-200'; ?>">
+                                <i class="fas <?php echo $item['status'] === 'published' ? 'fa-check-circle' : 'fa-edit'; ?> mr-1"></i>
+                                <?php echo ucfirst($item['status'] ?? 'draft'); ?>
+                            </span>
+                            <?php endif; ?>
                         </div>
                     </div>
-                    <div class="flex items-center space-x-1">
-                        <?php if ($item['type'] === 'material' && ($item['is_public'] ?? false)): ?>
-                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            <i class="fas fa-eye mr-1"></i>Public
-                        </span>
-                        <?php elseif ($item['type'] === 'material' && !($item['is_public'] ?? false)): ?>
-                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                            <i class="fas fa-lock mr-1"></i>Private
-                        </span>
-                        <?php elseif ($item['type'] === 'lesson'): ?>
-                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium <?php echo $item['status'] === 'published' ? 'bg-green-100 text-green-800 border border-green-200' : ($item['status'] === 'draft' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' : 'bg-gray-100 text-gray-800 border border-gray-200'); ?>">
-                            <i class="fas <?php echo $item['status'] === 'published' ? 'fa-check-circle' : ($item['status'] === 'draft' ? 'fa-edit' : 'fa-archive'); ?> mr-1"></i>
-                            <?php echo ucfirst($item['status'] ?? 'draft'); ?>
-                        </span>
-                        <?php endif; ?>
-                    </div>
                 </div>
 
-                <?php if ($item['description']): ?>
-                <div class="mb-3">
-                    <p class="text-sm text-gray-600 line-clamp-3 break-words">
-                        <i class="fas fa-info-circle mr-1 text-indigo-500"></i>
-                        <?php echo htmlspecialchars($item['description']); ?>
-                    </p>
-                </div>
-                <?php endif; ?>
-
-                <div class="flex items-center justify-between text-xs text-gray-500 mb-3">
-                    <div class="flex items-center min-w-0 flex-1">
-                        <i class="fas <?php echo $item['type'] === 'lesson' ? 'fa-user-graduate' : 'fa-folder'; ?> mr-1"></i>
-                        <span><?php echo $item['type'] === 'lesson' ? 'Lesson Content' : htmlspecialchars($item['category_name']); ?></span>
-                    </div>
-                    <div class="flex items-center min-w-0 flex-1">
-                        <i class="fas fa-calendar-alt mr-1"></i>
-                        <span><?php echo date('M j, Y', strtotime($item['created_at'])); ?></span>
-                    </div>
-                </div>
-
-                <div class="flex items-center justify-between">
-                    <div class="flex space-x-2">
-                        <?php if ($item['type'] === 'material' && $item['file_path']): ?>
-                        <a href="<?php echo $item['file_path']; ?>" target="_blank"
-                           class="inline-flex items-center px-3 py-1.5 bg-seait-orange text-white text-xs rounded-md hover:bg-orange-600 transition">
-                            <i class="fas fa-download mr-1"></i>Download
-                        </a>
-
-                        <?php
-                        // Check if file content can be displayed
-                        $file_extension = pathinfo($item['file_name'], PATHINFO_EXTENSION);
-                        $can_display = canDisplayContent($item['mime_type'], $file_extension);
-                        if ($can_display):
-                        ?>
-                        <button onclick="viewFileContent('<?php echo htmlspecialchars($item['title']); ?>', '<?php echo $item['file_path']; ?>', '<?php echo $can_display; ?>', '<?php echo htmlspecialchars($item['file_name']); ?>')"
-                                class="inline-flex items-center px-3 py-1.5 bg-green-600 text-white text-xs rounded-md hover:bg-green-700 transition">
-                            <i class="fas fa-eye mr-1"></i>View
-                        </button>
-                        <?php endif; ?>
-
-                        <?php elseif ($item['type'] === 'lesson'): ?>
-                        <a href="view-lesson.php?id=<?php echo $item['id']; ?>"
-                           class="inline-flex items-center px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-md hover:bg-indigo-700 transition">
-                            <i class="fas fa-book-open mr-1"></i>View
-                        </a>
-                        <?php endif; ?>
-
-                        <?php if ($item['type'] === 'material'): ?>
-                        <button onclick="viewMaterial(<?php echo $item['id']; ?>, '<?php echo htmlspecialchars($item['title']); ?>', '<?php echo htmlspecialchars($item['description']); ?>', '<?php echo htmlspecialchars($item['category_name']); ?>', <?php echo $item['is_public'] ? 1 : 0; ?>, '<?php echo htmlspecialchars($item['first_name'] . ' ' . $item['last_name']); ?>', '<?php echo date('M j, Y g:i A', strtotime($item['created_at'])); ?>', '<?php echo htmlspecialchars($item['file_name']); ?>', '<?php echo formatFileSize($item['file_size']); ?>')"
-                                class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 transition">
-                            <i class="fas fa-info-circle mr-1"></i>Details
-                        </button>
-                        <?php endif; ?>
-                    </div>
-
-                    <?php if (($item['type'] === 'material' && $item['created_by'] == $_SESSION['user_id']) || ($item['type'] === 'lesson' && $item['created_by'] == $class_data['teacher_id'])): ?>
-                    <div class="flex space-x-1">
-                        <?php if ($item['type'] === 'material'): ?>
-                        <button onclick="toggleVisibility(<?php echo $item['id']; ?>, <?php echo $item['is_public'] ? 0 : 1; ?>)"
-                                class="inline-flex items-center px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-md hover:bg-yellow-200 transition" title="<?php echo $item['is_public'] ? 'Make Private' : 'Make Public'; ?>">
-                            <i class="fas <?php echo $item['is_public'] ? 'fa-lock' : 'fa-eye'; ?>"></i>
-                        </button>
-                        <button onclick="deleteMaterial(<?php echo $item['id']; ?>)"
-                                class="inline-flex items-center px-2 py-1 bg-red-100 text-red-800 text-xs rounded-md hover:bg-red-200 transition" title="Delete Material">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                        <?php elseif ($item['type'] === 'lesson'): ?>
-                        <a href="edit-lesson.php?id=<?php echo $item['id']; ?>"
-                           class="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs rounded-md hover:bg-green-200 transition" title="Edit Lesson">
-                            <i class="fas fa-edit"></i>
-                        </a>
-                        <a href="view-lesson.php?id=<?php echo $item['id']; ?>"
-                           class="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-md hover:bg-blue-200 transition" title="View">
-                            <i class="fas fa-eye"></i>
-                        </a>
-                        <?php endif; ?>
+                <!-- Card Body -->
+                <div class="p-4 flex-1">
+                    <?php if ($item['description']): ?>
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-600 line-clamp-3 break-words leading-relaxed">
+                            <?php echo htmlspecialchars($item['description']); ?>
+                        </p>
                     </div>
                     <?php endif; ?>
+
+                    <div class="space-y-2 text-xs text-gray-500">
+                        <div class="flex items-center">
+                            <i class="fas <?php echo $item['type'] === 'lesson' ? 'fa-user-graduate' : 'fa-folder'; ?> mr-2 text-gray-400"></i>
+                            <span><?php echo $item['type'] === 'lesson' ? 'Lesson Content' : htmlspecialchars($item['category_name']); ?></span>
+                        </div>
+                        <div class="flex items-center">
+                            <i class="fas fa-calendar-alt mr-2 text-gray-400"></i>
+                            <span><?php echo date('M j, Y', strtotime($item['created_at'])); ?></span>
+                        </div>
+                        <?php if ($item['type'] === 'lesson'): ?>
+                        <div class="flex items-center">
+                            <i class="fas fa-clock mr-2 text-gray-400"></i>
+                            <span><?php echo ucfirst($item['status'] ?? 'draft'); ?> Status</span>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <!-- Card Footer -->
+                <div class="px-4 py-3 bg-gray-50 border-t border-gray-100">
+                    <div class="flex items-center justify-between">
+                        <div class="flex space-x-2">
+                            <?php if ($item['type'] === 'material' && $item['file_path']): ?>
+                            <a href="<?php echo $item['file_path']; ?>" target="_blank"
+                               class="inline-flex items-center px-3 py-1.5 bg-seait-orange text-white text-xs rounded-md hover:bg-orange-600 transition-colors font-medium">
+                                <i class="fas fa-download mr-1"></i>Download
+                            </a>
+
+                            <?php
+                            // Check if file content can be displayed
+                            $file_extension = pathinfo($item['file_name'], PATHINFO_EXTENSION);
+                            $can_display = canDisplayContent($item['mime_type'], $file_extension);
+                            if ($can_display):
+                            ?>
+                            <button onclick="viewFileContent('<?php echo htmlspecialchars($item['title']); ?>', '<?php echo $item['file_path']; ?>', '<?php echo $can_display; ?>', '<?php echo htmlspecialchars($item['file_name']); ?>')"
+                                    class="inline-flex items-center px-3 py-1.5 bg-gray-600 text-white text-xs rounded-md hover:bg-gray-700 transition-colors font-medium">
+                                <i class="fas fa-eye mr-1"></i>View
+                            </button>
+                            <?php endif; ?>
+
+                            <?php elseif ($item['type'] === 'lesson'): ?>
+                            <a href="view-class-lesson.php?id=<?php echo encrypt_id($item['id']); ?>&class_id=<?php echo encrypt_id($class_id); ?>"
+                               class="inline-flex items-center px-3 py-1.5 bg-seait-orange text-white text-xs rounded-md hover:bg-orange-600 transition-colors font-medium">
+                                <i class="fas fa-book-open mr-1"></i>View Lesson
+                            </a>
+                            <?php endif; ?>
+
+                            <?php if ($item['type'] === 'material'): ?>
+                            <button onclick="viewMaterial(<?php echo $item['id']; ?>, '<?php echo htmlspecialchars($item['title']); ?>', '<?php echo htmlspecialchars($item['description']); ?>', '<?php echo htmlspecialchars($item['category_name']); ?>', <?php echo $item['is_public'] ? 1 : 0; ?>, '<?php echo htmlspecialchars($item['first_name'] . ' ' . $item['last_name']); ?>', '<?php echo date('M j, Y g:i A', strtotime($item['created_at'])); ?>', '<?php echo htmlspecialchars($item['file_name']); ?>', '<?php echo formatFileSize($item['file_size']); ?>')"
+                                    class="inline-flex items-center px-3 py-1.5 bg-gray-600 text-white text-xs rounded-md hover:bg-gray-700 transition-colors font-medium">
+                                <i class="fas fa-info-circle mr-1"></i>Details
+                            </button>
+                            <?php endif; ?>
+                        </div>
+
+                        <?php if (($item['type'] === 'material' && $item['created_by'] == $_SESSION['user_id']) || ($item['type'] === 'lesson' && $item['created_by'] == $class_data['teacher_id'])): ?>
+                        <div class="flex space-x-1">
+                            <?php if ($item['type'] === 'material'): ?>
+                            <button onclick="toggleVisibility(<?php echo $item['id']; ?>, <?php echo $item['is_public'] ? 0 : 1; ?>)"
+                                    class="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-md hover:bg-gray-200 transition-colors" title="<?php echo $item['is_public'] ? 'Make Private' : 'Make Public'; ?>">
+                                <i class="fas <?php echo $item['is_public'] ? 'fa-lock' : 'fa-eye'; ?>"></i>
+                            </button>
+                            <button onclick="deleteMaterial(<?php echo $item['id']; ?>)"
+                                    class="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-md hover:bg-gray-200 transition-colors" title="Delete Material">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            <?php elseif ($item['type'] === 'lesson'): ?>
+                            <a href="edit-lesson.php?id=<?php echo $item['id']; ?>"
+                               class="inline-flex items-center px-2 py-1 bg-seait-orange bg-opacity-10 text-seait-orange text-xs rounded-md hover:bg-seait-orange hover:text-white transition-colors" title="Edit Lesson">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="view-class-lesson.php?id=<?php echo encrypt_id($item['id']); ?>&class_id=<?php echo encrypt_id($class_id); ?>"
+                               class="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-md hover:bg-gray-200 transition-colors" title="View">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <?php endif; ?>
+                        </div>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
             <?php endforeach; ?>
@@ -857,8 +871,8 @@ function closeUploadModal() {
 
 function viewMaterial(id, title, description, category, isPublic, author, createdAt, fileName, fileSize) {
     const publicStatus = isPublic == 1 ?
-        '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"><i class="fas fa-eye mr-1"></i>Public</span>' :
-        '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"><i class="fas fa-lock mr-1"></i>Private</span>';
+        '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-seait-orange bg-opacity-10 text-seait-orange border border-seait-orange border-opacity-20"><i class="fas fa-eye mr-1"></i>Public</span>' :
+        '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200"><i class="fas fa-lock mr-1"></i>Private</span>';
 
     const detailsHtml = `
         <div class="space-y-4">
@@ -982,10 +996,10 @@ function viewFileContent(title, filePath, displayType, fileName) {
         modalBody.innerHTML = `
             <div class="text-center">
                 <div class="mb-4 flex justify-center space-x-2">
-                    <button onclick="loadPdfWithPdfJs('${filePath}')" class="px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition">
+                    <button onclick="loadPdfWithPdfJs('${filePath}')" class="px-3 py-2 bg-seait-orange text-white text-sm rounded-md hover:bg-orange-600 transition">
                         <i class="fas fa-eye mr-2"></i>Enhanced PDF Viewer
                     </button>
-                    <a href="${filePath}" target="_blank" class="px-3 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition">
+                    <a href="${filePath}" target="_blank" class="px-3 py-2 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 transition">
                         <i class="fas fa-external-link-alt mr-2"></i>Open in New Tab
                     </a>
                 </div>
@@ -1007,19 +1021,19 @@ function viewFileContent(title, filePath, displayType, fileName) {
         modalBody.innerHTML = `
             <div class="text-center">
                 <div class="mb-4 flex flex-wrap justify-center gap-2">
-                    <button onclick="switchToOfficeViewer('${officeViewerUrl}')" class="px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition">
+                    <button onclick="switchToOfficeViewer('${officeViewerUrl}')" class="px-3 py-2 bg-seait-orange text-white text-sm rounded-md hover:bg-orange-600 transition">
                         <i class="fas fa-file-word mr-2"></i>Microsoft Viewer
                     </button>
-                    <button onclick="switchToGoogleViewer('${googleViewerUrl}')" class="px-3 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition">
+                    <button onclick="switchToGoogleViewer('${googleViewerUrl}')" class="px-3 py-2 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 transition">
                         <i class="fab fa-google mr-2"></i>Google Viewer
                     </button>
-                    <button onclick="switchToOffice365Viewer('${office365ViewerUrl}')" class="px-3 py-2 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700 transition">
+                    <button onclick="switchToOffice365Viewer('${office365ViewerUrl}')" class="px-3 py-2 bg-seait-orange text-white text-sm rounded-md hover:bg-orange-600 transition">
                         <i class="fas fa-external-link-alt mr-2"></i>Office 365
                     </button>
-                    <a href="${filePath}" target="_blank" class="px-3 py-2 bg-orange-600 text-white text-sm rounded-md hover:bg-orange-700 transition">
+                    <a href="${filePath}" target="_blank" class="px-3 py-2 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 transition">
                         <i class="fas fa-download mr-2"></i>Download
                     </a>
-                    <button onclick="openFileDirectly('${filePath}')" class="px-3 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 transition">
+                    <button onclick="openFileDirectly('${filePath}')" class="px-3 py-2 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 transition">
                         <i class="fas fa-external-link-alt mr-2"></i>Open Directly
                     </button>
                 </div>
@@ -1034,15 +1048,15 @@ function viewFileContent(title, filePath, displayType, fileName) {
                 <div class="mt-4 p-4 bg-gray-50 rounded-lg">
                     <p class="text-sm text-gray-600 mb-2">If you see an error message, try the other viewer options or download the file.</p>
                     <p class="text-xs text-gray-500">Note: Office document viewers may not work with all file types or configurations.</p>
-                    <div id="viewerError" class="hidden mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                        <p class="text-sm text-red-700 mb-2"><i class="fas fa-exclamation-triangle mr-2"></i>Viewer Error</p>
-                        <p class="text-xs text-red-600">The document viewer encountered an error. Please try:</p>
-                        <ul class="text-xs text-red-600 mt-1 ml-4 list-disc">
-                            <li>Switching to a different viewer option</li>
-                            <li>Downloading the file to view locally</li>
-                            <li>Opening the file directly in a new tab</li>
-                        </ul>
-                    </div>
+                                    <div id="viewerError" class="hidden mt-3 p-3 bg-gray-100 border border-gray-300 rounded-lg">
+                    <p class="text-sm text-gray-700 mb-2"><i class="fas fa-exclamation-triangle mr-2"></i>Viewer Error</p>
+                    <p class="text-xs text-gray-600">The document viewer encountered an error. Please try:</p>
+                    <ul class="text-xs text-gray-600 mt-1 ml-4 list-disc">
+                        <li>Switching to a different viewer option</li>
+                        <li>Downloading the file to view locally</li>
+                        <li>Opening the file directly in a new tab</li>
+                    </ul>
+                </div>
                 </div>
             </div>`;
         contentLoading.classList.add('hidden');
@@ -1125,7 +1139,7 @@ function loadPdfWithPdfJs(pdfUrl) {
 
         renderPage(1);
     }).catch(function(error) {
-        pdfViewer.innerHTML = `<div class="text-center py-8"><p class="text-red-600">Error loading PDF: ${error.message}</p></div>`;
+        pdfViewer.innerHTML = `<div class="text-center py-8"><p class="text-gray-700">Error loading PDF: ${error.message}</p></div>`;
         contentLoading.classList.add('hidden');
     });
 }

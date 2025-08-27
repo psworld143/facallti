@@ -78,35 +78,65 @@ $page_title = 'Course Syllabus - ' . $class_data['subject_title'];
 include 'includes/lms_header.php';
 ?>
 
-<div class="mb-6 sm:mb-8">
-    <h1 class="text-2xl sm:text-3xl font-bold text-seait-dark mb-2">Course Syllabus</h1>
-    <p class="text-sm sm:text-base text-gray-600">Course information and policies for <?php echo htmlspecialchars($class_data['subject_title']); ?></p>
+<!-- Add Enhanced CSS -->
+<link rel="stylesheet" href="../assets/css/syllabus-enhanced.css">
+
+<!-- Enhanced Page Header -->
+<div class="mb-8">
+    <div class="bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl p-6 text-white shadow-lg">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+            <div class="mb-4 lg:mb-0">
+                <div class="flex items-center mb-2">
+                    <div class="bg-white bg-opacity-20 rounded-lg p-2 mr-3">
+                        <i class="fas fa-book-open text-xl"></i>
+                    </div>
+                    <h1 class="text-3xl lg:text-4xl font-bold">Course Syllabus</h1>
+                </div>
+                <p class="text-lg text-indigo-100"><?php echo htmlspecialchars($class_data['subject_title']); ?></p>
+                <p class="text-sm text-indigo-200 mt-1">Comprehensive course information, objectives, and learning outcomes</p>
+            </div>
+            <div class="flex items-center">
+                <div class="bg-white bg-opacity-20 rounded-lg px-4 py-2">
+                    <span class="text-sm font-medium">Section <?php echo htmlspecialchars($class_data['section']); ?></span>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <?php if (!$syllabus_data): ?>
-    <!-- No Syllabus Available -->
-    <div class="bg-white rounded-lg shadow-md overflow-hidden">
-        <div class="p-8 text-center">
-            <i class="fas fa-file-alt text-gray-300 text-6xl mb-4"></i>
-            <h3 class="text-lg font-medium text-gray-900 mb-2">No Syllabus Available</h3>
-            <p class="text-gray-500 mb-4">Your teacher hasn't published a syllabus for this course yet.</p>
-            <p class="text-sm text-gray-400">Check back later or contact your instructor for course information.</p>
+    <!-- Enhanced No Syllabus Available -->
+    <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+        <div class="p-12 text-center">
+            <div class="bg-gray-100 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
+                <i class="fas fa-file-alt text-gray-400 text-3xl"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-gray-900 mb-3">No Syllabus Available</h3>
+            <p class="text-gray-600 mb-6 text-lg">Your teacher hasn't published a syllabus for this course yet.</p>
+            <div class="bg-blue-50 rounded-lg p-4 max-w-md mx-auto">
+                <p class="text-sm text-blue-800">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    Check back later or contact your instructor for course information.
+                </p>
+            </div>
         </div>
     </div>
 <?php else: ?>
     <!-- Syllabus Content -->
     <div class="space-y-6">
-        <!-- Syllabus Header -->
-        <div class="bg-white rounded-lg shadow-md overflow-hidden">
-            <div class="px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h2 class="text-xl font-bold text-white"><?php echo htmlspecialchars($syllabus_data['title']); ?></h2>
-                        <p class="text-blue-100 mt-1"><?php echo htmlspecialchars($class_data['subject_title'] . ' - ' . $class_data['section']); ?></p>
+        <!-- Enhanced Syllabus Header -->
+        <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+            <div class="px-8 py-6 bg-gradient-to-r from-indigo-600 to-indigo-700">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                    <div class="mb-4 lg:mb-0">
+                        <h2 class="text-2xl lg:text-3xl font-bold text-white mb-2"><?php echo htmlspecialchars($syllabus_data['title']); ?></h2>
+                        <p class="text-indigo-100 text-lg"><?php echo htmlspecialchars($class_data['subject_title'] . ' - ' . $class_data['section']); ?></p>
                     </div>
-                    <div class="text-right text-blue-100">
-                        <p class="text-sm">Published on</p>
-                        <p class="font-medium"><?php echo date('M j, Y', strtotime($syllabus_data['published_at'])); ?></p>
+                    <div class="text-right text-indigo-100">
+                        <div class="bg-white bg-opacity-20 rounded-lg px-4 py-2">
+                            <p class="text-sm">Published on</p>
+                            <p class="font-semibold"><?php echo date('M j, Y', strtotime($syllabus_data['published_at'])); ?></p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -146,11 +176,11 @@ include 'includes/lms_header.php';
             </div>
         </div>
 
-        <!-- Course Objectives and Outcomes -->
+        <!-- Course Objectives and Learning Outcomes -->
         <?php if ($syllabus_data['course_objectives'] || $syllabus_data['learning_outcomes']): ?>
         <div class="bg-white rounded-lg shadow-md overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="text-lg font-medium text-gray-900">Course Objectives & Learning Outcomes</h3>
+                <h3 class="text-lg font-medium text-gray-900">Course Objectives and Learning Outcomes</h3>
             </div>
             <div class="p-6">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -180,7 +210,7 @@ include 'includes/lms_header.php';
         <?php if ($syllabus_data['prerequisites'] || $syllabus_data['course_requirements']): ?>
         <div class="bg-white rounded-lg shadow-md overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="text-lg font-medium text-gray-900">Prerequisites & Requirements</h3>
+                <h3 class="text-lg font-medium text-gray-900">Prerequisites and Requirements</h3>
             </div>
             <div class="p-6">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -277,11 +307,11 @@ include 'includes/lms_header.php';
         </div>
         <?php endif; ?>
 
-        <!-- Course Resources -->
+        <!-- Course Materials and Resources -->
         <?php if ($syllabus_data['textbooks'] || $syllabus_data['references']): ?>
         <div class="bg-white rounded-lg shadow-md overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="text-lg font-medium text-gray-900">Course Resources</h3>
+                <h3 class="text-lg font-medium text-gray-900">Course Materials and Resources</h3>
             </div>
             <div class="p-6">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -294,11 +324,41 @@ include 'includes/lms_header.php';
                     </div>
                     <?php endif; ?>
 
-                    <?php if ($syllabus_data['references']): ?>
+                                                <?php if ($syllabus_data['course_references']): ?>
+                            <div>
+                                <h4 class="font-medium text-gray-900 mb-3">Additional References</h4>
+                                <div class="prose max-w-none text-gray-700">
+                                    <?php echo nl2br(htmlspecialchars($syllabus_data['course_references'])); ?>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- Assessment and Grading -->
+        <?php if ($syllabus_data['assessment_methods'] || $syllabus_data['grading_system']): ?>
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Assessment and Grading</h3>
+            </div>
+            <div class="p-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <?php if ($syllabus_data['assessment_methods']): ?>
                     <div>
-                        <h4 class="font-medium text-gray-900 mb-3">Additional References</h4>
+                        <h4 class="font-medium text-gray-900 mb-3">Assessment Methods</h4>
                         <div class="prose max-w-none text-gray-700">
-                            <?php echo nl2br(htmlspecialchars($syllabus_data['references'])); ?>
+                            <?php echo nl2br(htmlspecialchars($syllabus_data['assessment_methods'])); ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
+                    <?php if ($syllabus_data['grading_system']): ?>
+                    <div>
+                        <h4 class="font-medium text-gray-900 mb-3">Grading System</h4>
+                        <div class="prose max-w-none text-gray-700">
+                            <?php echo nl2br(htmlspecialchars($syllabus_data['grading_system'])); ?>
                         </div>
                     </div>
                     <?php endif; ?>
@@ -362,7 +422,7 @@ include 'includes/lms_header.php';
                     <?php while ($topic = mysqli_fetch_assoc($topics_result)): ?>
                     <div class="border border-gray-200 rounded-lg p-4">
                         <div class="flex items-start justify-between mb-3">
-                            <h4 class="font-medium text-gray-900"><?php echo htmlspecialchars($topic['title']); ?></h4>
+                            <h4 class="font-medium text-gray-900"><?php echo htmlspecialchars($topic['topic_title']); ?></h4>
                             <?php if ($topic['week_number']): ?>
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                 Week <?php echo $topic['week_number']; ?>
@@ -375,17 +435,17 @@ include 'includes/lms_header.php';
                         <?php endif; ?>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                            <?php if ($topic['duration_hours']): ?>
-                            <div>
-                                <span class="font-medium text-gray-700">Duration:</span>
-                                <span class="text-gray-600"><?php echo $topic['duration_hours']; ?> hours</span>
-                            </div>
-                            <?php endif; ?>
-
                             <?php if ($topic['learning_objectives']): ?>
                             <div>
                                 <span class="font-medium text-gray-700">Learning Objectives:</span>
                                 <p class="text-gray-600 mt-1"><?php echo htmlspecialchars($topic['learning_objectives']); ?></p>
+                            </div>
+                            <?php endif; ?>
+
+                            <?php if ($topic['materials']): ?>
+                            <div>
+                                <span class="font-medium text-gray-700">Materials:</span>
+                                <p class="text-gray-600 mt-1"><?php echo htmlspecialchars($topic['materials']); ?></p>
                             </div>
                             <?php endif; ?>
 
@@ -396,13 +456,61 @@ include 'includes/lms_header.php';
                             </div>
                             <?php endif; ?>
 
-                            <?php if ($topic['assessments']): ?>
+                            <?php if ($topic['assessment']): ?>
                             <div>
-                                <span class="font-medium text-gray-700">Assessments:</span>
-                                <p class="text-gray-600 mt-1"><?php echo htmlspecialchars($topic['assessments']); ?></p>
+                                <span class="font-medium text-gray-700">Assessment:</span>
+                                <p class="text-gray-600 mt-1"><?php echo htmlspecialchars($topic['assessment']); ?></p>
+                            </div>
+                            <?php endif; ?>
+
+                            <?php if ($topic['references_field']): ?>
+                            <div>
+                                <span class="font-medium text-gray-700">References:</span>
+                                <p class="text-gray-600 mt-1"><?php echo htmlspecialchars($topic['references_field']); ?></p>
+                            </div>
+                            <?php endif; ?>
+
+                            <?php if ($topic['values_integration']): ?>
+                            <div>
+                                <span class="font-medium text-gray-700">Values Integration:</span>
+                                <p class="text-gray-600 mt-1"><?php echo htmlspecialchars($topic['values_integration']); ?></p>
+                            </div>
+                            <?php endif; ?>
+
+                            <?php if ($topic['target']): ?>
+                            <div>
+                                <span class="font-medium text-gray-700">Target:</span>
+                                <p class="text-gray-600 mt-1"><?php echo htmlspecialchars($topic['target']); ?></p>
                             </div>
                             <?php endif; ?>
                         </div>
+
+                        <!-- CLO Alignments Display -->
+                        <?php
+                        // Get CLO alignments for this topic
+                        $topic_clo_query = "SELECT clo.clo_code, clo.clo_description 
+                                           FROM syllabus_topic_clo_alignment tca 
+                                           JOIN syllabus_clos clo ON tca.clo_id = clo.id 
+                                           WHERE tca.syllabus_id = ? AND tca.topic_id = ? AND tca.is_aligned = 1";
+                        $topic_clo_stmt = mysqli_prepare($conn, $topic_clo_query);
+                        mysqli_stmt_bind_param($topic_clo_stmt, "ii", $syllabus_data['id'], $topic['id']);
+                        mysqli_stmt_execute($topic_clo_stmt);
+                        $topic_clo_result = mysqli_stmt_get_result($topic_clo_stmt);
+                        
+                        if (mysqli_num_rows($topic_clo_result) > 0):
+                        ?>
+                        <div class="mt-3 pt-3 border-t border-gray-200">
+                            <h5 class="font-medium text-gray-900 mb-2">Aligned Course Learning Outcomes:</h5>
+                            <div class="flex flex-wrap gap-2">
+                                <?php while ($aligned_clo = mysqli_fetch_assoc($topic_clo_result)): ?>
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    <strong><?php echo htmlspecialchars($aligned_clo['clo_code']); ?></strong>
+                                    <span class="ml-1 text-gray-600"><?php echo htmlspecialchars(substr($aligned_clo['clo_description'], 0, 30)) . '...'; ?></span>
+                                </span>
+                                <?php endwhile; ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
                     </div>
                     <?php endwhile; ?>
                 </div>

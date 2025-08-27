@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 // Check if user is logged in and has teacher role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
@@ -429,14 +430,14 @@ include 'includes/unified-header.php';
                                 </span>
 
                                 <div class="flex gap-2">
-                                    <a href="view-peer-evaluation.php?session_id=<?php echo $evaluation['id']; ?>"
+                                    <a href="view-peer-evaluation.php?session_id=<?php echo encrypt_id($evaluation['id']); ?>"
                                        class="action-btn btn-secondary px-3 py-2 rounded-lg transition flex items-center"
                                        title="View Evaluation">
                                         <i class="fas fa-eye mr-1"></i>
                                         <span class="hidden sm:inline">View</span>
                                     </a>
                                     <?php if ($evaluation['status'] === 'draft'): ?>
-                                    <a href="edit-peer-evaluation.php?session_id=<?php echo $evaluation['id']; ?>"
+                                    <a href="edit-peer-evaluation.php?session_id=<?php echo encrypt_id($evaluation['id']); ?>"
                                        class="action-btn btn-primary px-3 py-2 rounded-lg transition flex items-center"
                                        title="Continue Evaluation">
                                         <i class="fas fa-edit mr-1"></i>

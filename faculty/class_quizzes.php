@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 // Check if user is logged in and has teacher role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
@@ -10,7 +11,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
 }
 
 // Get class_id from URL
-$class_id = isset($_GET['class_id']) ? (int)$_GET['class_id'] : null;
+$class_id = safe_decrypt_id($_GET['class_id']);
 
 if (!$class_id) {
     header('Location: class-management.php');
@@ -251,7 +252,7 @@ include 'includes/lms_header.php';
             <a href="quizzes.php" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
                 <i class="fas fa-cog mr-2"></i>Manage Quizzes
             </a>
-            <a href="class_dashboard.php?class_id=<?php echo $class_id; ?>" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition">
+            <a href="class_dashboard.php?class_id=<?php echo encrypt_id($class_id); ?>" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition">
                 <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
             </a>
         </div>
@@ -433,11 +434,11 @@ include 'includes/lms_header.php';
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div class="flex space-x-2">
-                            <a href="view-quiz.php?id=<?php echo $quiz['quiz_id']; ?>"
+                            <a href="view-quiz.php?id=<?php echo encrypt_id($quiz['quiz_id']); ?>"
                                class="text-blue-600 hover:text-blue-900" title="View Quiz">
                                 <i class="fas fa-eye"></i>
                             </a>
-                            <a href="edit-quiz.php?id=<?php echo $quiz['quiz_id']; ?>"
+                            <a href="edit-quiz.php?id=<?php echo encrypt_id($quiz['quiz_id']); ?>"
                                class="text-green-600 hover:text-green-900" title="Edit Quiz">
                                 <i class="fas fa-edit"></i>
                             </a>
@@ -449,11 +450,11 @@ include 'includes/lms_header.php';
                                class="text-indigo-600 hover:text-indigo-900" title="View Submissions">
                                 <i class="fas fa-list-alt"></i>
                             </a>
-                            <button onclick="extendDueDate(<?php echo $quiz['id']; ?>)"
+                            <button onclick="extendDueDate('<?php echo encrypt_id($quiz['id']); ?>')"
                                     class="text-yellow-600 hover:text-yellow-900" title="Extend Due Date">
                                 <i class="fas fa-clock"></i>
                             </button>
-                            <button onclick="unassignQuiz(<?php echo $quiz['id']; ?>)"
+                            <button onclick="unassignQuiz('<?php echo encrypt_id($quiz['id']); ?>')"
                                     class="text-red-600 hover:text-red-900" title="Unassign Quiz">
                                 <i class="fas fa-times"></i>
                             </button>

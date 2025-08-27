@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 // Check if user is logged in and has teacher role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
@@ -10,7 +11,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
 }
 
 // Get lesson ID from URL
-$lesson_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$lesson_id = safe_decrypt_id($_GET['id']);
 
 if (!$lesson_id) {
     header('Location: lessons.php');
@@ -54,7 +55,7 @@ include 'includes/unified-header.php';
             <p class="text-sm sm:text-base text-gray-600">Lesson Details</p>
         </div>
         <div class="flex space-x-2">
-            <a href="edit-lesson.php?id=<?php echo $lesson_id; ?>" class="bg-seait-orange text-white px-4 py-2 rounded-md hover:bg-orange-600 transition">
+            <a href="edit-lesson.php?id=<?php echo encrypt_id($lesson_id); ?>" class="bg-seait-orange text-white px-4 py-2 rounded-md hover:bg-orange-600 transition">
                 <i class="fas fa-edit mr-2"></i>Edit Lesson
             </a>
         <a href="lessons.php" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition">
@@ -203,11 +204,11 @@ include 'includes/unified-header.php';
                 <h2 class="text-lg font-medium text-gray-900">Quick Actions</h2>
             </div>
             <div class="p-6 space-y-3">
-                <a href="edit-lesson.php?id=<?php echo $lesson_id; ?>" class="flex items-center text-seait-orange hover:text-orange-600">
+                <a href="edit-lesson.php?id=<?php echo encrypt_id($lesson_id); ?>" class="flex items-center text-seait-orange hover:text-orange-600">
                     <i class="fas fa-edit mr-2"></i>
                     <span>Edit Lesson</span>
                 </a>
-                <a href="create-lesson.php?reuse_id=<?php echo $lesson_id; ?>" class="flex items-center text-purple-600 hover:text-purple-800">
+                <a href="create-lesson.php?reuse_id=<?php echo encrypt_id($lesson_id); ?>" class="flex items-center text-purple-600 hover:text-purple-800">
                     <i class="fas fa-copy mr-2"></i>
                     <span>Reuse Lesson</span>
                 </a>

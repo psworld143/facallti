@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 // Check if user is logged in and has teacher role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
@@ -10,7 +11,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
 }
 
 // Get class_id from URL
-$class_id = isset($_GET['class_id']) ? (int)$_GET['class_id'] : null;
+$class_id = safe_decrypt_id($_GET['class_id']);
 
 if (!$class_id) {
     header('Location: class-management.php');

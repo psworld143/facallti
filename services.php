@@ -2,6 +2,7 @@
 session_start();
 require_once 'config/database.php';
 require_once 'includes/services_crud.php';
+require_once 'includes/id_encryption.php';
 
 // Get all service categories
 $service_categories = get_service_categories($conn);
@@ -204,12 +205,12 @@ if (isset($_GET['category']) && !empty($_GET['category'])) {
                         </p>
 
                         <div class="flex justify-between items-center">
-                            <a href="service-detail.php?id=<?php echo $service['id']; ?>"
+                            <a href="service-detail.php?id=<?php echo encrypt_id($service['id']); ?>"
                                class="text-seait-orange hover:text-orange-600 font-semibold transition">
                                 Learn More <i class="fas fa-arrow-right ml-1"></i>
                             </a>
                             <div class="flex space-x-2">
-                                <a href="service-detail.php?id=<?php echo $service['id']; ?>"
+                                <a href="service-detail.php?id=<?php echo encrypt_id($service['id']); ?>"
                                    class="bg-seait-orange text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600 transition">
                                     View Details
                                 </a>

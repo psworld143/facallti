@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 // Check if user is logged in and has teacher role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
@@ -511,16 +512,16 @@ include 'includes/unified-header.php';
 
                 <div class="flex justify-between items-center">
                     <div class="flex space-x-2">
-                        <a href="view-quiz.php?id=<?php echo $quiz['id']; ?>" class="text-seait-orange hover:text-orange-600 p-1" title="View">
+                        <a href="view-quiz.php?id=<?php echo encrypt_id($quiz['id']); ?>" class="text-seait-orange hover:text-orange-600 p-1" title="View">
                             <i class="fas fa-eye text-sm"></i>
                         </a>
-                        <a href="edit-quiz.php?id=<?php echo $quiz['id']; ?>" class="text-blue-600 hover:text-blue-900 p-1" title="Edit">
+                        <a href="edit-quiz.php?id=<?php echo encrypt_id($quiz['id']); ?>" class="text-blue-600 hover:text-blue-900 p-1" title="Edit">
                             <i class="fas fa-edit text-sm"></i>
                         </a>
                         <button onclick="duplicateQuiz(<?php echo $quiz['id']; ?>)" class="text-purple-600 hover:text-purple-900 p-1" title="Duplicate">
                             <i class="fas fa-copy text-sm"></i>
                         </button>
-                        <a href="quiz-statistics.php?id=<?php echo $quiz['id']; ?>" class="text-indigo-600 hover:text-indigo-900 p-1" title="Stats">
+                        <a href="quiz-statistics.php?id=<?php echo encrypt_id($quiz['id']); ?>" class="text-indigo-600 hover:text-indigo-900 p-1" title="Stats">
                             <i class="fas fa-chart-bar text-sm"></i>
                         </a>
                     </div>
@@ -609,10 +610,10 @@ include 'includes/unified-header.php';
                         </td>
                         <td class="px-3 py-4">
                             <div class="flex flex-wrap gap-1">
-                                <a href="view-quiz.php?id=<?php echo $quiz['id']; ?>" class="text-seait-orange hover:text-orange-600 p-1" title="View Quiz">
+                                <a href="view-quiz.php?id=<?php echo encrypt_id($quiz['id']); ?>" class="text-seait-orange hover:text-orange-600 p-1" title="View Quiz">
                                     <i class="fas fa-eye text-sm"></i>
                                 </a>
-                                <a href="edit-quiz.php?id=<?php echo $quiz['id']; ?>" class="text-blue-600 hover:text-blue-900 p-1" title="Edit Quiz">
+                                <a href="edit-quiz.php?id=<?php echo encrypt_id($quiz['id']); ?>" class="text-blue-600 hover:text-blue-900 p-1" title="Edit Quiz">
                                     <i class="fas fa-edit text-sm"></i>
                                 </a>
                                 <button onclick="duplicateQuiz(<?php echo $quiz['id']; ?>)" class="text-purple-600 hover:text-purple-900 p-1" title="Duplicate Quiz">
@@ -623,7 +624,7 @@ include 'includes/unified-header.php';
                                         title="<?php echo $quiz['status'] === 'published' ? 'Unpublish' : 'Publish'; ?>">
                                     <i class="fas fa-<?php echo $quiz['status'] === 'published' ? 'eye-slash' : 'eye'; ?> text-sm"></i>
                                 </button>
-                                <a href="quiz-statistics.php?id=<?php echo $quiz['id']; ?>" class="text-indigo-600 hover:text-indigo-900 p-1" title="View Statistics">
+                                <a href="quiz-statistics.php?id=<?php echo encrypt_id($quiz['id']); ?>" class="text-indigo-600 hover:text-indigo-900 p-1" title="View Statistics">
                                     <i class="fas fa-chart-bar text-sm"></i>
                                 </a>
                                 <button onclick="deleteQuiz(<?php echo $quiz['id']; ?>)" class="text-red-600 hover:text-red-900 p-1" title="Delete Quiz">

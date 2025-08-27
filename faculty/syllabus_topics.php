@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 // Check if user is logged in and has teacher role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
@@ -10,7 +11,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
 }
 
 // Get class_id from URL
-$class_id = isset($_GET['class_id']) ? (int)$_GET['class_id'] : null;
+$class_id = safe_decrypt_id($_GET['class_id']);
 
 if (!$class_id) {
     header('Location: class-management.php');
@@ -42,7 +43,7 @@ $syllabus_result = mysqli_stmt_get_result($syllabus_stmt);
 $syllabus_data = mysqli_fetch_assoc($syllabus_result);
 
 if (!$syllabus_data) {
-    header('Location: class_syllabus.php?class_id=' . $class_id . '&error=no_syllabus');
+            header('Location: class_syllabus.php?class_id=' . encrypt_id($class_id) . '&error=no_syllabus');
     exit();
 }
 
@@ -65,21 +66,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $activities = sanitize_input($_POST['activities']);
                 $assessments = sanitize_input($_POST['assessments']);
                 $materials = sanitize_input($_POST['materials']);
+                $references = sanitize_input($_POST['references']);
+                $values_integration = sanitize_input($_POST['values_integration']);
+                $target = sanitize_input($_POST['target']);
                 $order_number = isset($_POST['order_number']) ? (int)$_POST['order_number'] : 0;
 
                 if (empty($title)) {
                     $message = "Please provide a title for the topic.";
                     $message_type = "error";
                 } else {
-                    $insert_query = "INSERT INTO syllabus_topics (syllabus_id, title, description, week_number,
-                                    duration_hours, learning_objectives, activities, assessments, materials, order_number)
-                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    $insert_query = "INSERT INTO syllabus_topics (syllabus_id, topic_title, description, week_number,
+                                    order_number, learning_objectives, activities, assessment, materials, 
+                                    references_field, values_integration, target)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                     $insert_stmt = mysqli_prepare($conn, $insert_query);
-                    mysqli_stmt_bind_param($insert_stmt, "issiissssi",
-                        $syllabus_data['id'], $title, $description, $week_number, $duration_hours,
-                        $learning_objectives, $activities, $assessments, $materials, $order_number);
+                    mysqli_stmt_bind_param($insert_stmt, "issiisssssss",
+                        $syllabus_data['id'], $title, $description, $week_number, $order_number,
+                        $learning_objectives, $activities, $assessments, $materials, $references, $values_integration, $target);
 
                     if (mysqli_stmt_execute($insert_stmt)) {
+                        $topic_id = mysqli_insert_id($conn);
+                        
+                        // Handle CLO alignments
+                        $clo_alignments = $_POST['clo_alignment'] ?? [];
+                        foreach ($clo_alignments as $clo_id) {
+                            $insert_alignment = "INSERT INTO syllabus_topic_clo_alignment (syllabus_id, topic_id, clo_id, is_aligned) VALUES (?, ?, ?, 1)";
+                            $alignment_stmt = mysqli_prepare($conn, $insert_alignment);
+                            mysqli_stmt_bind_param($alignment_stmt, "iii", $syllabus_data['id'], $topic_id, $clo_id);
+                            mysqli_stmt_execute($alignment_stmt);
+                        }
+                        
                         $message = "Topic added successfully!";
                         $message_type = "success";
                     } else {
@@ -99,22 +115,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $activities = sanitize_input($_POST['activities']);
                 $assessments = sanitize_input($_POST['assessments']);
                 $materials = sanitize_input($_POST['materials']);
+                $references = sanitize_input($_POST['references']);
+                $values_integration = sanitize_input($_POST['values_integration']);
+                $target = sanitize_input($_POST['target']);
                 $order_number = isset($_POST['order_number']) ? (int)$_POST['order_number'] : 0;
 
                 if (empty($title)) {
                     $message = "Please provide a title for the topic.";
                     $message_type = "error";
                 } else {
-                    $update_query = "UPDATE syllabus_topics SET title = ?, description = ?, week_number = ?,
-                                    duration_hours = ?, learning_objectives = ?, activities = ?, assessments = ?,
-                                    materials = ?, order_number = ?, updated_at = NOW()
+                    $update_query = "UPDATE syllabus_topics SET topic_title = ?, description = ?, week_number = ?,
+                                    order_number = ?, learning_objectives = ?, activities = ?, assessment = ?,
+                                    materials = ?, references_field = ?, values_integration = ?, target = ?, updated_at = NOW()
                                     WHERE id = ? AND syllabus_id = ?";
                     $update_stmt = mysqli_prepare($conn, $update_query);
-                    mysqli_stmt_bind_param($update_stmt, "ssiissssiis",
-                        $title, $description, $week_number, $duration_hours, $learning_objectives,
-                        $activities, $assessments, $materials, $order_number, $topic_id, $syllabus_data['id']);
+                    mysqli_stmt_bind_param($update_stmt, "ssiissssssiis",
+                        $title, $description, $week_number, $order_number, $learning_objectives,
+                        $activities, $assessments, $materials, $references, $values_integration, $target, $topic_id, $syllabus_data['id']);
 
                     if (mysqli_stmt_execute($update_stmt)) {
+                        // Handle CLO alignments
+                        $clo_alignments = $_POST['clo_alignment'] ?? [];
+                        
+                        // Clear existing alignments for this topic
+                        $clear_alignments = "DELETE FROM syllabus_topic_clo_alignment WHERE syllabus_id = ? AND topic_id = ?";
+                        $clear_stmt = mysqli_prepare($conn, $clear_alignments);
+                        mysqli_stmt_bind_param($clear_stmt, "ii", $syllabus_data['id'], $topic_id);
+                        mysqli_stmt_execute($clear_stmt);
+                        
+                        // Insert new alignments
+                        foreach ($clo_alignments as $clo_id) {
+                            $insert_alignment = "INSERT INTO syllabus_topic_clo_alignment (syllabus_id, topic_id, clo_id, is_aligned) VALUES (?, ?, ?, 1)";
+                            $alignment_stmt = mysqli_prepare($conn, $insert_alignment);
+                            mysqli_stmt_bind_param($alignment_stmt, "iii", $syllabus_data['id'], $topic_id, $clo_id);
+                            mysqli_stmt_execute($alignment_stmt);
+                        }
+                        
                         $message = "Topic updated successfully!";
                         $message_type = "success";
                     } else {
@@ -150,120 +186,99 @@ mysqli_stmt_bind_param($topics_stmt, "i", $syllabus_data['id']);
 mysqli_stmt_execute($topics_stmt);
 $topics_result = mysqli_stmt_get_result($topics_stmt);
 
-// Include the shared header
-$sidebar_context = 'main';
-include 'includes/unified-header.php';
+// Get CLOs for alignment
+$clos_query = "SELECT * FROM syllabus_clos WHERE syllabus_id = ? ORDER BY order_number";
+$clos_stmt = mysqli_prepare($conn, $clos_query);
+mysqli_stmt_bind_param($clos_stmt, "i", $syllabus_data['id']);
+mysqli_stmt_execute($clos_stmt);
+$clos_result = mysqli_stmt_get_result($clos_stmt);
+
+// Get topic-CLO alignments
+$topic_clo_alignments = [];
+$topic_clo_query = "SELECT topic_id, clo_id FROM syllabus_topic_clo_alignment WHERE syllabus_id = ? AND is_aligned = 1";
+$topic_clo_stmt = mysqli_prepare($conn, $topic_clo_query);
+mysqli_stmt_bind_param($topic_clo_stmt, "i", $syllabus_data['id']);
+mysqli_stmt_execute($topic_clo_stmt);
+$topic_clo_result = mysqli_stmt_get_result($topic_clo_stmt);
+while ($row = mysqli_fetch_assoc($topic_clo_result)) {
+    $topic_clo_alignments[] = $row['topic_id'] . '_' . $row['clo_id'];
+}
+
+// Include the unified LMS header
+$sidebar_context = 'lms';
+include 'includes/lms_header.php';
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo htmlspecialchars($page_title); ?> - Faculty Portal</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'seait-dark': '#1e3a8a',
-                        'seait-orange': '#f97316'
-                    }
-                }
-            }
-        }
-    </script>
-</head>
-<body class="bg-gray-50">
-    <!-- Navigation -->
-    <nav class="bg-seait-dark text-white shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center">
-                    <a href="dashboard.php" class="flex items-center space-x-3">
-                        <i class="fas fa-graduation-cap text-2xl"></i>
-                        <span class="text-xl font-bold">Faculty Portal</span>
-                    </a>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <span class="text-sm"><?php echo htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']); ?></span>
-                    <a href="logout.php" class="text-white hover:text-gray-300">
-                        <i class="fas fa-sign-out-alt"></i>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </nav>
+<!-- Add Enhanced CSS and CKEditor script -->
+<link rel="stylesheet" href="../assets/css/syllabus-enhanced.css">
+<script src="https://cdn.ckeditor.com/ckeditor5/27.1.0/classic/ckeditor.js"></script>
 
-    <!-- Breadcrumb -->
-    <div class="bg-white shadow-sm border-b border-gray-200">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-            <nav class="flex" aria-label="Breadcrumb">
-                <ol class="flex items-center space-x-4">
-                    <li>
-                        <a href="class-management.php" class="text-gray-500 hover:text-gray-700">
-                            <i class="fas fa-home"></i>
-                        </a>
-                    </li>
-                    <li>
-                        <div class="flex items-center">
-                            <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
-                            <a href="class_dashboard.php?class_id=<?php echo $class_id; ?>" class="text-gray-500 hover:text-gray-700">
-                                <?php echo htmlspecialchars($class_data['subject_title']); ?>
-                            </a>
-                        </div>
-                    </li>
-                    <li>
-                        <div class="flex items-center">
-                            <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
-                            <a href="class_syllabus.php?class_id=<?php echo $class_id; ?>" class="text-gray-500 hover:text-gray-700">
-                                Syllabus
-                            </a>
-                        </div>
-                    </li>
-                    <li>
-                        <div class="flex items-center">
-                            <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
-                            <span class="text-gray-900">Topics</span>
-                        </div>
-                    </li>
-                </ol>
-            </nav>
-        </div>
-    </div>
-
-    <!-- Main Content -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- Header -->
+        <!-- Enhanced Page Header -->
         <div class="mb-8">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h1 class="text-3xl font-bold text-gray-900">Syllabus Topics</h1>
-                    <p class="text-gray-600 mt-2"><?php echo htmlspecialchars($class_data['subject_title'] . ' - ' . $class_data['section']); ?></p>
-                </div>
-                <div class="mt-4 sm:mt-0 flex space-x-3">
-                    <button onclick="openAddModal()" class="bg-seait-orange text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition">
-                        <i class="fas fa-plus mr-2"></i>Add Topic
-                    </button>
-                    <a href="class_syllabus.php?class_id=<?php echo $class_id; ?>" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition">
-                        <i class="fas fa-arrow-left mr-2"></i>Back to Syllabus
-                    </a>
+            <div class="bg-gradient-to-r from-seait-orange to-orange-600 rounded-xl p-6 text-white shadow-lg">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                    <div class="mb-4 lg:mb-0">
+                        <div class="flex items-center mb-2">
+                            <div class="bg-white bg-opacity-20 rounded-lg p-2 mr-3">
+                                <i class="fas fa-list-alt text-xl"></i>
+                            </div>
+                            <h1 class="text-3xl lg:text-4xl font-bold">Syllabus Topics</h1>
+                        </div>
+                        <p class="text-lg text-orange-100"><?php echo htmlspecialchars($class_data['subject_title'] . ' - Section ' . $class_data['section']); ?></p>
+                        <p class="text-sm text-orange-200 mt-1">Manage weekly topics and learning objectives for your course</p>
+                    </div>
+                    <div class="flex flex-wrap gap-3">
+                        <button onclick="openAddModal()" class="inline-flex items-center px-4 py-3 bg-white bg-opacity-20 text-white text-sm font-medium rounded-lg hover:bg-white hover:text-seait-orange transition-all duration-200 backdrop-blur-sm">
+                            <i class="fas fa-plus mr-2"></i>Add Topic
+                        </button>
+                        <a href="syllabus_alignment.php?class_id=<?php echo encrypt_id($class_id); ?>" class="inline-flex items-center px-4 py-3 bg-white bg-opacity-20 text-white text-sm font-medium rounded-lg hover:bg-white hover:text-seait-orange transition-all duration-200 backdrop-blur-sm">
+                            <i class="fas fa-link mr-2"></i>Manage Alignments
+                        </a>
+                        <a href="class_syllabus.php?class_id=<?php echo encrypt_id($class_id); ?>" class="inline-flex items-center px-4 py-3 bg-white bg-opacity-20 text-white text-sm font-medium rounded-lg hover:bg-white hover:text-seait-orange transition-all duration-200 backdrop-blur-sm">
+                            <i class="fas fa-arrow-left mr-2"></i>Back to Syllabus
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
 
         <?php if ($message): ?>
-        <div class="mb-6 p-4 rounded-lg <?php echo $message_type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'; ?>">
-            <?php echo $message; ?>
+        <div class="mb-6 animate-fade-in">
+            <div class="p-4 rounded-xl border-2 <?php echo $message_type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'; ?> shadow-sm">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 rounded-full <?php echo $message_type === 'success' ? 'bg-green-100' : 'bg-red-100'; ?> flex items-center justify-center">
+                            <i class="fas <?php echo $message_type === 'success' ? 'fa-check text-green-600' : 'fa-exclamation-triangle text-red-600'; ?> text-sm"></i>
+                        </div>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm font-semibold"><?php echo $message; ?></p>
+                    </div>
+                </div>
+            </div>
         </div>
         <?php endif; ?>
 
-        <!-- Topics List -->
-        <div class="bg-white rounded-lg shadow-md overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="text-lg font-medium text-gray-900">Course Topics (<?php echo mysqli_num_rows($topics_result); ?>)</h3>
+        <!-- Enhanced Topics List -->
+        <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+            <div class="px-8 py-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="bg-blue-100 rounded-lg p-3 mr-4">
+                            <i class="fas fa-list text-blue-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-2xl font-bold text-seait-dark">Course Topics</h3>
+                            <p class="text-gray-600 mt-1"><?php echo mysqli_num_rows($topics_result); ?> topics organized for your course</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                            <i class="fas fa-check-circle mr-2"></i>
+                            <?php echo mysqli_num_rows($topics_result); ?> Topics
+                        </span>
+                    </div>
+                </div>
             </div>
 
             <?php if (mysqli_num_rows($topics_result) == 0): ?>
@@ -279,14 +294,14 @@ include 'includes/unified-header.php';
                         <div class="flex items-start justify-between">
                             <div class="flex-1">
                                 <div class="flex items-center mb-3">
-                                    <h4 class="text-lg font-medium text-gray-900"><?php echo htmlspecialchars($topic['title']); ?></h4>
+                                    <h4 class="text-lg font-medium text-gray-900"><?php echo htmlspecialchars($topic['topic_title']); ?></h4>
                                     <?php if ($topic['week_number']): ?>
-                                    <span class="ml-3 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    <span class="ml-3 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-seait-orange bg-opacity-10 text-seait-orange">
                                         Week <?php echo $topic['week_number']; ?>
                                     </span>
                                     <?php endif; ?>
                                     <?php if ($topic['duration_hours']): ?>
-                                    <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
                                         <?php echo $topic['duration_hours']; ?> hours
                                     </span>
                                     <?php endif; ?>
@@ -311,10 +326,10 @@ include 'includes/unified-header.php';
                                     </div>
                                     <?php endif; ?>
 
-                                    <?php if ($topic['assessments']): ?>
+                                    <?php if ($topic['assessment']): ?>
                                     <div>
                                         <span class="font-medium text-gray-700">Assessments:</span>
-                                        <p class="text-gray-600 mt-1"><?php echo htmlspecialchars($topic['assessments']); ?></p>
+                                        <p class="text-gray-600 mt-1"><?php echo htmlspecialchars($topic['assessment']); ?></p>
                                     </div>
                                     <?php endif; ?>
 
@@ -324,15 +339,62 @@ include 'includes/unified-header.php';
                                         <p class="text-gray-600 mt-1"><?php echo htmlspecialchars($topic['materials']); ?></p>
                                     </div>
                                     <?php endif; ?>
+
+                                    <?php if ($topic['references_field']): ?>
+                                    <div>
+                                        <span class="font-medium text-gray-700">References:</span>
+                                        <p class="text-gray-600 mt-1"><?php echo htmlspecialchars($topic['references_field']); ?></p>
+                                    </div>
+                                    <?php endif; ?>
+
+                                    <?php if ($topic['values_integration']): ?>
+                                    <div>
+                                        <span class="font-medium text-gray-700">Values Integration:</span>
+                                        <p class="text-gray-600 mt-1"><?php echo htmlspecialchars($topic['values_integration']); ?></p>
+                                    </div>
+                                    <?php endif; ?>
+
+                                    <?php if ($topic['target']): ?>
+                                    <div>
+                                        <span class="font-medium text-gray-700">Target:</span>
+                                        <p class="text-gray-600 mt-1"><?php echo htmlspecialchars($topic['target']); ?></p>
+                                    </div>
+                                    <?php endif; ?>
                                 </div>
+
+                                <!-- CLO Alignments Display -->
+                                <?php
+                                // Get CLO alignments for this topic
+                                $topic_clo_query = "SELECT clo.clo_code, clo.clo_description 
+                                                   FROM syllabus_topic_clo_alignment tca 
+                                                   JOIN syllabus_clos clo ON tca.clo_id = clo.id 
+                                                   WHERE tca.syllabus_id = ? AND tca.topic_id = ? AND tca.is_aligned = 1";
+                                $topic_clo_stmt = mysqli_prepare($conn, $topic_clo_query);
+                                mysqli_stmt_bind_param($topic_clo_stmt, "ii", $syllabus_data['id'], $topic['id']);
+                                mysqli_stmt_execute($topic_clo_stmt);
+                                $topic_clo_result = mysqli_stmt_get_result($topic_clo_stmt);
+                                
+                                if (mysqli_num_rows($topic_clo_result) > 0):
+                                ?>
+                                <div class="mt-3">
+                                    <span class="font-medium text-gray-700 text-sm">Aligned CLOs:</span>
+                                    <div class="flex flex-wrap gap-2 mt-1">
+                                        <?php while ($aligned_clo = mysqli_fetch_assoc($topic_clo_result)): ?>
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            <?php echo htmlspecialchars($aligned_clo['clo_code']); ?>
+                                        </span>
+                                        <?php endwhile; ?>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
                             </div>
                             <div class="ml-4 flex space-x-2">
                                 <button onclick="openEditModal(<?php echo htmlspecialchars(json_encode($topic)); ?>)"
-                                        class="inline-flex items-center px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition">
+                                        class="inline-flex items-center px-3 py-2 bg-seait-orange text-white text-sm rounded-lg hover:bg-orange-600 transition-colors">
                                     <i class="fas fa-edit mr-2"></i>Edit
                                 </button>
                                 <button onclick="deleteTopic(<?php echo $topic['id']; ?>)"
-                                        class="inline-flex items-center px-3 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition">
+                                        class="inline-flex items-center px-3 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors">
                                     <i class="fas fa-trash mr-2"></i>Delete
                                 </button>
                             </div>
@@ -412,6 +474,47 @@ include 'includes/unified-header.php';
                         <label for="materials" class="block text-sm font-medium text-gray-700 mb-2">Materials</label>
                         <textarea id="materials" name="materials" rows="3"
                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-seait-orange"></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="references" class="block text-sm font-medium text-gray-700 mb-2">References</label>
+                        <textarea id="references" name="references" rows="3"
+                                  placeholder="List relevant references, readings, or resources for this topic..."
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-seait-orange"></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="values_integration" class="block text-sm font-medium text-gray-700 mb-2">Values Integration</label>
+                        <textarea id="values_integration" name="values_integration" rows="3"
+                                  placeholder="Describe how values, ethics, or character development are integrated into this topic..."
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-seait-orange"></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="target" class="block text-sm font-medium text-gray-700 mb-2">Target</label>
+                        <textarea id="target" name="target" rows="3"
+                                  placeholder="Specify the target competencies, skills, or outcomes for this topic..."
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-seait-orange"></textarea>
+                    </div>
+
+                    <!-- CLO Alignment Section -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">CLO Alignment</label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 border border-gray-200 rounded-lg">
+                            <?php 
+                            mysqli_data_seek($clos_result, 0);
+                            while ($clo = mysqli_fetch_assoc($clos_result)): 
+                            ?>
+                            <label class="flex items-center">
+                                <input type="checkbox" name="clo_alignment[]" value="<?php echo $clo['id']; ?>" 
+                                       class="h-4 w-4 text-seait-orange focus:ring-seait-orange border-gray-300 rounded">
+                                <span class="ml-2 text-sm text-gray-700">
+                                    <strong><?php echo htmlspecialchars($clo['clo_code']); ?></strong>: 
+                                    <?php echo htmlspecialchars(substr($clo['clo_description'], 0, 50)) . '...'; ?>
+                                </span>
+                            </label>
+                            <?php endwhile; ?>
+                        </div>
                     </div>
 
                     <div class="flex justify-end space-x-3">
@@ -500,6 +603,47 @@ include 'includes/unified-header.php';
                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-seait-orange"></textarea>
                     </div>
 
+                    <div class="mb-4">
+                        <label for="edit_references" class="block text-sm font-medium text-gray-700 mb-2">References</label>
+                        <textarea id="edit_references" name="references" rows="3"
+                                  placeholder="List relevant references, readings, or resources for this topic..."
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-seait-orange"></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="edit_values_integration" class="block text-sm font-medium text-gray-700 mb-2">Values Integration</label>
+                        <textarea id="edit_values_integration" name="values_integration" rows="3"
+                                  placeholder="Describe how values, ethics, or character development are integrated into this topic..."
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-seait-orange"></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="edit_target" class="block text-sm font-medium text-gray-700 mb-2">Target</label>
+                        <textarea id="edit_target" name="target" rows="3"
+                                  placeholder="Specify the target competencies, skills, or outcomes for this topic..."
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-seait-orange"></textarea>
+                    </div>
+
+                    <!-- CLO Alignment Section -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">CLO Alignment</label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 border border-gray-200 rounded-lg">
+                            <?php 
+                            mysqli_data_seek($clos_result, 0);
+                            while ($clo = mysqli_fetch_assoc($clos_result)): 
+                            ?>
+                            <label class="flex items-center">
+                                <input type="checkbox" name="clo_alignment[]" value="<?php echo $clo['id']; ?>" 
+                                       class="h-4 w-4 text-seait-orange focus:ring-seait-orange border-gray-300 rounded">
+                                <span class="ml-2 text-sm text-gray-700">
+                                    <strong><?php echo htmlspecialchars($clo['clo_code']); ?></strong>: 
+                                    <?php echo htmlspecialchars(substr($clo['clo_description'], 0, 50)) . '...'; ?>
+                                </span>
+                            </label>
+                            <?php endwhile; ?>
+                        </div>
+                    </div>
+
                     <div class="flex justify-end space-x-3">
                         <button type="button" onclick="closeEditModal()"
                                 class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition">
@@ -519,8 +663,8 @@ include 'includes/unified-header.php';
     <div id="deleteModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
         <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
             <div class="mt-3 text-center">
-                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
-                    <i class="fas fa-exclamation-triangle text-red-600"></i>
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-gray-100">
+                    <i class="fas fa-exclamation-triangle text-gray-600"></i>
                 </div>
                 <h3 class="text-lg font-medium text-gray-900 mt-4">Delete Topic</h3>
                 <div class="mt-2 px-7 py-3">
@@ -535,7 +679,7 @@ include 'includes/unified-header.php';
                         <input type="hidden" name="action" value="delete_topic">
                         <input type="hidden" id="delete_topic_id" name="topic_id">
                         <button type="submit"
-                                class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
+                                class="px-4 py-2 bg-seait-orange text-white rounded-lg hover:bg-orange-600 transition-colors">
                             Delete
                         </button>
                     </form>
@@ -556,15 +700,30 @@ include 'includes/unified-header.php';
 
         function openEditModal(topic) {
             document.getElementById('edit_topic_id').value = topic.id;
-            document.getElementById('edit_title').value = topic.title;
+            document.getElementById('edit_title').value = topic.topic_title || topic.title || '';
             document.getElementById('edit_description').value = topic.description || '';
             document.getElementById('edit_week_number').value = topic.week_number || '';
             document.getElementById('edit_duration_hours').value = topic.duration_hours || '';
             document.getElementById('edit_learning_objectives').value = topic.learning_objectives || '';
             document.getElementById('edit_activities').value = topic.activities || '';
-            document.getElementById('edit_assessments').value = topic.assessments || '';
+            document.getElementById('edit_assessments').value = topic.assessment || topic.assessments || '';
             document.getElementById('edit_materials').value = topic.materials || '';
+            document.getElementById('edit_references').value = topic.references_field || topic.references || '';
+            document.getElementById('edit_values_integration').value = topic.values_integration || '';
+            document.getElementById('edit_target').value = topic.target || '';
             document.getElementById('edit_order_number').value = topic.order_number || 0;
+
+            // Clear all CLO checkboxes first
+            const cloCheckboxes = document.querySelectorAll('input[name="clo_alignment[]"]');
+            cloCheckboxes.forEach(checkbox => checkbox.checked = false);
+
+            // Check the aligned CLOs if they exist
+            if (topic.clo_alignments) {
+                topic.clo_alignments.forEach(cloId => {
+                    const checkbox = document.querySelector(`input[name="clo_alignment[]"][value="${cloId}"]`);
+                    if (checkbox) checkbox.checked = true;
+                });
+            }
 
             document.getElementById('editModal').classList.remove('hidden');
         }
@@ -599,5 +758,5 @@ include 'includes/unified-header.php';
             }
         }
     </script>
-</body>
-</html>
+
+<?php include 'includes/unified-footer.php'; ?>

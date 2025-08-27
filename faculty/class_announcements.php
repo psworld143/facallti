@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 // Check if user is logged in and has teacher role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
@@ -10,7 +11,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
 }
 
 // Get class_id from URL
-$class_id = isset($_GET['class_id']) ? (int)$_GET['class_id'] : null;
+$class_id = safe_decrypt_id($_GET['class_id']);
 
 if (!$class_id) {
     header('Location: class-management.php');
@@ -191,7 +192,7 @@ include 'includes/lms_header.php';
             <button onclick="openAddAnnouncementModal()" class="bg-seait-orange text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition">
                 <i class="fas fa-plus mr-2"></i>New Announcement
             </button>
-            <a href="class_dashboard.php?class_id=<?php echo $class_id; ?>" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition">
+            <a href="class_dashboard.php?class_id=<?php echo encrypt_id($class_id); ?>" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition">
                 <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
             </a>
         </div>
@@ -407,16 +408,16 @@ include 'includes/lms_header.php';
                         <?php echo date('M j, Y g:i A', strtotime($announcement['created_at'])); ?>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button onclick="viewAnnouncement(<?php echo $announcement['id']; ?>, '<?php echo htmlspecialchars($announcement['title']); ?>', '<?php echo htmlspecialchars(strip_tags($announcement['content'])); ?>', '<?php echo htmlspecialchars($announcement['priority']); ?>', <?php echo $announcement['is_pinned']; ?>, '<?php echo htmlspecialchars($announcement['first_name'] . ' ' . $announcement['last_name']); ?>', '<?php echo date('M j, Y g:i A', strtotime($announcement['created_at'])); ?>')"
+                        <button onclick="viewAnnouncement('<?php echo encrypt_id($announcement['id']); ?>', '<?php echo htmlspecialchars($announcement['title']); ?>', '<?php echo htmlspecialchars(strip_tags($announcement['content'])); ?>', '<?php echo htmlspecialchars($announcement['priority']); ?>', <?php echo $announcement['is_pinned']; ?>, '<?php echo htmlspecialchars($announcement['first_name'] . ' ' . $announcement['last_name']); ?>', '<?php echo date('M j, Y g:i A', strtotime($announcement['created_at'])); ?>')"
                                 class="text-seait-orange hover:text-orange-600 mr-3">
                             <i class="fas fa-eye"></i>
                         </button>
                         <?php if ($announcement['teacher_id'] == $_SESSION['user_id']): ?>
-                        <button onclick="togglePin(<?php echo $announcement['id']; ?>, <?php echo $announcement['is_pinned'] ? 0 : 1; ?>)"
+                        <button onclick="togglePin('<?php echo encrypt_id($announcement['id']); ?>', <?php echo $announcement['is_pinned'] ? 0 : 1; ?>)"
                                 class="text-yellow-600 hover:text-yellow-800 mr-3">
                             <i class="fas fa-thumbtack"></i>
                         </button>
-                        <button onclick="deleteAnnouncement(<?php echo $announcement['id']; ?>)"
+                        <button onclick="deleteAnnouncement('<?php echo encrypt_id($announcement['id']); ?>')"
                                 class="text-red-600 hover:text-red-800">
                             <i class="fas fa-trash"></i>
                         </button>

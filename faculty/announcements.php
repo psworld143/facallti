@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 // Check if user is logged in and has teacher role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
@@ -261,11 +262,11 @@ include 'includes/unified-header.php';
                         <?php echo date('M j, Y g:i A', strtotime($announcement['created_at'])); ?>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button onclick="viewAnnouncement(<?php echo $announcement['id']; ?>)"
+                        <button onclick="viewAnnouncement('<?php echo encrypt_id($announcement['id']); ?>')"
                                 class="text-seait-orange hover:text-orange-600 mr-3">
                             <i class="fas fa-eye"></i>
                         </button>
-                        <button onclick="deleteAnnouncement(<?php echo $announcement['id']; ?>)"
+                        <button onclick="deleteAnnouncement('<?php echo encrypt_id($announcement['id']); ?>')"
                                 class="text-red-600 hover:text-red-800">
                             <i class="fas fa-trash"></i>
                         </button>

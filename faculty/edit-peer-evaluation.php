@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 // Check if user is logged in and has teacher role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
@@ -24,7 +25,7 @@ if (isset($_SESSION['message'])) {
 }
 
 // Get evaluation session ID from URL
-$session_id = isset($_GET['session_id']) ? (int)$_GET['session_id'] : 0;
+$session_id = safe_decrypt_id($_GET['session_id']);
 
 if (!$session_id) {
     $_SESSION['message'] = 'Invalid evaluation session ID provided.';
@@ -59,7 +60,7 @@ if (!$evaluation_session) {
 if ($evaluation_session['status'] === 'completed') {
     $_SESSION['message'] = 'This evaluation has already been completed and cannot be edited.';
     $_SESSION['message_type'] = 'error';
-    header('Location: view-peer-evaluation.php?session_id=' . $session_id);
+    header('Location: view-peer-evaluation.php?session_id=' . encrypt_id($session_id));
     exit();
 }
 
@@ -196,12 +197,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (isset($_POST['complete_evaluation']) && $_POST['complete_evaluation'] === '1') {
                 $_SESSION['message'] = 'Peer evaluation completed successfully!';
                 $_SESSION['message_type'] = 'success';
-                header('Location: view-peer-evaluation.php?session_id=' . $session_id);
+                header('Location: view-peer-evaluation.php?session_id=' . encrypt_id($session_id));
                 exit();
             } else {
                 $_SESSION['message'] = 'Evaluation responses saved successfully.';
                 $_SESSION['message_type'] = 'success';
-                header('Location: edit-peer-evaluation.php?session_id=' . $session_id);
+                header('Location: edit-peer-evaluation.php?session_id=' . encrypt_id($session_id));
                 exit();
             }
         } else {
@@ -327,7 +328,7 @@ include 'includes/unified-header.php';
             <a href="peer-evaluations.php" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition flex items-center">
                 <i class="fas fa-arrow-left mr-2"></i>Back
             </a>
-            <a href="view-peer-evaluation.php?session_id=<?php echo $session_id; ?>" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition flex items-center">
+            <a href="view-peer-evaluation.php?session_id=<?php echo encrypt_id($session_id); ?>" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition flex items-center">
                 <i class="fas fa-eye mr-2"></i>View
             </a>
         </div>
@@ -1468,7 +1469,7 @@ function confirmClearAll() {
     // Show loading state
     showClearAllLoading();
 
-    fetch(`clear-responses.php?session_id=${<?php echo $session_id; ?>}`, {
+                    fetch(`clear-responses.php?session_id=${<?php echo encrypt_id($session_id); ?>}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',

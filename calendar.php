@@ -2,6 +2,7 @@
 session_start();
 require_once 'config/database.php';
 require_once 'includes/functions.php';
+require_once 'includes/id_encryption.php';
 
 // Get events
 $events_query = "SELECT * FROM posts WHERE status = 'approved' AND type = 'event' ORDER BY created_at ASC";
@@ -187,7 +188,7 @@ while ($event = mysqli_fetch_assoc($yearly_events_result)) {
                                     <p class="text-gray-600 text-sm mb-3">
                                         <?php echo htmlspecialchars(substr(strip_tags($event['content']), 0, 80)) . '...'; ?>
                                     </p>
-                                    <a href="news-detail.php?id=<?php echo $event['id']; ?>"
+                                    <a href="news-detail.php?id=<?php echo encrypt_id($event['id']); ?>"
                                        class="text-orange-500 hover:underline text-sm font-medium">
                                         View Details →
                                     </a>
@@ -219,7 +220,7 @@ while ($event = mysqli_fetch_assoc($yearly_events_result)) {
                         </div>
                         <h4 class="text-lg font-semibold text-gray-800 mb-2"><?php echo htmlspecialchars($event['title']); ?></h4>
                         <p class="text-gray-600 text-sm mb-4"><?php echo htmlspecialchars(substr(strip_tags($event['content']), 0, 100)) . '...'; ?></p>
-                        <a href="news-detail.php?id=<?php echo $event['id']; ?>" class="text-orange-500 hover:underline text-sm">View Details</a>
+                        <a href="news-detail.php?id=<?php echo encrypt_id($event['id']); ?>" class="text-orange-500 hover:underline text-sm">View Details</a>
                     </div>
                     <?php endwhile; ?>
                 </div>

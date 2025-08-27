@@ -2,6 +2,7 @@
 session_start();
 require_once 'config/database.php';
 require_once 'includes/functions.php';
+require_once 'includes/id_encryption.php';
 
 // Get filter parameters
 $type_filter = isset($_GET['type']) ? $_GET['type'] : '';
@@ -165,7 +166,7 @@ $posts_result = mysqli_stmt_get_result($stmt);
                             </div>
 
                             <h3 class="text-lg md:text-xl font-semibold mb-3 text-seait-dark">
-                                <a href="news-detail.php?id=<?php echo $post['id']; ?>" class="hover:text-seait-orange transition">
+                                <a href="news-detail.php?id=<?php echo encrypt_id($post['id']); ?>" class="hover:text-seait-orange transition">
                                     <?php echo htmlspecialchars($post['title']); ?>
                                 </a>
                             </h3>
@@ -183,7 +184,7 @@ $posts_result = mysqli_stmt_get_result($stmt);
                                     <i class="fas fa-user mr-1"></i>
                                     <?php echo htmlspecialchars($post['first_name'] . ' ' . $post['last_name']); ?>
                                 </div>
-                                <a href="news-detail.php?id=<?php echo $post['id']; ?>" class="text-seait-orange hover:underline text-sm font-medium">
+                                <a href="news-detail.php?id=<?php echo encrypt_id($post['id']); ?>" class="text-seait-orange hover:underline text-sm font-medium">
                                     Read More <i class="fas fa-arrow-right ml-1"></i>
                                 </a>
                             </div>

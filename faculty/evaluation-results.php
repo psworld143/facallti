@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 // Check if user is logged in and has teacher role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
@@ -21,7 +22,7 @@ $message_type = '';
 $search = isset($_GET['search']) ? sanitize_input($_GET['search']) : '';
 $status_filter = isset($_GET['status']) ? sanitize_input($_GET['status']) : '';
 $type_filter = isset($_GET['type']) ? sanitize_input($_GET['type']) : '';
-$selected_category = isset($_GET['category']) ? sanitize_input($_GET['category']) : '';
+$selected_category = isset($_GET['category']) ? safe_decrypt_id($_GET['category']) : '';
 $semester_filter = isset($_GET['semester']) ? sanitize_input($_GET['semester']) : '';
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $per_page = 10;
@@ -180,7 +181,7 @@ $message_type = '';
 $search = isset($_GET['search']) ? sanitize_input($_GET['search']) : '';
 $status_filter = isset($_GET['status']) ? sanitize_input($_GET['status']) : '';
 $type_filter = isset($_GET['type']) ? sanitize_input($_GET['type']) : '';
-$selected_category = isset($_GET['category']) ? sanitize_input($_GET['category']) : '';
+$selected_category = isset($_GET['category']) ? safe_decrypt_id($_GET['category']) : '';
 $semester_filter = isset($_GET['semester']) ? sanitize_input($_GET['semester']) : '';
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $per_page = 10;
@@ -1235,9 +1236,9 @@ if (!empty($categories)) {
     <div class="border-b border-gray-200">
         <nav class="-mb-px flex space-x-4 overflow-x-auto px-6 py-4" aria-label="Tabs">
             <?php foreach ($categories as $category): ?>
-                <button onclick="switchCategory(<?php echo $category['id']; ?>)"
+                <button onclick="switchCategory('<?php echo encrypt_id($category['id']); ?>')"
                    class="category-tab inline-flex items-center px-4 py-2 rounded-full text-sm font-medium transition-colors duration-200 <?php echo $selected_category == $category['id'] ? 'bg-seait-orange text-white shadow-md' : 'bg-gray-100 text-black hover:bg-gray-200'; ?>"
-                   id="tab-<?php echo $category['id']; ?>"
+                   id="tab-<?php echo encrypt_id($category['id']); ?>"
                    title="<?php echo htmlspecialchars($category['name']); ?>">
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mr-2
                         <?php
@@ -1287,7 +1288,7 @@ if (!empty($categories)) {
 <div class="mb-6 bg-white p-4 rounded-lg shadow-md">
     <form method="GET" class="grid grid-cols-1 sm:grid-cols-5 gap-4">
         <?php if ($selected_category): ?>
-        <input type="hidden" name="category" value="<?php echo htmlspecialchars($selected_category); ?>">
+        <input type="hidden" name="category" value="<?php echo htmlspecialchars(encrypt_id($selected_category)); ?>">
         <?php endif; ?>
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Search</label>
@@ -1329,7 +1330,7 @@ if (!empty($categories)) {
                 <i class="fas fa-search mr-2"></i>Search
             </button>
             <?php if ($search || $status_filter || $type_filter || $semester_filter): ?>
-            <a href="evaluation-results.php<?php echo $selected_category ? '?category=' . $selected_category : ''; ?>" class="ml-2 bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition">
+            <a href="evaluation-results.php<?php echo $selected_category ? '?category=' . encrypt_id($selected_category) : ''; ?>" class="ml-2 bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition">
                 <i class="fas fa-times mr-2"></i>Clear
             </a>
             <?php endif; ?>

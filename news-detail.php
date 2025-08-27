@@ -2,13 +2,14 @@
 session_start();
 require_once 'config/database.php';
 require_once 'includes/functions.php';
+require_once 'includes/id_encryption.php';
 
 if (!isset($_GET['id'])) {
     header("Location: index.php");
     exit();
 }
 
-$post_id = (int)$_GET['id'];
+$post_id = safe_decrypt_id($_GET['id']);
 $query = "SELECT p.*, u.first_name, u.last_name FROM posts p
           JOIN users u ON p.author_id = u.id
           WHERE p.id = ? AND p.status = 'approved'";
@@ -277,7 +278,7 @@ if (!$post = mysqli_fetch_assoc($result)) {
                 <div class="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition">
                     <div class="p-6">
                         <h3 class="text-lg font-semibold mb-2 text-seait-dark">
-                            <a href="news-detail.php?id=<?php echo $related['id']; ?>" class="hover:text-seait-orange transition">
+                            <a href="news-detail.php?id=<?php echo encrypt_id($related['id']); ?>" class="hover:text-seait-orange transition">
                                 <?php echo htmlspecialchars($related['title']); ?>
                             </a>
                         </h3>

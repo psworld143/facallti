@@ -2,6 +2,7 @@
 session_start();
 require_once 'config/database.php';
 require_once 'includes/functions.php';
+require_once 'includes/id_encryption.php';
 
 // Fetch approved news, events and announcements
 $news_query = "SELECT * FROM posts WHERE status = 'approved' AND (type = 'news' OR type = 'event') ORDER BY created_at DESC LIMIT 6";
@@ -50,7 +51,7 @@ $courses_result = mysqli_query($conn, $courses_query);
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="tailwind/tailwind.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -565,7 +566,7 @@ $courses_result = mysqli_query($conn, $courses_query);
                         <div class="space-y-3">
                             <?php foreach($college_data['courses'] as $course): ?>
                             <div class="group">
-                                <a href="course-detail.php?id=<?php echo $course['id']; ?>" class="flex items-center p-3 rounded-lg hover:bg-gray-50 transition-all duration-200 hover:shadow-sm">
+                                <a href="course-detail.php?id=<?php echo encrypt_id($course['id']); ?>" class="flex items-center p-3 rounded-lg hover:bg-gray-50 transition-all duration-200 hover:shadow-sm">
                                     <div class="w-2 h-2 bg-gradient-to-r from-seait-orange to-orange-400 rounded-full mr-3 flex-shrink-0 shadow-sm"></div>
                                     <span class="text-gray-700 group-hover:text-seait-orange font-medium transition-colors duration-200 flex-1">
                                         <?php echo htmlspecialchars($course['name']); ?>
@@ -941,7 +942,7 @@ $courses_result = mysqli_query($conn, $courses_query);
                         </div>
 
                         <h3 class="text-lg md:text-xl font-semibold mb-2 text-seait-dark">
-                            <a href="news-detail.php?id=<?php echo $news['id']; ?>" class="hover:text-seait-orange transition">
+                            <a href="news-detail.php?id=<?php echo encrypt_id($news['id']); ?>" class="hover:text-seait-orange transition">
                                 <?php echo htmlspecialchars($news['title']); ?>
                             </a>
                         </h3>
@@ -960,7 +961,7 @@ $courses_result = mysqli_query($conn, $courses_query);
                                     <i class="fas fa-newspaper mr-1"></i>News
                                 <?php endif; ?>
                             </span>
-                            <a href="news-detail.php?id=<?php echo $news['id']; ?>" class="text-seait-orange hover:underline text-xs md:text-sm">Read More</a>
+                            <a href="news-detail.php?id=<?php echo encrypt_id($news['id']); ?>" class="text-seait-orange hover:underline text-xs md:text-sm">Read More</a>
                         </div>
                     </div>
                 </div>

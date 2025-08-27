@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 header('Content-Type: application/json');
 
@@ -16,7 +17,7 @@ if (!isset($_GET['id'])) {
     exit;
 }
 
-$announcement_id = (int)$_GET['id'];
+$announcement_id = safe_decrypt_id($_GET['id']);
 $faculty_id = $_SESSION['user_id'];
 
 // Get announcement details with class information

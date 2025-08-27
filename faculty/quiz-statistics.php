@@ -5,6 +5,7 @@ error_reporting(E_ALL);
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 // Check if user is logged in and has teacher role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
@@ -13,7 +14,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
 }
 
 // Get quiz ID from URL
-$quiz_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$quiz_id = safe_decrypt_id($_GET['id']);
 if (!$quiz_id) {
     header('Location: quizzes.php');
     exit();
@@ -198,7 +199,7 @@ include 'includes/unified-header.php';
             <a href="quizzes.php" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition">
                 <i class="fas fa-arrow-left mr-2"></i>Back to Quizzes
             </a>
-            <a href="view-quiz.php?id=<?php echo $quiz_id; ?>" class="bg-seait-orange text-white px-4 py-2 rounded-md hover:bg-orange-600 transition">
+            <a href="view-quiz.php?id=<?php echo encrypt_id($quiz_id); ?>" class="bg-seait-orange text-white px-4 py-2 rounded-md hover:bg-orange-600 transition">
                 <i class="fas fa-eye mr-2"></i>View Quiz
             </a>
         </div>
