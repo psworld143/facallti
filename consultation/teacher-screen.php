@@ -14,8 +14,24 @@ if (empty($selected_department)) {
     exit();
 }
 
-// Get department information and available teachers
-$department_query = "SELECT 
+// Get current day and time
+$current_day = date('l'); // Monday, Tuesday, etc.
+$current_time = date('H:i:s'); // Current time in HH:MM:SS format
+
+// Get active semester and academic year
+$semester_query = "SELECT name, academic_year FROM semesters WHERE status = 'active' LIMIT 1";
+$semester_result = mysqli_query($conn, $semester_query);
+$active_semester = null;
+$active_academic_year = null;
+
+if ($semester_result && mysqli_num_rows($semester_result) > 0) {
+    $semester_row = mysqli_fetch_assoc($semester_result);
+    $active_semester = $semester_row['name'];
+    $active_academic_year = $semester_row['academic_year'];
+}
+
+// Get department information and available teachers (only those with consultation hours today)
+$department_query = "SELECT DISTINCT 
                     f.id,
                     f.first_name,
                     f.last_name,
@@ -24,20 +40,75 @@ $department_query = "SELECT
                     f.email,
                     f.bio,
                     f.image_url,
-                    f.is_active
+                    f.is_active,
+                    ch.start_time,
+                    ch.end_time,
+                    ch.room,
+                    ch.notes
                    FROM faculty f 
-                       WHERE f.department = ? AND f.is_active = 1
-                       ORDER BY f.first_name, f.last_name";
+                   INNER JOIN consultation_hours ch ON f.id = ch.teacher_id
+                   WHERE f.department = ? 
+                   AND f.is_active = 1
+                   AND ch.day_of_week = ?
+                   AND ch.is_active = 1
+                   AND ch.start_time <= ?
+                   AND ch.end_time >= ?
+                   " . ($active_semester ? "AND ch.semester = ?" : "") . "
+                   " . ($active_academic_year ? "AND ch.academic_year = ?" : "") . "
+                   AND f.id NOT IN (
+                       SELECT teacher_id 
+                       FROM consultation_leave 
+                       WHERE leave_date = CURDATE()
+                   )
+                   GROUP BY f.id, f.first_name, f.last_name, f.department, f.position, f.email, f.bio, f.image_url, f.is_active
+                   ORDER BY f.first_name, f.last_name";
 
 $department_stmt = mysqli_prepare($conn, $department_query);
-mysqli_stmt_bind_param($department_stmt, "s", $selected_department);
-mysqli_stmt_execute($department_stmt);
-$department_result = mysqli_stmt_get_result($department_stmt);
+if ($department_stmt) {
+    // Build parameter types and values dynamically
+    $param_types = "ssss";
+    $param_values = [$selected_department, $current_day, $current_time, $current_time];
+    
+    if ($active_semester) {
+        $param_types .= "s";
+        $param_values[] = $active_semester;
+    }
+    if ($active_academic_year) {
+        $param_types .= "s";
+        $param_values[] = $active_academic_year;
+    }
+    
+    mysqli_stmt_bind_param($department_stmt, $param_types, ...$param_values);
+    mysqli_stmt_execute($department_stmt);
+    $department_result = mysqli_stmt_get_result($department_stmt);
+} else {
+    // Fallback to simple query if prepared statement fails
+    $fallback_query = "SELECT 
+                        f.id,
+                        f.first_name,
+                        f.last_name,
+                        f.department,
+                        f.position,
+                        f.email,
+                        f.bio,
+                        f.image_url,
+                        f.is_active
+                       FROM faculty f 
+                       WHERE f.department = ? AND f.is_active = 1
+                       ORDER BY f.first_name, f.last_name";
+    
+    $fallback_stmt = mysqli_prepare($conn, $fallback_query);
+    mysqli_stmt_bind_param($fallback_stmt, "s", $selected_department);
+    mysqli_stmt_execute($fallback_stmt);
+    $department_result = mysqli_stmt_get_result($fallback_stmt);
+}
 
 $department_teachers = [];
 while ($row = mysqli_fetch_assoc($department_result)) {
     $department_teachers[] = $row;
 }
+
+// If no teachers found with consultation hours, no teachers will be displayed
 
 // Get department info
 $dept_info_query = "SELECT DISTINCT department FROM faculty WHERE department = ? LIMIT 1";
@@ -561,14 +632,14 @@ $office_session_id = uniqid('office_', true);
 </head>
 <body class="office-screen">
     <!-- Header -->
-    <header class="bg-gradient-to-r from-orange-50 to-orange-100 border-b-2 border-orange-200 mobile-header shadow-sm">
+    <header class="bg-white border-b-2 border-gray-200 mobile-header shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex flex-col sm:flex-row justify-between items-center py-3 sm:py-4 space-y-2 sm:space-y-0">
                 <div class="flex items-center">
                     <img src="../assets/images/seait-logo.png" alt="SEAIT Logo" class="h-10 sm:h-12 w-auto">
                     <div class="ml-3 sm:ml-4">
-                        <h1 class="text-lg sm:text-xl font-bold text-orange-800 mobile-text-xl">Department Consultation Monitor</h1>
-                        <p class="text-orange-600 text-xs sm:text-sm">
+                        <h1 class="text-lg sm:text-xl font-bold text-gray-800 mobile-text-xl">FaCallTI - Department Consultation Monitor</h1>
+                        <p class="text-gray-600 text-xs sm:text-sm">
                             <?php echo htmlspecialchars($selected_department); ?> - <?php echo count($department_teachers); ?> Active Teachers
                         </p>
                     </div>
@@ -576,7 +647,7 @@ $office_session_id = uniqid('office_', true);
                 <div class="flex items-center space-x-3 sm:space-x-4 mobile-status-group">
                     <div class="flex items-center space-x-2">
                         <div class="status-indicator status-available"></div>
-                        <span class="text-orange-800 font-medium text-sm sm:text-base">Available</span>
+                        <span class="text-gray-800 font-medium text-sm sm:text-base">Available</span>
                     </div>
                     <a href="index.php" class="text-orange-600 hover:text-orange-800 transition-colors text-sm sm:text-base mobile-btn">
                         <i class="fas fa-home mr-1 sm:mr-2"></i>Back to Home
@@ -597,8 +668,8 @@ $office_session_id = uniqid('office_', true);
 
             <!-- Department Monitor Screen -->
             <div class="mb-6 sm:mb-8 mobile-mb-8" id="standbyScreen">
-                <div class="w-24 h-24 sm:w-32 sm:h-32 bg-gradient-to-br from-orange-100 to-orange-200 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 border-4 border-orange-300 shadow-lg">
-                    <i class="fas fa-building text-orange-600 text-2xl sm:text-4xl mobile-icon-4xl"></i>
+                <div class="w-24 h-24 sm:w-32 sm:h-32 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 border-4 border-orange-400 shadow-xl transform hover:scale-105 transition-all duration-300">
+                    <i class="fas fa-university text-white text-2xl sm:text-4xl mobile-icon-4xl drop-shadow-lg"></i>
                 </div>
                 <h2 class="text-2xl sm:text-3xl font-bold mb-2 mobile-text-3xl text-gray-800"><?php echo htmlspecialchars($selected_department); ?></h2>
                 <p class="text-lg sm:text-xl text-orange-600 mb-1 mobile-text-xl">Department Consultation Monitor</p>
@@ -611,8 +682,19 @@ $office_session_id = uniqid('office_', true);
             <div class="mb-6 sm:mb-8 mobile-mb-8">
                 <div class="consultation-request">
                     <h3 class="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 mobile-text-2xl text-gray-800">Available Teachers</h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mobile-grid">
-                        <?php foreach ($department_teachers as $teacher): ?>
+                        
+                        <?php if (empty($department_teachers)): ?>
+                            <div class="text-center py-8">
+                                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <i class="fas fa-clock text-gray-400 text-2xl"></i>
+                                </div>
+                                <h4 class="text-lg font-semibold text-gray-700 mb-2">No Teachers Available</h4>
+                                <p class="text-gray-500">There are no teachers with consultation hours at this time.</p>
+                                <p class="text-sm text-gray-400 mt-2">Please check back during consultation hours.</p>
+                            </div>
+                        <?php else: ?>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mobile-grid">
+                            <?php foreach ($department_teachers as $teacher): ?>
                         <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-3 sm:p-4 border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:scale-105">
                             <div class="flex items-center space-x-2 sm:space-x-3">
                                 <div class="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full flex items-center justify-center flex-shrink-0 border-2 border-gray-400">
@@ -634,7 +716,8 @@ $office_session_id = uniqid('office_', true);
                             </div>
                         </div>
                         <?php endforeach; ?>
-                    </div>
+                        </div>
+                        <?php endif; ?>
                 </div>
             </div>
 
@@ -654,7 +737,7 @@ $office_session_id = uniqid('office_', true);
                     </span>
                     <span class="flex items-center text-orange-600" id="pendingRequestsCount">
                         <i class="fas fa-clock mr-1 sm:mr-2"></i>
-                        <span id="pendingCount">0</span> pending requests
+                        <span id="pendingCount"> 0 </span> pending requests
                         </span>
                     </div>
                 </div>
@@ -1077,10 +1160,10 @@ $office_session_id = uniqid('office_', true);
             
             modalContainer.innerHTML = `
                 <!-- Enhanced backdrop with stronger blur and focus -->
-                <div class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-md animate-pulse"></div>
+                <div class="fixed inset-0 bg-black bg-opacity-80 backdrop-blur-lg animate-pulse flex items-center justify-center p-4"></div>
                 
                 <!-- Enhanced modal with better focus and animations -->
-                <div class="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-2xl border-4 border-orange-500 p-4 sm:p-8 max-w-lg w-full mx-4 relative transform transition-all duration-500 modal-focus">
+                <div class="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-2xl border-4 border-orange-500 p-4 sm:p-8 max-w-4xl w-11/12 relative transform transition-all duration-500 modal-focus">
                     
                     <!-- Enhanced header with attention-grabbing design -->
                     <div class="flex items-center justify-between mb-4 sm:mb-6">
@@ -1105,45 +1188,84 @@ $office_session_id = uniqid('office_', true);
                     
                     <!-- Enhanced request details with better visual hierarchy -->
                     <div class="space-y-4 sm:space-y-6 mb-6 sm:mb-8">
-                        <div class="bg-gradient-to-r from-orange-50 to-orange-100 rounded-xl p-4 sm:p-6 border-l-4 border-orange-500 shadow-lg">
-                            <div class="flex items-center mb-3 sm:mb-4">
-                                <i class="fas fa-user-graduate text-orange-600 mr-2 sm:mr-3 text-lg sm:text-xl"></i>
-                                <span class="font-bold text-orange-800 text-base sm:text-lg">Student Information</span>
+                        <div class="bg-gradient-to-r from-orange-50 to-orange-100 rounded-xl p-6 sm:p-8 border-l-4 border-orange-500 shadow-lg">
+                            <div class="flex items-center mb-4 sm:mb-6">
+                                <i class="fas fa-user-graduate text-orange-600 mr-3 sm:mr-4 text-xl sm:text-2xl"></i>
+                                <span class="font-bold text-orange-800 text-lg sm:text-2xl">Student Information</span>
                             </div>
-                            <div class="grid grid-cols-1 gap-2 sm:gap-3 text-xs sm:text-sm">
-                                <div class="flex justify-between items-center bg-white bg-opacity-50 rounded-lg p-2">
-                                    <span class="text-orange-700 font-medium">👤 Name:</span>
-                                    <span class="font-bold text-orange-900 text-sm sm:text-lg">${request.student_name}</span>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 text-sm sm:text-base">
+                                <div class="flex justify-between items-center bg-white bg-opacity-50 rounded-lg p-3 sm:p-4">
+                                    <span class="text-orange-700 font-medium text-base sm:text-lg">👤 Name:</span>
+                                    <span class="font-bold text-orange-900 text-lg sm:text-xl">${request.student_name}</span>
                                 </div>
-                                <div class="flex justify-between items-center bg-white bg-opacity-50 rounded-lg p-2">
-                                    <span class="text-orange-700 font-medium">🏢 Department:</span>
-                                    <span class="font-bold text-orange-900 text-xs sm:text-sm">${request.student_dept}</span>
+
+                                <div class="flex justify-between items-center bg-white bg-opacity-50 rounded-lg p-3 sm:p-4">
+                                    <span class="text-orange-700 font-medium text-base sm:text-lg">👨‍🏫 Requested:</span>
+                                    <span class="font-bold text-orange-900 text-base sm:text-lg">${request.teacher_name}</span>
                                 </div>
-                                <div class="flex justify-between items-center bg-white bg-opacity-50 rounded-lg p-2">
-                                    <span class="text-orange-700 font-medium">👨‍🏫 Requested:</span>
-                                    <span class="font-bold text-orange-900 text-xs sm:text-sm">${request.teacher_name}</span>
+                                <div class="flex justify-between items-center bg-white bg-opacity-50 rounded-lg p-3 sm:p-4">
+                                    <span class="text-orange-700 font-medium text-base sm:text-lg">🕐 Time:</span>
+                                    <span class="font-bold text-orange-900 text-base sm:text-lg">${requestTime}</span>
                                 </div>
-                                <div class="flex justify-between items-center bg-white bg-opacity-50 rounded-lg p-2">
-                                    <span class="text-orange-700 font-medium">🕐 Time:</span>
-                                    <span class="font-bold text-orange-900 text-xs sm:text-sm">${requestTime}</span>
-                                </div>
-                                <div class="flex justify-between items-center bg-white bg-opacity-50 rounded-lg p-2">
-                                    <span class="text-orange-700 font-medium">⏱️ Wait Time:</span>
-                                    <span class="font-bold text-orange-900 text-xs sm:text-sm">${request.minutes_ago} minutes</span>
+                                <div class="flex justify-between items-center bg-white bg-opacity-50 rounded-lg p-3 sm:p-4 md:col-span-2">
+                                    <span class="text-orange-700 font-medium text-base sm:text-lg">⏱️ Wait Time:</span>
+                                    <span id="waitTimeCounter" class="font-bold text-orange-900 text-base sm:text-lg" data-start-time="${request.request_time}">${request.minutes_ago} minutes</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                     
+                    <!-- Decline Reason Selection (Hidden by default) -->
+                    <div id="declineReasonSection" class="hidden mb-6 sm:mb-8">
+                        <div class="bg-red-50 border border-red-200 rounded-xl p-4 sm:p-6">
+                            <h4 class="text-lg sm:text-xl font-bold text-red-800 mb-3 sm:mb-4">
+                                <i class="fas fa-exclamation-triangle mr-2 text-red-600"></i>
+                                Please select a reason for declining:
+                            </h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+                                <button onclick="selectDeclineReason('Busy with other consultation', '${request.request_id}', '${request.teacher_id}', '${request.student_name}')" 
+                                        class="reason-pill bg-white border-2 border-red-300 hover:border-red-500 hover:bg-red-50 text-red-700 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105">
+                                    <i class="fas fa-users mr-1"></i> Busy with other consultation
+                                </button>
+                                <button onclick="selectDeclineReason('In a meeting', '${request.request_id}', '${request.teacher_id}', '${request.student_name}')" 
+                                        class="reason-pill bg-white border-2 border-red-300 hover:border-red-500 hover:bg-red-50 text-red-700 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105">
+                                    <i class="fas fa-handshake mr-1"></i> In a meeting
+                                </button>
+                                <button onclick="selectDeclineReason('Office hours ended', '${request.request_id}', '${request.teacher_id}', '${request.student_name}')" 
+                                        class="reason-pill bg-white border-2 border-red-300 hover:border-red-500 hover:bg-red-50 text-red-700 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105">
+                                    <i class="fas fa-clock mr-1"></i> Office hours ended
+                                </button>
+                                <button onclick="selectDeclineReason('Not available at this time', '${request.request_id}', '${request.teacher_id}', '${request.student_name}')" 
+                                        class="reason-pill bg-white border-2 border-red-300 hover:border-red-500 hover:bg-red-50 text-red-700 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105">
+                                    <i class="fas fa-calendar-times mr-1"></i> Not available at this time
+                                </button>
+                                <button onclick="selectDeclineReason('Technical issues', '${request.request_id}', '${request.teacher_id}', '${request.student_name}')" 
+                                        class="reason-pill bg-white border-2 border-red-300 hover:border-red-500 hover:bg-red-50 text-red-700 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105">
+                                    <i class="fas fa-exclamation-triangle mr-1"></i> Technical issues
+                                </button>
+                                <button onclick="selectDeclineReason('Other', '${request.request_id}', '${request.teacher_id}', '${request.student_name}')" 
+                                        class="reason-pill bg-white border-2 border-red-300 hover:border-red-500 hover:bg-red-50 text-red-700 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105">
+                                    <i class="fas fa-ellipsis-h mr-1"></i> Other
+                                </button>
+                            </div>
+                            <div class="mt-3 sm:mt-4 text-center">
+                                <button onclick="hideDeclineReason()" 
+                                        class="text-gray-600 hover:text-gray-800 text-sm font-medium transition-colors">
+                                    <i class="fas fa-arrow-left mr-1"></i> Back to actions
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Enhanced action buttons with better focus -->
-                    <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 mb-4 sm:mb-6">
+                    <div id="actionButtons" class="flex flex-col lg:flex-row space-y-4 sm:space-y-0 lg:space-x-6 mb-6 sm:mb-8">
                         <button onclick="acceptRequest('${request.request_id}', '${request.teacher_id}', '${request.student_name}')" 
-                                class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-xl font-bold text-sm sm:text-lg border-2 border-orange-400 hover:border-orange-300 mobile-btn">
-                            <i class="fas fa-check mr-2 sm:mr-3 text-lg sm:text-xl"></i>✅ Accept Request
+                                class="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-6 sm:px-8 py-4 sm:py-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-xl font-bold text-lg sm:text-xl border-2 border-green-400 hover:border-green-300 mobile-btn">
+                            <i class="fas fa-check mr-3 sm:mr-4 text-xl sm:text-2xl"></i> Accept Request
                         </button>
-                        <button onclick="declineRequest('${request.request_id}', '${request.teacher_id}', '${request.student_name}')" 
-                                class="flex-1 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-xl font-bold text-sm sm:text-lg border-2 border-gray-400 hover:border-gray-300 mobile-btn">
-                            <i class="fas fa-times mr-2 sm:mr-3 text-lg sm:text-xl"></i>❌ Decline Request
+                        <button onclick="showDeclineReason()" 
+                                class="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-6 sm:px-8 py-4 sm:py-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-xl font-bold text-lg sm:text-xl border-2 border-red-400 hover:border-red-300 mobile-btn">
+                            <i class="fas fa-times mr-3 sm:mr-4 text-xl sm:text-2xl"></i> Decline Request
                         </button>
                     </div>
                     
@@ -1174,6 +1296,14 @@ $office_session_id = uniqid('office_', true);
             // Play notification sound
             playNotificationSound();
             
+            // Start the countdown timer (with error handling)
+            try {
+                startWaitTimeCounter();
+            } catch (error) {
+                console.error('Timer error:', error);
+                // Continue with modal display even if timer fails
+            }
+            
             // Show enhanced notification
             showEnhancedNotification(`🎯 New consultation request from ${request.student_name}!`, 'info');
             
@@ -1190,10 +1320,91 @@ $office_session_id = uniqid('office_', true);
             }, 3000);
         }
         
+        // Start wait time counter
+        function startWaitTimeCounter() {
+            const counterElement = document.getElementById('waitTimeCounter');
+            if (!counterElement) {
+                console.warn('Wait time counter element not found');
+                return;
+            }
+            
+            const startTimeString = counterElement.getAttribute('data-start-time');
+            if (!startTimeString) {
+                console.warn('No start time found for wait counter');
+                return;
+            }
+            
+            const startTime = new Date(startTimeString);
+            if (isNaN(startTime.getTime())) {
+                console.warn('Invalid start time format:', startTimeString);
+                return;
+            }
+            
+            // Get the initial minutes from the server
+            const initialMinutes = parseInt(counterElement.textContent.match(/(\d+)/)[0]) || 0;
+            
+            // Start counting from now, but add the initial minutes
+            let totalSeconds = initialMinutes * 60;
+            
+            function updateCounter() {
+                try {
+                    // Increment total seconds
+                    totalSeconds++;
+                    
+                    const minutes = Math.floor(totalSeconds / 60);
+                    const seconds = totalSeconds % 60;
+                    
+                    let timeText;
+                    if (minutes === 0) {
+                        timeText = `${seconds} seconds`;
+                    } else if (minutes === 1) {
+                        timeText = `${minutes} minute, ${seconds} seconds`;
+                    } else {
+                        timeText = `${minutes} minutes, ${seconds} seconds`;
+                    }
+                    
+                    counterElement.textContent = timeText;
+                    
+                    // Add visual emphasis for longer wait times
+                    if (minutes >= 5) {
+                        counterElement.classList.add('text-red-600', 'animate-pulse');
+                    } else if (minutes >= 3) {
+                        counterElement.classList.add('text-orange-600');
+                    }
+                } catch (error) {
+                    console.error('Error updating counter:', error);
+                }
+            }
+            
+            // Update immediately
+            updateCounter();
+            
+            // Update every second
+            const timerInterval = setInterval(updateCounter, 1000);
+            
+            // Store interval ID for cleanup
+            counterElement.setAttribute('data-timer-interval', timerInterval);
+        }
+        
+        // Stop wait time counter
+        function stopWaitTimeCounter() {
+            const counterElement = document.getElementById('waitTimeCounter');
+            if (counterElement) {
+                const intervalId = counterElement.getAttribute('data-timer-interval');
+                if (intervalId) {
+                    clearInterval(parseInt(intervalId));
+                    counterElement.removeAttribute('data-timer-interval');
+                }
+            }
+        }
+        
         // Close consultation modal
         function closeConsultationModal() {
             // Stop the notification sound when modal is closed
             stopNotificationSound();
+            
+            // Stop the wait time counter
+            stopWaitTimeCounter();
             
             const modal = document.getElementById('consultationModal');
             if (modal) {
@@ -1212,10 +1423,30 @@ $office_session_id = uniqid('office_', true);
             // Stop the notification sound immediately when user interacts
             stopNotificationSound();
             
+            // Get the current duration from wait time counter before stopping it
+            const counterElement = document.getElementById('waitTimeCounter');
+            let durationSeconds = 0;
+            
+            if (counterElement) {
+                // Extract duration from the counter text (e.g., "5 minutes, 30 seconds")
+                const timeText = counterElement.textContent;
+                const minutesMatch = timeText.match(/(\d+)\s*minutes?/);
+                const secondsMatch = timeText.match(/(\d+)\s*seconds?/);
+                
+                const minutes = minutesMatch ? parseInt(minutesMatch[1]) : 0;
+                const seconds = secondsMatch ? parseInt(secondsMatch[1]) : 0;
+                
+                durationSeconds = (minutes * 60) + seconds;
+            }
+            
+            // Stop the wait time counter
+            stopWaitTimeCounter();
+            
             const formData = new FormData();
             formData.append('request_id', requestId);
             formData.append('action', 'accept');
             formData.append('teacher_id', teacherId);
+            formData.append('duration_seconds', durationSeconds);
             
             fetch('respond-to-consultation.php', {
                 method: 'POST',
@@ -1237,6 +1468,9 @@ $office_session_id = uniqid('office_', true);
                     if (pendingCountElement) {
                         pendingCountElement.textContent = requestQueue.length;
                     }
+                    
+                    // Log the response for debugging
+                    console.log('Consultation accepted successfully:', data);
                 } else {
                     showEnhancedNotification(data.error || 'Failed to accept request', 'info');
                 }
@@ -1247,10 +1481,99 @@ $office_session_id = uniqid('office_', true);
             });
         }
         
-        // Decline specific request
+        // Show decline reason selection
+        function showDeclineReason() {
+            const reasonSection = document.getElementById('declineReasonSection');
+            const actionButtons = document.getElementById('actionButtons');
+            
+            if (reasonSection && actionButtons) {
+                reasonSection.classList.remove('hidden');
+                actionButtons.classList.add('hidden');
+            }
+        }
+        
+        // Hide decline reason selection
+        function hideDeclineReason() {
+            const reasonSection = document.getElementById('declineReasonSection');
+            const actionButtons = document.getElementById('actionButtons');
+            
+            if (reasonSection && actionButtons) {
+                reasonSection.classList.add('hidden');
+                actionButtons.classList.remove('hidden');
+            }
+        }
+        
+        // Select decline reason and process decline
+        function selectDeclineReason(reason, requestId, teacherId, studentName) {
+            // Stop the notification sound immediately when user interacts
+            stopNotificationSound();
+            
+            // Get the current duration from wait time counter before stopping it
+            const counterElement = document.getElementById('waitTimeCounter');
+            let durationSeconds = 0;
+            
+            if (counterElement) {
+                // Extract duration from the counter text (e.g., "5 minutes, 30 seconds")
+                const timeText = counterElement.textContent;
+                const minutesMatch = timeText.match(/(\d+)\s*minutes?/);
+                const secondsMatch = timeText.match(/(\d+)\s*seconds?/);
+                
+                const minutes = minutesMatch ? parseInt(minutesMatch[1]) : 0;
+                const seconds = secondsMatch ? parseInt(secondsMatch[1]) : 0;
+                
+                durationSeconds = (minutes * 60) + seconds;
+            }
+            
+            // Stop the wait time counter
+            stopWaitTimeCounter();
+            
+            const formData = new FormData();
+            formData.append('request_id', requestId);
+            formData.append('action', 'decline');
+            formData.append('teacher_id', teacherId);
+            formData.append('decline_reason', reason);
+            formData.append('duration_seconds', durationSeconds);
+            
+            fetch('respond-to-consultation.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showEnhancedNotification(`❌ Declined consultation request from ${studentName}. Reason: ${reason}`, 'info');
+                    
+                    // Remove the processed request from queue
+                    requestQueue = requestQueue.filter(req => req.request_id !== requestId);
+                    
+                    // Close current modal
+                    closeConsultationModal();
+                    
+                    // Update pending count
+                    const pendingCountElement = document.getElementById('pendingCount');
+                    if (pendingCountElement) {
+                        pendingCountElement.textContent = requestQueue.length;
+                    }
+                    
+                    // Log the response for debugging
+                    console.log('Consultation declined successfully with reason:', data);
+                } else {
+                    showEnhancedNotification(data.error || 'Failed to decline request', 'info');
+                }
+            })
+            .catch(error => {
+                console.error('Error declining consultation:', error);
+                showNotification('Network error. Please try again.', 'info');
+            });
+        }
+        
+        // Decline specific request (legacy function - now handled by selectDeclineReason)
         function declineRequest(requestId, teacherId, studentName) {
             // Stop the notification sound immediately when user interacts
             stopNotificationSound();
+            
+            // Stop the wait time counter
+            stopWaitTimeCounter();
             
             const formData = new FormData();
             formData.append('request_id', requestId);
@@ -1277,6 +1600,9 @@ $office_session_id = uniqid('office_', true);
                     if (pendingCountElement) {
                         pendingCountElement.textContent = requestQueue.length;
                     }
+                    
+                    // Log the response for debugging
+                    console.log('Consultation declined successfully:', data);
                 } else {
                     showEnhancedNotification(data.error || 'Failed to decline request', 'info');
                 }

@@ -52,74 +52,12 @@ $search = isset($_GET['search']) ? sanitize_input($_GET['search']) : '';
 $status_filter = isset($_GET['status']) ? $_GET['status'] : '';
 
 // Build the main query with filters
-// Handle department name variations more comprehensively
+// Use exact department matching only
 $head_department = $head_info['department'];
-$department_conditions = [];
-$params = [];
-$param_types = "";
+$params = [$head_department];
+$param_types = "s";
 
-// Add exact match
-$department_conditions[] = "f.department = ?";
-$params[] = $head_department;
-$param_types .= "s";
-
-// Handle "Department of X" pattern
-if (!str_contains($head_department, 'Department of ')) {
-    $department_conditions[] = "f.department = ?";
-    $params[] = 'Department of ' . $head_department;
-    $param_types .= "s";
-}
-
-// Handle "X Department" pattern  
-if (!str_contains($head_department, ' Department')) {
-    $department_conditions[] = "f.department = ?";
-    $params[] = $head_department . ' Department';
-    $param_types .= "s";
-}
-
-// Handle "College of X" pattern
-if (!str_contains($head_department, 'College of ')) {
-    $department_conditions[] = "f.department = ?";
-    $params[] = 'College of ' . $head_department;
-    $param_types .= "s";
-}
-
-// Handle reverse patterns (if head has "College of X", check for just "X")
-if (str_contains($head_department, 'College of ')) {
-    $simple_name = str_replace('College of ', '', $head_department);
-    $department_conditions[] = "f.department = ?";
-    $params[] = $simple_name;
-    $param_types .= "s";
-    
-    $department_conditions[] = "f.department = ?";
-    $params[] = 'Department of ' . $simple_name;
-    $param_types .= "s";
-}
-
-// Handle partial matches for complex department names
-// If head has "College of Business and Good Governance", also check for "College of Business"
-if (str_contains($head_department, ' and ')) {
-    $parts = explode(' and ', $head_department);
-    if (count($parts) >= 2) {
-        $first_part = trim($parts[0]);
-        $department_conditions[] = "f.department = ?";
-        $params[] = $first_part;
-        $param_types .= "s";
-    }
-}
-
-// Handle "Information and Communication Technology" vs "Information Technology" variations
-if (str_contains($head_department, 'Information and Communication Technology')) {
-    $department_conditions[] = "f.department = ?";
-    $params[] = 'College of Information Technology';
-    $param_types .= "s";
-    
-    $department_conditions[] = "f.department = ?";
-    $params[] = 'Department of Information Technology';
-    $param_types .= "s";
-}
-
-$where_conditions = ["(" . implode(' OR ', $department_conditions) . ")"];
+$where_conditions = ["f.department = ?"];
 
 if ($search) {
     $where_conditions[] = "(f.first_name LIKE ? OR f.last_name LIKE ? OR f.email LIKE ?)";

@@ -215,6 +215,15 @@ if ($user_found && $user_data) {
                 ]);
                 exit;
                 break;
+            case 'human_resource':
+                $redirect_url = $base_url . '/human-resource/index.php';
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Login successful! Redirecting to HR dashboard...',
+                    'redirect_url' => $redirect_url
+                ]);
+                exit;
+                break;
             case 'student':
                 $redirect_url = $base_url . '/students/dashboard.php';
                 echo json_encode([

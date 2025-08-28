@@ -35,76 +35,14 @@ $semesters_query = "SELECT id, name, academic_year FROM semesters WHERE status =
 $semesters_result = mysqli_query($conn, $semesters_query);
 
 // Get teachers under this head's department
-// Handle department name variations more comprehensively
+// Use exact department matching only
 $head_department = $head_info['department'];
-$department_conditions = [];
-$params = [];
-$param_types = "";
-
-// Add exact match
-$department_conditions[] = "f.department = ?";
-$params[] = $head_department;
-$param_types .= "s";
-
-// Handle "Department of X" pattern
-if (!str_contains($head_department, 'Department of ')) {
-    $department_conditions[] = "f.department = ?";
-    $params[] = 'Department of ' . $head_department;
-    $param_types .= "s";
-}
-
-// Handle "X Department" pattern  
-if (!str_contains($head_department, ' Department')) {
-    $department_conditions[] = "f.department = ?";
-    $params[] = $head_department . ' Department';
-    $param_types .= "s";
-}
-
-// Handle "College of X" pattern
-if (!str_contains($head_department, 'College of ')) {
-    $department_conditions[] = "f.department = ?";
-    $params[] = 'College of ' . $head_department;
-    $param_types .= "s";
-}
-
-// Handle reverse patterns (if head has "College of X", check for just "X")
-if (str_contains($head_department, 'College of ')) {
-    $simple_name = str_replace('College of ', '', $head_department);
-    $department_conditions[] = "f.department = ?";
-    $params[] = $simple_name;
-    $param_types .= "s";
-    
-    $department_conditions[] = "f.department = ?";
-    $params[] = 'Department of ' . $simple_name;
-    $param_types .= "s";
-}
-
-// Handle partial matches for complex department names
-// If head has "College of Business and Good Governance", also check for "College of Business"
-if (str_contains($head_department, ' and ')) {
-    $parts = explode(' and ', $head_department);
-    if (count($parts) >= 2) {
-        $first_part = trim($parts[0]);
-        $department_conditions[] = "f.department = ?";
-        $params[] = $first_part;
-        $param_types .= "s";
-    }
-}
-
-// Handle "Information and Communication Technology" vs "Information Technology" variations
-if (str_contains($head_department, 'Information and Communication Technology')) {
-    $department_conditions[] = "f.department = ?";
-    $params[] = 'College of Information Technology';
-    $param_types .= "s";
-    
-    $department_conditions[] = "f.department = ?";
-    $params[] = 'Department of Information Technology';
-    $param_types .= "s";
-}
+$params = [$head_department];
+$param_types = "s";
 
 $teachers_query = "SELECT f.id, f.first_name, f.last_name, f.email 
                    FROM faculty f 
-                   WHERE (" . implode(' OR ', $department_conditions) . ") AND f.is_active = 1 
+                   WHERE f.department = ? AND f.is_active = 1 
                    ORDER BY f.last_name, f.first_name";
 $teachers_stmt = mysqli_prepare($conn, $teachers_query);
 mysqli_stmt_bind_param($teachers_stmt, $param_types, ...$params);

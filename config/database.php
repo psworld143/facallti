@@ -6,7 +6,7 @@ $username = 'root';
 $password = '';
 
 // Create connection
-$conn = mysqli_connect($host, $username, $password, $dbname);
+$conn = mysqli_connect($host, $username, $password, $dbname, 3306, '/Applications/XAMPP/xamppfiles/var/mysql/mysql.sock');
 
 // Check connection
 if (!$conn) {
@@ -15,3 +15,6 @@ if (!$conn) {
 
 // Set charset to utf8
 mysqli_set_charset($conn, "utf8");
+
+// Set timezone to Philippines
+date_default_timezone_set('Asia/Manila');

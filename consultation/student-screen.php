@@ -1,6 +1,61 @@
 <?php
 session_start();
+
+// Set timezone BEFORE including database.php to ensure it's applied globally
+if (function_exists('date_default_timezone_set')) {
+    // Try to detect the system timezone automatically
+    $system_timezone = null;
+    
+    // Method 1: Try to get timezone from system
+    if (function_exists('shell_exec')) {
+        $system_timezone = trim(shell_exec('date +%Z'));
+        if ($system_timezone === 'PST' || $system_timezone === 'PDT') {
+            date_default_timezone_set('Asia/Manila');
+        }
+    }
+    
+    // Method 2: If system detection fails, use Philippines time
+    if (!date_default_timezone_get() || date_default_timezone_get() === 'UTC') {
+        date_default_timezone_set('Asia/Manila');
+    }
+    
+    // Method 3: Force Philippines time as fallback
+    date_default_timezone_set('Asia/Manila');
+}
+
 require_once '../config/database.php';
+
+// Double-check timezone is set correctly
+if (date_default_timezone_get() !== 'Asia/Manila') {
+    date_default_timezone_set('Asia/Manila');
+}
+
+// Debug: Log timezone and current time for verification
+error_log("Student Screen - Timezone: " . date_default_timezone_get() . ", Current Date: " . date('Y-m-d H:i:s l'));
+
+// Helper function to get correct date/time display
+function getCorrectDateTime($format) {
+    // Try to get system time if PHP time seems wrong
+    if (function_exists('shell_exec')) {
+        $system_day = trim(shell_exec('date +%A'));
+        $system_time = trim(shell_exec('date +%H:%M:%S'));
+        $system_date = trim(shell_exec('date +%Y-%m-%d'));
+        
+        // Check if there's a significant time difference (more than 1 hour)
+        $php_timestamp = strtotime(date('Y-m-d H:i:s'));
+        $system_timestamp = strtotime($system_date . ' ' . $system_time);
+        $time_diff = abs($php_timestamp - $system_timestamp);
+        
+        if ($time_diff > 3600) { // More than 1 hour difference
+            // Use system time for display
+            $system_datetime = $system_date . ' ' . $system_time;
+            return date($format, strtotime($system_datetime));
+        }
+    }
+    
+    // Use PHP time if no significant difference
+    return date($format);
+}
 
 // Set page title
 $page_title = 'Student Screen - Available Teachers';
@@ -16,8 +71,43 @@ while ($row = mysqli_fetch_assoc($check_departments_result)) {
     $available_departments[] = $row['department'];
 }
 
-// Get teachers available for consultation in the selected department
-$teachers_query = "SELECT DISTINCT 
+// Get current day of week and active semester - Use system time as fallback
+$current_day = date('l'); // Returns Monday, Tuesday, etc.
+$current_time = date('H:i:s'); // Current time in HH:MM:SS format
+
+// If PHP time seems wrong (more than 1 hour difference from system), use system time
+if (function_exists('shell_exec')) {
+    $system_day = trim(shell_exec('date +%A'));
+    $system_time = trim(shell_exec('date +%H:%M:%S'));
+    $system_date = trim(shell_exec('date +%Y-%m-%d'));
+    
+    // Check if there's a significant time difference (more than 1 hour)
+    $php_timestamp = strtotime(date('Y-m-d H:i:s'));
+    $system_timestamp = strtotime($system_date . ' ' . $system_time);
+    $time_diff = abs($php_timestamp - $system_timestamp);
+    
+    if ($time_diff > 3600) { // More than 1 hour difference
+        error_log("Time difference detected: PHP=" . date('Y-m-d H:i:s') . ", System=" . $system_date . ' ' . $system_time);
+        $current_day = $system_day;
+        $current_time = $system_time;
+    }
+}
+
+// Get active semester
+$semester_query = "SELECT name, academic_year FROM semesters WHERE status = 'active' LIMIT 1";
+$semester_result = mysqli_query($conn, $semester_query);
+$active_semester = null;
+$active_academic_year = null;
+
+if ($semester_result && mysqli_num_rows($semester_result) > 0) {
+    $semester_row = mysqli_fetch_assoc($semester_result);
+    $active_semester = $semester_row['name'];
+    $active_academic_year = $semester_row['academic_year'];
+}
+
+// Get teachers available for consultation in the selected department who have scheduled hours today
+// and are not on consultation leave (grouped to avoid duplicates)
+$teachers_query = "SELECT 
                     f.id,
                     f.first_name,
                     f.last_name,
@@ -26,15 +116,45 @@ $teachers_query = "SELECT DISTINCT
                     f.email,
                     f.bio,
                     f.image_url,
-                    f.is_active
+                    f.is_active,
+                    MIN(ch.start_time) as start_time,
+                    MAX(ch.end_time) as end_time,
+                    GROUP_CONCAT(DISTINCT ch.room ORDER BY ch.room SEPARATOR ', ') as room,
+                    GROUP_CONCAT(DISTINCT ch.notes ORDER BY ch.notes SEPARATOR '; ') as notes
                    FROM faculty f 
+                   INNER JOIN consultation_hours ch ON f.id = ch.teacher_id
                    WHERE f.is_active = 1 
                    AND f.department = ?
+                   AND ch.day_of_week = ?
+                   AND ch.is_active = 1
+                   AND ch.start_time <= ?
+                   AND ch.end_time >= ?
+                   " . ($active_semester ? "AND ch.semester = ?" : "") . "
+                   " . ($active_academic_year ? "AND ch.academic_year = ?" : "") . "
+                   AND f.id NOT IN (
+                       SELECT teacher_id 
+                       FROM consultation_leave 
+                       WHERE leave_date = CURDATE()
+                   )
+                   GROUP BY f.id, f.first_name, f.last_name, f.department, f.position, f.email, f.bio, f.image_url, f.is_active
                    ORDER BY f.first_name, f.last_name";
 
 $teachers_stmt = mysqli_prepare($conn, $teachers_query);
 if ($teachers_stmt) {
-    mysqli_stmt_bind_param($teachers_stmt, "s", $selected_department);
+    // Build parameter types and values dynamically
+    $param_types = "ssss";
+    $param_values = [$selected_department, $current_day, $current_time, $current_time];
+    
+    if ($active_semester) {
+        $param_types .= "s";
+        $param_values[] = $active_semester;
+    }
+    if ($active_academic_year) {
+        $param_types .= "s";
+        $param_values[] = $active_academic_year;
+    }
+    
+    mysqli_stmt_bind_param($teachers_stmt, $param_types, ...$param_values);
     mysqli_stmt_execute($teachers_stmt);
     $teachers_result = mysqli_stmt_get_result($teachers_stmt);
     
@@ -51,8 +171,9 @@ if ($teachers_stmt) {
 // If no teachers found for the department, try partial matching
 if (empty($teachers)) {
     
-    // Try partial matching
-    $partial_query = "SELECT DISTINCT 
+    // Try partial matching for teachers with scheduled hours today
+    // and are not on consultation leave (grouped to avoid duplicates)
+    $partial_query = "SELECT 
                         f.id,
                         f.first_name,
                         f.last_name,
@@ -61,16 +182,47 @@ if (empty($teachers)) {
                         f.email,
                         f.bio,
                         f.image_url,
-                        f.is_active
+                        f.is_active,
+                        MIN(ch.start_time) as start_time,
+                        MAX(ch.end_time) as end_time,
+                        GROUP_CONCAT(DISTINCT ch.room ORDER BY ch.room SEPARATOR ', ') as room,
+                        GROUP_CONCAT(DISTINCT ch.notes ORDER BY ch.notes SEPARATOR '; ') as notes
                        FROM faculty f 
+                       INNER JOIN consultation_hours ch ON f.id = ch.teacher_id
                        WHERE f.is_active = 1 
                        AND f.department LIKE ?
+                       AND ch.day_of_week = ?
+                       AND ch.is_active = 1
+                       AND ch.start_time <= ?
+                       AND ch.end_time >= ?
+                       " . ($active_semester ? "AND ch.semester = ?" : "") . "
+                       " . ($active_academic_year ? "AND ch.academic_year = ?" : "") . "
+                       AND f.id NOT IN (
+                           SELECT teacher_id 
+                           FROM consultation_leave 
+                           WHERE leave_date = CURDATE()
+                       )
+                       GROUP BY f.id, f.first_name, f.last_name, f.department, f.position, f.email, f.bio, f.image_url, f.is_active
                        ORDER BY f.first_name, f.last_name";
     
     $partial_stmt = mysqli_prepare($conn, $partial_query);
     if ($partial_stmt) {
         $search_term = '%' . $selected_department . '%';
-        mysqli_stmt_bind_param($partial_stmt, "s", $search_term);
+        
+        // Build parameter types and values dynamically
+        $param_types = "ssss";
+        $param_values = [$search_term, $current_day, $current_time, $current_time];
+        
+        if ($active_semester) {
+            $param_types .= "s";
+            $param_values[] = $active_semester;
+        }
+        if ($active_academic_year) {
+            $param_types .= "s";
+            $param_values[] = $active_academic_year;
+        }
+        
+        mysqli_stmt_bind_param($partial_stmt, $param_types, ...$param_values);
         mysqli_stmt_execute($partial_stmt);
         $partial_result = mysqli_stmt_get_result($partial_stmt);
         
@@ -80,10 +232,10 @@ if (empty($teachers)) {
     }
 }
 
-// If still no teachers found, get all available teachers
-if (empty($teachers)) {
+// If still no teachers found and no specific department was selected, get all available teachers
+if (empty($teachers) && empty($selected_department)) {
     
-    $fallback_query = "SELECT DISTINCT 
+    $fallback_query = "SELECT 
                         f.id,
                         f.first_name,
                         f.last_name,
@@ -92,14 +244,50 @@ if (empty($teachers)) {
                         f.email,
                         f.bio,
                         f.image_url,
-                        f.is_active
+                        f.is_active,
+                        MIN(ch.start_time) as start_time,
+                        MAX(ch.end_time) as end_time,
+                        GROUP_CONCAT(DISTINCT ch.room ORDER BY ch.room SEPARATOR ', ') as room,
+                        GROUP_CONCAT(DISTINCT ch.notes ORDER BY ch.notes SEPARATOR '; ') as notes
                        FROM faculty f 
+                       INNER JOIN consultation_hours ch ON f.id = ch.teacher_id
                        WHERE f.is_active = 1 
+                       AND ch.day_of_week = ?
+                       AND ch.is_active = 1
+                       AND ch.start_time <= ?
+                       AND ch.end_time >= ?
+                       " . ($active_semester ? "AND ch.semester = ?" : "") . "
+                       " . ($active_academic_year ? "AND ch.academic_year = ?" : "") . "
+                       AND f.id NOT IN (
+                           SELECT teacher_id 
+                           FROM consultation_leave 
+                           WHERE leave_date = CURDATE()
+                       )
+                       GROUP BY f.id, f.first_name, f.last_name, f.department, f.position, f.email, f.bio, f.image_url, f.is_active
                        ORDER BY f.department, f.first_name, f.last_name";
     
-    $fallback_result = mysqli_query($conn, $fallback_query);
-    while ($row = mysqli_fetch_assoc($fallback_result)) {
-        $teachers[] = $row;
+    $fallback_stmt = mysqli_prepare($conn, $fallback_query);
+    if ($fallback_stmt) {
+        // Build parameter types and values dynamically
+        $param_types = "sss";
+        $param_values = [$current_day, $current_time, $current_time];
+        
+        if ($active_semester) {
+            $param_types .= "s";
+            $param_values[] = $active_semester;
+        }
+        if ($active_academic_year) {
+            $param_types .= "s";
+            $param_values[] = $active_academic_year;
+        }
+        
+        mysqli_stmt_bind_param($fallback_stmt, $param_types, ...$param_values);
+        mysqli_stmt_execute($fallback_stmt);
+        $fallback_result = mysqli_stmt_get_result($fallback_stmt);
+        
+        while ($row = mysqli_fetch_assoc($fallback_result)) {
+            $teachers[] = $row;
+        }
     }
 }
 ?>
@@ -126,7 +314,149 @@ if (empty($teachers)) {
         }
     </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="fab-styles.css">
     <style>
+        /* Standby Mode Background Video Styles */
+        .standby-video-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 9999;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+        }
+        
+        .standby-video-container.active {
+            display: flex;
+            opacity: 1;
+        }
+        
+        .standby-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+        }
+        
+        .standby-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            font-weight: 600;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .standby-text {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px 40px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .standby-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 10000;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        
+        .standby-indicator.active {
+            display: block;
+            opacity: 1;
+        }
+        
+        .standby-countdown {
+            position: fixed;
+            top: 60px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 11px;
+            font-weight: 600;
+            z-index: 10000;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .standby-countdown.active {
+            display: block;
+            opacity: 1;
+        }
+        
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 10001;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+            height: 48px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .fullscreen-btn:hover {
+            background: rgba(0, 0, 0, 0.9);
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .fullscreen-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .fullscreen-btn i {
+            font-size: 18px;
+            transition: all 0.3s ease;
+        }
+        
+        .fullscreen-btn.fullscreen i {
+            transform: rotate(180deg);
+        }
+        
+        /* Fullscreen button always visible on student screen */
+        .fullscreen-btn {
+            opacity: 1;
+            pointer-events: auto;
+            transform: scale(1);
+        }
+        
+        /* Enhanced Teacher Card Styling */
         /* Enhanced Teacher Card Styling */
         .teacher-card {
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -265,6 +595,97 @@ if (empty($teachers)) {
         .glow-animation {
             animation: glow 2s ease-in-out infinite;
         }
+
+        /* Enhanced Header Card Animations */
+        .enhanced-header-card {
+            background: linear-gradient(135deg, #fff8f0 0%, #ffffff 100%);
+            border: 1px solid #fed7aa;
+            transition: all 0.3s ease;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .enhanced-header-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 40px -12px rgba(255, 107, 53, 0.15);
+        }
+
+        /* Prevent content overflow */
+        .enhanced-header-content {
+            overflow: hidden;
+        }
+
+        .enhanced-header-text {
+            overflow: hidden;
+        }
+
+        .enhanced-header-text h2 {
+            word-break: break-word;
+            hyphens: auto;
+        }
+
+        .info-grid-item {
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #ffffff 0%, #fefefe 100%);
+        }
+
+        .info-grid-item:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 16px rgba(255, 107, 53, 0.1);
+            border-color: #fb923c;
+        }
+
+        .time-display-card {
+            background: linear-gradient(135deg, #ff6b35 0%, #ea580c 100%);
+            box-shadow: 0 10px 25px rgba(255, 107, 53, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .time-display-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 35px rgba(255, 107, 53, 0.4);
+        }
+
+        .live-indicator {
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .live-time {
+            transition: all 0.3s ease;
+        }
+
+        .live-time:hover {
+            transform: scale(1.02);
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.7;
+                transform: scale(1.1);
+            }
+        }
+
+        @keyframes timeUpdate {
+            0% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.8;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .time-updating {
+            animation: timeUpdate 1s ease-in-out;
+        }
+
+
         
         /* Ultra Simple Modal - No Effects At All */
         .ultra-simple-modal {
@@ -511,11 +932,163 @@ if (empty($teachers)) {
                 max-width: none;
             }
 
-            /* Mobile Grid Adjustments */
-            .grid {
-                grid-template-columns: 1fr;
+                    /* Mobile Grid Adjustments */
+        .grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        /* Enhanced Header Card Responsive Design - Compact */
+        .enhanced-header-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .enhanced-header-content {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .enhanced-header-main {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .enhanced-header-text {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .enhanced-header-text h2 {
+            margin-bottom: 0.25rem;
+        }
+
+        .enhanced-header-text p {
+            margin-bottom: 0.75rem;
+        }
+
+        .enhanced-header-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 0.5rem;
+        }
+
+        /* Desktop Layout */
+        @media (min-width: 1024px) {
+            .enhanced-header-layout {
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+                gap: 2rem;
+                max-width: 100%;
+            }
+
+            .enhanced-header-content {
+                flex: 1;
+                max-width: calc(100% - 280px); /* Reduced space for time card */
+            }
+
+            .enhanced-header-info-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        /* Large Desktop Layout */
+        @media (min-width: 1280px) {
+            .enhanced-header-layout {
+                gap: 2.5rem;
+            }
+
+            .enhanced-header-content {
+                max-width: calc(100% - 300px);
+            }
+        }
+
+        /* Tablet Layout */
+        @media (min-width: 768px) and (max-width: 1023px) {
+            .enhanced-header-main {
+                gap: 1.5rem;
+            }
+
+            .enhanced-header-info-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* Mobile Layout */
+        @media (max-width: 767px) {
+            .enhanced-header-card {
+                padding: 1rem !important;
+            }
+
+            .enhanced-header-main {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
                 gap: 1rem;
             }
+
+            .enhanced-header-text h2 {
+                font-size: 1.5rem !important;
+                line-height: 1.3;
+            }
+
+            .enhanced-header-text p {
+                font-size: 0.875rem !important;
+            }
+
+            .enhanced-header-info-grid {
+                grid-template-columns: 1fr;
+                gap: 0.5rem;
+            }
+
+            .info-grid-item {
+                padding: 0.75rem !important;
+                text-align: left;
+            }
+
+            .time-display-card {
+                padding: 1.5rem !important;
+                margin-top: 1rem;
+            }
+
+            .time-display-card .text-xl {
+                font-size: 1.25rem !important;
+            }
+
+            .time-display-card .text-2xl {
+                font-size: 1.5rem !important;
+            }
+
+            .time-display-card .text-3xl {
+                font-size: 1.75rem !important;
+            }
+
+            /* Hide live indicator on mobile to save space */
+            .live-indicator-mobile-hide {
+                display: none;
+            }
+        }
+
+        /* Extra small mobile */
+        @media (max-width: 480px) {
+            .enhanced-header-card {
+                margin-left: -0.5rem;
+                margin-right: -0.5rem;
+                border-radius: 0.5rem;
+            }
+
+            .enhanced-header-text h2 {
+                font-size: 1.25rem !important;
+            }
+
+            .enhanced-header-info-grid {
+                margin-top: 1rem;
+            }
+        }
 
             /* Mobile Modal Adjustments */
             .modal-content {
@@ -621,6 +1194,28 @@ if (empty($teachers)) {
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col">
+    <!-- Standby Mode Background Video -->
+    <div id="standbyVideoContainer" class="standby-video-container">
+        <video id="standbyVideo" class="standby-video" autoplay muted loop>
+            <source src="background-video/developers.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+    </div>
+    
+    <!-- Standby Mode Indicator -->
+    <div id="standbyIndicator" class="standby-indicator">
+        <i class="fas fa-video mr-2"></i>Standby Mode
+    </div>
+    
+    <!-- Standby Countdown Indicator -->
+    <div id="standbyCountdown" class="standby-countdown">
+        <i class="fas fa-clock mr-1"></i>Standby in <span id="countdownTimer">10</span>s
+    </div>
+    
+    <!-- Fullscreen Button -->
+    <button id="fullscreenBtn" class="fullscreen-btn" title="Toggle Fullscreen">
+        <i class="fas fa-expand"></i>
+    </button>
     <!-- Header -->
     <header class="header-gradient shadow-lg">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -631,12 +1226,12 @@ if (empty($teachers)) {
                         <div class="absolute -top-1 -right-1 w-3 sm:w-4 h-3 sm:h-4 bg-yellow-400 rounded-full glow-animation"></div>
                     </div>
                     <div class="ml-4 sm:ml-6">
-                        <h1 class="text-lg sm:text-2xl font-bold text-white mb-1">Student Consultation Portal</h1>
+                        <h1 class="text-lg sm:text-2xl font-bold text-white mb-1">FaCallTI</h1>
                         <p class="text-xs sm:text-sm text-orange-100">
                             <?php if ($selected_department): ?>
                                 <i class="fas fa-building mr-1 sm:mr-2"></i><?php echo htmlspecialchars($selected_department); ?>
                             <?php else: ?>
-                                <i class="fas fa-users mr-1 sm:mr-2"></i>Available Teachers
+                                <i class="fas fa-users mr-1 sm:mr-2"></i>Scheduled Teachers Today
                             <?php endif; ?>
                         </p>
                     </div>
@@ -662,26 +1257,41 @@ if (empty($teachers)) {
             <p class="mt-1">The teacher has not accepted your consultation request yet. Please wait for their response or try selecting another teacher.</p>
         </div>
         <?php endif; ?>
-        
-        <!-- Page Header Card -->
-        <div class="enhanced-card rounded-xl shadow-lg p-4 sm:p-8 mb-6 sm:mb-8 border-l-4 border-orange-500">
-            <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between space-y-4 lg:space-y-0">
-                <div class="flex items-center">
-                    <div class="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center mr-4 sm:mr-6 float-animation">
-                        <i class="fas fa-chalkboard-teacher text-white text-lg sm:text-2xl"></i>
-                    </div>
-                    <div>
-                        <h2 class="text-xl sm:text-3xl font-bold text-gray-800 mb-2">Available Teachers</h2>
-                        <p class="text-gray-600 text-sm sm:text-lg">Tap on a teacher to automatically notify them and start consultation</p>
-                        <div class="flex flex-col sm:flex-row items-start sm:items-center mt-3 space-y-2 sm:space-y-0 sm:space-x-4">
+
+        <!-- Enhanced Page Header Card -->
+        <div class="enhanced-card enhanced-header-card rounded-xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6 border-l-4 border-orange-500">
+            <div class="enhanced-header-layout">
+                <!-- Left Section: Main Content -->
+               
+                
+                <!-- Right Section: Enhanced Time Display -->
+                <div class="flex-shrink-0 w-full lg:w-auto lg:min-w-[240px]">
+                    <div class="time-display-card rounded-xl p-3 sm:p-4 text-white shadow-lg border border-orange-400">
+                        <div class="text-center">
+                            <!-- Date Display -->
+                            <div class="mb-2">
+                                <p class="text-xs text-orange-100 mb-1 font-medium">Today's Date</p>
+                                <p class="text-sm sm:text-base font-bold text-white">
+                                    <?php echo getCorrectDateTime('l, F j'); ?>
+                                </p>
+                            </div>
+                            
+                            <!-- Time Display -->
+                            <div class="mb-2">
+                                <p class="text-xs text-orange-100 mb-1 font-medium flex items-center justify-center">
+                                    <span>Current Time (<?php echo date_default_timezone_get(); ?>)</span>
+                                </p>
+                                <p id="liveTime" class="text-lg sm:text-xl lg:text-2xl font-bold text-white live-time">
+                                    <?php echo getCorrectDateTime('g:i:s A'); ?>
+                                </p>
+                            </div>
+                            
+                            <!-- Status Indicator -->
+                            <div class="flex items-center justify-center space-x-2">
+                                <div class="w-2 h-2 bg-green-400 rounded-full live-indicator"></div>
+                                <span class="text-xs font-medium text-orange-100">Live Clock</span>
+                            </div>
                         </div>
-                    </div>
-                </div>
-                <div class="text-center lg:text-right w-full lg:w-auto">
-                    <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-3 sm:p-4 border border-gray-200">
-                        <p class="text-xs sm:text-sm text-gray-600 mb-1">Today</p>
-                        <p class="text-sm sm:text-lg font-semibold text-gray-800"><?php echo date('l, F j'); ?></p>
-                        <p class="text-lg sm:text-2xl font-bold text-orange-600"><?php echo date('g:i A'); ?></p>
                     </div>
                 </div>
             </div>
@@ -696,7 +1306,7 @@ if (empty($teachers)) {
                 </div>
                 <div>
                     <h3 class="text-xl sm:text-2xl font-bold text-gray-800">Select Your Department</h3>
-                    <p class="text-gray-600 text-sm sm:text-base">Choose your department to see available teachers and ensure proper consultation matching.</p>
+                    <p class="text-gray-600 text-sm sm:text-base">Choose your department to see teachers with scheduled consultation hours for today and ensure proper consultation matching.</p>
                 </div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 department-filter-grid">
@@ -725,8 +1335,8 @@ if (empty($teachers)) {
                 <button class="department-filter-btn bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-medium shadow-lg hover:from-orange-600 hover:to-orange-700 transform hover:scale-105 transition-all duration-300" 
                         data-dept="">
                     <i class="fas fa-users mr-1 sm:mr-2"></i>
-                    <span class="hidden sm:inline">Show All Teachers</span>
-                    <span class="sm:hidden">All Teachers</span>
+                    <span class="hidden sm:inline">Show All Available Today</span>
+                    <span class="sm:hidden">All Available</span>
                 </button>
                 <?php
                 
@@ -752,11 +1362,29 @@ if (empty($teachers)) {
             <?php if (empty($teachers)): ?>
                 <div class="col-span-full bg-white rounded-lg shadow-md p-8 text-center">
                     <i class="fas fa-user-slash text-gray-400 text-4xl mb-4"></i>
-                    <h3 class="text-xl font-semibold text-gray-600 mb-2">No Teachers Available</h3>
-                    <p class="text-gray-500 mb-4">No teachers are currently available for consultation.</p>
-                    <a href="index.php" class="bg-seait-orange text-white px-6 py-2 rounded-lg hover:bg-seait-dark transition-colors">
-                        Try Different Department
-                    </a>
+                    <h3 class="text-xl font-semibold text-gray-600 mb-2">No Teachers Available Today</h3>
+                    <p class="text-gray-500 mb-4">
+                        <?php if (!empty($selected_department)): ?>
+                            No teachers from <strong><?php echo htmlspecialchars($selected_department); ?></strong> have scheduled consultation hours for today (<?php echo getCorrectDateTime('l, F j, Y'); ?>).
+                        <?php else: ?>
+                            No teachers have scheduled consultation hours for today (<?php echo getCorrectDateTime('l, F j, Y'); ?>).
+                        <?php endif; ?>
+                    </p>
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                        <p class="text-yellow-800 text-sm">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            Teachers only appear when they have scheduled consultation hours for the current day and time.
+                        </p>
+                    </div>
+                    <?php if (empty($selected_department)): ?>
+                        <a href="index.php" class="bg-seait-orange text-white px-6 py-2 rounded-lg hover:bg-seait-dark transition-colors">
+                            Try Different Department
+                        </a>
+                    <?php else: ?>
+                        <a href="student-screen.php" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors">
+                            <i class="fas fa-arrow-left mr-2"></i>Back to All Departments
+                        </a>
+                    <?php endif; ?>
                 </div>
             <?php else: ?>
                 <?php foreach ($teachers as $teacher): ?>
@@ -799,6 +1427,20 @@ if (empty($teachers)) {
                                         <i class="fas fa-graduation-cap mr-1 sm:mr-2 text-orange-500"></i>
                                         <span class="truncate"><?php echo htmlspecialchars($teacher['department']); ?></span>
                                     </div>
+                                    <?php if (isset($teacher['start_time']) && isset($teacher['end_time'])): ?>
+                                    <div class="flex items-center text-gray-600 text-xs sm:text-sm mt-1">
+                                        <i class="fas fa-clock mr-1 sm:mr-2 text-green-500"></i>
+                                        <span class="truncate">
+                                            <?php 
+                                            echo date('g:i A', strtotime($teacher['start_time'])) . ' - ' . 
+                                                 date('g:i A', strtotime($teacher['end_time']));
+                                            if (isset($teacher['room']) && !empty($teacher['room'])) {
+                                                echo ' | ' . htmlspecialchars($teacher['room']);
+                                            }
+                                            ?>
+                                        </span>
+                                    </div>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
@@ -822,6 +1464,31 @@ if (empty($teachers)) {
                     </div>
                 <?php endforeach; ?>
             <?php endif; ?>
+        </div>
+
+        <!-- Floating Action Button -->
+        <div id="floatingActionButton" class="fixed bottom-6 right-6 z-40">
+            <button id="fabButton" class="fab-button">
+                <i class="fas fa-users"></i>
+            </button>
+        </div>
+
+        <!-- Floating Action Modal -->
+        <div id="fabModal" class="fab-modal">
+            <div class="fab-modal-overlay" id="fabModalOverlay"></div>
+            <div class="fab-modal-content">
+                <div class="fab-modal-header">
+                    <h3 id="fabModalTitle">Available Teachers</h3>
+                    <button id="fabModalClose" class="fab-modal-close">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="fab-modal-body">
+                    <div id="fabTeachersGrid" class="fab-teachers-grid">
+                        <!-- Teachers will be loaded here -->
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Enhanced Loading State -->
@@ -880,12 +1547,50 @@ if (empty($teachers)) {
         </div>
     </footer>
 
+    <script src="fab-script.js"></script>
     <script>
         // Wait for DOM to be ready
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM Content Loaded');
             
             try {
+            
+            // Live Clock Functionality
+            function updateLiveTime() {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: true
+                });
+                
+                const liveTimeElement = document.getElementById('liveTime');
+                if (liveTimeElement) {
+                    // Add subtle animation when time updates
+                    liveTimeElement.classList.add('time-updating');
+                    
+                    // Update the time
+                    liveTimeElement.textContent = timeString;
+                    
+                    // Remove animation class after animation completes
+                    setTimeout(() => {
+                        liveTimeElement.classList.remove('time-updating');
+                    }, 1000);
+                }
+            }
+            
+            // Update time immediately and then every second
+            updateLiveTime();
+            setInterval(updateLiveTime, 1000);
+            
+            console.log('Live clock initialized');
+            
+            // Initialize FAB with selected department
+            window.selectedDepartment = '<?php echo htmlspecialchars($selected_department ?? ""); ?>';
+            
+            // Make showConfirmationDialog globally available for FAB
+            window.showConfirmationDialog = showConfirmationDialog;
             
             // Department filter functionality
             const departmentFilterBtns = document.querySelectorAll('.department-filter-btn');
@@ -1006,8 +1711,9 @@ if (empty($teachers)) {
             fetch(`check-consultation-status.php?session_id=${encodeURIComponent(sessionId)}&t=${timestamp}`, {
                 method: 'GET',
                 headers: {
-                    'Cache-Control': 'no-cache',
-                    'Pragma': 'no-cache'
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
                 }
             })
                 .then(response => {
@@ -1019,22 +1725,35 @@ if (empty($teachers)) {
                 .then(data => {
                     console.log('Status check response:', data);
                     
+                    if (data.success === false) {
+                        console.log('No request found or error:', data.error);
+                        return;
+                    }
+                    
                     if (data.status === 'accepted') {
                         console.log('Consultation accepted! Stopping status checking...');
                         stopStatusChecking();
                         hidePendingRequest();
-                        showConsultationResponse('accepted', data.teacher_name);
+                        showConsultationResponse('accepted', data.teacher_name, data);
                         // Clear the session ID to prevent further checking
                         sessionStorage.removeItem('currentSessionId');
+                        // Play success sound
+                        playSuccessSound();
                     } else if (data.status === 'declined') {
                         console.log('Consultation declined! Stopping status checking...');
                         stopStatusChecking();
                         hidePendingRequest();
-                        showConsultationResponse('declined', data.teacher_name);
+                        showConsultationResponse('declined', data.teacher_name, data);
                         // Clear the session ID to prevent further checking
                         sessionStorage.removeItem('currentSessionId');
+                        // Play notification sound
+                        playNotificationSound();
                     } else if (data.status === 'pending') {
                         console.log('Status still pending, continuing to check...');
+                        // Update the wait time display if function exists
+                        if (typeof updateWaitTimeDisplay === 'function') {
+                            updateWaitTimeDisplay();
+                        }
                     } else {
                         console.log('Unknown status:', data.status);
                     }
@@ -1234,7 +1953,7 @@ if (empty($teachers)) {
         window.confirmConsultationRequest = confirmConsultationRequest;
         
         // Enhanced consultation response notification with audio - following teacher screen pattern
-        function showConsultationResponse(response, teacherName) {
+        function showConsultationResponse(response, teacherName, data = null) {
             // Log to console for debugging
             if (response === 'accepted') {
                 console.log(`🎉 Consultation Accepted! ${teacherName} has accepted your consultation request.`);
@@ -1352,6 +2071,15 @@ if (empty($teachers)) {
                                     <p class="text-sm sm:text-base text-gray-600 leading-relaxed mb-4">
                                         <strong>${teacherName}</strong> has declined your consultation request.
                                     </p>
+                                    ${data.decline_reason ? `
+                                    <div class="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                                        <div class="flex items-center mb-2">
+                                            <i class="fas fa-info-circle text-red-600 mr-2"></i>
+                                            <span class="text-sm font-semibold text-red-800">Reason:</span>
+                                        </div>
+                                        <p class="text-sm text-red-700">${data.decline_reason}</p>
+                                    </div>
+                                    ` : ''}
                                     <div class="bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-4 mb-4">
                                         <div class="flex items-center justify-center space-x-2 mb-2">
                                             <i class="fas fa-info-circle text-red-600"></i>
@@ -1535,6 +2263,36 @@ if (empty($teachers)) {
         
         // Make functions globally accessible
         window.stopResponseAudio = stopResponseAudio;
+        
+        // Play success sound for accepted requests
+        function playSuccessSound() {
+            try {
+                const successAudio = new Audio('notification-sound.mp3');
+                successAudio.volume = 0.4;
+                successAudio.play().catch(e => {
+                    console.log('Success audio failed:', e);
+                    playWebAudioFallback('accepted');
+                });
+            } catch (e) {
+                console.log('Success audio not supported:', e);
+                playWebAudioFallback('accepted');
+            }
+        }
+        
+        // Play notification sound for declined requests
+        function playNotificationSound() {
+            try {
+                const notificationAudio = new Audio('notification-declined.mp3');
+                notificationAudio.volume = 0.4;
+                notificationAudio.play().catch(e => {
+                    console.log('Notification audio failed:', e);
+                    playWebAudioFallback('declined');
+                });
+            } catch (e) {
+                console.log('Notification audio not supported:', e);
+                playWebAudioFallback('declined');
+            }
+        }
         
         // Enhanced fallback sound using downloaded audio files
         function playFallbackSound(response = 'accepted') {
@@ -1829,6 +2587,245 @@ if (empty($teachers)) {
             } catch (error) {
                 console.error('Error in DOMContentLoaded:', error);
             }
+        });
+
+        // Standby Mode Functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Initializing Standby Mode');
+            
+            const standbyVideoContainer = document.getElementById('standbyVideoContainer');
+            const standbyVideo = document.getElementById('standbyVideo');
+            const standbyIndicator = document.getElementById('standbyIndicator');
+            const standbyCountdown = document.getElementById('standbyCountdown');
+            const countdownTimer = document.getElementById('countdownTimer');
+            const fullscreenBtn = document.getElementById('fullscreenBtn');
+            
+            let standbyTimeout;
+            let countdownInterval;
+            let isStandbyActive = false;
+            let lastActivityTime = Date.now();
+            const STANDBY_DELAY = 10000; // 10 seconds of inactivity (reduced for testing)
+            
+            // Function to start standby mode
+            function startStandbyMode() {
+                if (isStandbyActive) return;
+                
+                console.log('Starting standby mode');
+                isStandbyActive = true;
+                
+                // Hide countdown
+                standbyCountdown.classList.remove('active');
+                
+                // Show standby video
+                standbyVideoContainer.classList.add('active');
+                standbyIndicator.classList.add('active');
+                
+                // Play video
+                if (standbyVideo) {
+                    standbyVideo.play().catch(e => {
+                        console.log('Video autoplay failed:', e);
+                    });
+                }
+            }
+            
+            // Function to stop standby mode
+            function stopStandbyMode() {
+                if (!isStandbyActive) return;
+                
+                console.log('Stopping standby mode');
+                isStandbyActive = false;
+                
+                // Hide standby video
+                standbyVideoContainer.classList.remove('active');
+                standbyIndicator.classList.remove('active');
+                
+                // Pause video
+                if (standbyVideo) {
+                    standbyVideo.pause();
+                }
+            }
+            
+            // Function to reset activity timer
+            function resetActivityTimer() {
+                lastActivityTime = Date.now();
+                
+                // Clear existing timeout and countdown
+                if (standbyTimeout) {
+                    clearTimeout(standbyTimeout);
+                }
+                if (countdownInterval) {
+                    clearInterval(countdownInterval);
+                }
+                
+                // Hide countdown
+                standbyCountdown.classList.remove('active');
+                
+                // Stop standby mode if active
+                if (isStandbyActive) {
+                    stopStandbyMode();
+                }
+                
+                // Set new timeout
+                standbyTimeout = setTimeout(() => {
+                    startStandbyMode();
+                }, STANDBY_DELAY);
+                
+                // Start countdown 5 seconds before standby
+                setTimeout(() => {
+                    if (!isStandbyActive) {
+                        startCountdown();
+                    }
+                }, STANDBY_DELAY - 5000);
+            }
+            
+            // Function to start countdown
+            function startCountdown() {
+                if (isStandbyActive) return;
+                
+                let timeLeft = 5;
+                standbyCountdown.classList.add('active');
+                countdownTimer.textContent = timeLeft;
+                
+                countdownInterval = setInterval(() => {
+                    timeLeft--;
+                    countdownTimer.textContent = timeLeft;
+                    
+                    if (timeLeft <= 0 || isStandbyActive) {
+                        clearInterval(countdownInterval);
+                        standbyCountdown.classList.remove('active');
+                    }
+                }, 1000);
+            }
+            
+            // Event listeners for user activity
+            const activityEvents = [
+                'mousemove',
+                'mousedown',
+                'mouseup',
+                'click',
+                'touchstart',
+                'touchend',
+                'touchmove',
+                'keydown',
+                'keyup',
+                'scroll',
+                'wheel'
+            ];
+            
+            activityEvents.forEach(eventType => {
+                document.addEventListener(eventType, resetActivityTimer, { passive: true });
+            });
+            
+            // Start activity timer
+            resetActivityTimer();
+            
+            // Handle video click to exit standby
+            standbyVideoContainer.addEventListener('click', function(e) {
+                e.preventDefault();
+                stopStandbyMode();
+                resetActivityTimer();
+            });
+            
+            // Handle video errors
+            if (standbyVideo) {
+                standbyVideo.addEventListener('error', function(e) {
+                    console.error('Standby video error:', e);
+                    // Fallback: just show the overlay without video
+                    standbyVideo.style.display = 'none';
+                });
+                
+                standbyVideo.addEventListener('loadeddata', function() {
+                    console.log('Standby video loaded successfully');
+                });
+            }
+            
+            // Fullscreen functionality
+            function enterFullscreen() {
+                const element = document.documentElement;
+                
+                if (element.requestFullscreen) {
+                    element.requestFullscreen();
+                } else if (element.webkitRequestFullscreen) { // Safari
+                    element.webkitRequestFullscreen();
+                } else if (element.msRequestFullscreen) { // IE/Edge
+                    element.msRequestFullscreen();
+                } else if (element.mozRequestFullScreen) { // Firefox
+                    element.mozRequestFullScreen();
+                }
+            }
+            
+            function exitFullscreen() {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) { // Safari
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) { // IE/Edge
+                    document.msExitFullscreen();
+                } else if (document.mozCancelFullScreen) { // Firefox
+                    document.mozCancelFullScreen();
+                }
+            }
+            
+            function isFullscreen() {
+                return !!(document.fullscreenElement || 
+                         document.webkitFullscreenElement || 
+                         document.msFullscreenElement || 
+                         document.mozFullScreenElement);
+            }
+            
+            // Fullscreen button click handler
+            fullscreenBtn.addEventListener('click', function() {
+                if (isFullscreen()) {
+                    exitFullscreen();
+                } else {
+                    enterFullscreen();
+                }
+            });
+            
+            // Update fullscreen button icon and state
+            function updateFullscreenButton() {
+                const icon = fullscreenBtn.querySelector('i');
+                if (isFullscreen()) {
+                    fullscreenBtn.classList.add('fullscreen');
+                    icon.className = 'fas fa-compress';
+                    fullscreenBtn.title = 'Exit Fullscreen';
+                } else {
+                    fullscreenBtn.classList.remove('fullscreen');
+                    icon.className = 'fas fa-expand';
+                    fullscreenBtn.title = 'Enter Fullscreen';
+                }
+            }
+            
+            // Listen for fullscreen changes
+            document.addEventListener('fullscreenchange', updateFullscreenButton);
+            document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
+            document.addEventListener('msfullscreenchange', updateFullscreenButton);
+            document.addEventListener('mozfullscreenchange', updateFullscreenButton);
+            
+            // Keyboard shortcut to manually trigger standby mode (Ctrl+Shift+S)
+            document.addEventListener('keydown', function(e) {
+                if (e.ctrlKey && e.shiftKey && e.key === 'S') {
+                    e.preventDefault();
+                    if (isStandbyActive) {
+                        stopStandbyMode();
+                        resetActivityTimer();
+                    } else {
+                        startStandbyMode();
+                    }
+                }
+                
+                // Fullscreen keyboard shortcut (F11)
+                if (e.key === 'F11') {
+                    e.preventDefault();
+                    if (isFullscreen()) {
+                        exitFullscreen();
+                    } else {
+                        enterFullscreen();
+                    }
+                }
+            });
+            
+            console.log('Standby mode initialized');
         });
         
         // Add error handling

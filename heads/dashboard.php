@@ -31,75 +31,13 @@ $head_info = mysqli_fetch_assoc($head_result);
 $stats = [];
 
 // Get teachers under this head's department
-// Handle department name variations more comprehensively
+// Use exact department matching only
 $head_department = $head_info['department'];
-$department_conditions = [];
-$params = [];
-$param_types = "";
-
-// Add exact match
-$department_conditions[] = "f.department = ?";
-$params[] = $head_department;
-$param_types .= "s";
-
-// Handle "Department of X" pattern
-if (!str_contains($head_department, 'Department of ')) {
-    $department_conditions[] = "f.department = ?";
-    $params[] = 'Department of ' . $head_department;
-    $param_types .= "s";
-}
-
-// Handle "X Department" pattern  
-if (!str_contains($head_department, ' Department')) {
-    $department_conditions[] = "f.department = ?";
-    $params[] = $head_department . ' Department';
-    $param_types .= "s";
-}
-
-// Handle "College of X" pattern
-if (!str_contains($head_department, 'College of ')) {
-    $department_conditions[] = "f.department = ?";
-    $params[] = 'College of ' . $head_department;
-    $param_types .= "s";
-}
-
-// Handle reverse patterns (if head has "College of X", check for just "X")
-if (str_contains($head_department, 'College of ')) {
-    $simple_name = str_replace('College of ', '', $head_department);
-    $department_conditions[] = "f.department = ?";
-    $params[] = $simple_name;
-    $param_types .= "s";
-    
-    $department_conditions[] = "f.department = ?";
-    $params[] = 'Department of ' . $simple_name;
-    $param_types .= "s";
-}
-
-// Handle partial matches for complex department names
-// If head has "College of Business and Good Governance", also check for "College of Business"
-if (str_contains($head_department, ' and ')) {
-    $parts = explode(' and ', $head_department);
-    if (count($parts) >= 2) {
-        $first_part = trim($parts[0]);
-        $department_conditions[] = "f.department = ?";
-        $params[] = $first_part;
-        $param_types .= "s";
-    }
-}
-
-// Handle "Information and Communication Technology" vs "Information Technology" variations
-if (str_contains($head_department, 'Information and Communication Technology')) {
-    $department_conditions[] = "f.department = ?";
-    $params[] = 'College of Information Technology';
-    $param_types .= "s";
-    
-    $department_conditions[] = "f.department = ?";
-    $params[] = 'Department of Information Technology';
-    $param_types .= "s";
-}
+$params = [$head_department];
+$param_types = "s";
 
 $teachers_query = "SELECT COUNT(*) as total FROM faculty f 
-                   WHERE (" . implode(' OR ', $department_conditions) . ") AND f.is_active = 1";
+                   WHERE f.department = ? AND f.is_active = 1";
 $teachers_stmt = mysqli_prepare($conn, $teachers_query);
 mysqli_stmt_bind_param($teachers_stmt, $param_types, ...$params);
 mysqli_stmt_execute($teachers_stmt);
@@ -110,7 +48,7 @@ $stats['total_teachers'] = mysqli_fetch_assoc($teachers_result)['total'];
 $evaluations_query = "SELECT COUNT(*) as total FROM evaluation_sessions es 
                       JOIN faculty f ON es.evaluatee_id = f.id 
                       WHERE es.evaluatee_type = 'teacher' AND es.status = 'completed'
-                      AND (" . implode(' OR ', $department_conditions) . ")";
+                      AND f.department = ?";
 $evaluations_stmt = mysqli_prepare($conn, $evaluations_query);
 mysqli_stmt_bind_param($evaluations_stmt, $param_types, ...$params);
 mysqli_stmt_execute($evaluations_stmt);
@@ -122,7 +60,7 @@ $avg_rating_query = "SELECT AVG(er.rating_value) as avg_rating FROM evaluation_r
                      JOIN evaluation_sessions es ON er.evaluation_session_id = es.id
                      JOIN faculty f ON es.evaluatee_id = f.id
                      WHERE es.evaluatee_type = 'teacher' AND es.status = 'completed'
-                     AND (" . implode(' OR ', $department_conditions) . ")
+                     AND f.department = ?
                      AND er.rating_value IS NOT NULL";
 $avg_rating_stmt = mysqli_prepare($conn, $avg_rating_query);
 mysqli_stmt_bind_param($avg_rating_stmt, $param_types, ...$params);
@@ -137,7 +75,7 @@ $recent_teachers_query = "SELECT DISTINCT f.id, f.first_name, f.last_name, f.ema
                            JOIN evaluation_sessions es3 ON er2.evaluation_session_id = es3.id 
                            WHERE es3.evaluatee_id = f.id AND es3.status = 'completed' AND er2.rating_value IS NOT NULL) as avg_rating
                           FROM faculty f
-                          WHERE (" . implode(' OR ', $department_conditions) . ") AND f.is_active = 1
+                          WHERE f.department = ? AND f.is_active = 1
                           HAVING evaluation_count > 0
                           ORDER BY evaluation_count DESC, avg_rating DESC
                           LIMIT 5";

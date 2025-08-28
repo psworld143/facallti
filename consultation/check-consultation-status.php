@@ -25,6 +25,8 @@ try {
                 cr.student_dept,
                 cr.request_time,
                 cr.response_time,
+                cr.response_duration_seconds,
+                cr.decline_reason,
                 f.first_name,
                 f.last_name
               FROM consultation_requests cr
@@ -49,8 +51,14 @@ try {
             'student_name' => $request['student_name'],
             'student_dept' => $request['student_dept'],
             'request_time' => $request['request_time'],
-            'response_time' => $request['response_time']
+            'response_time' => $request['response_time'],
+            'response_duration_seconds' => $request['response_duration_seconds']
         ];
+        
+        // Add decline reason if the request was declined
+        if ($request['status'] === 'declined' && $request['decline_reason']) {
+            $response['decline_reason'] = $request['decline_reason'];
+        }
         
         echo json_encode($response);
     } else {

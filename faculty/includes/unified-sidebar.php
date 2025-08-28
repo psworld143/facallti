@@ -141,6 +141,24 @@ if (!isset($current_page)) {
                 </div>
             </div>
 
+            <!-- Leave Management Section -->
+            <div class="animate-fadeInUp" style="animation-delay: 0.47s;">
+                <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Leave Management</h3>
+                <div class="space-y-1">
+                    <a href="leave-requests.php" class="flex items-center <?php echo $current_page === 'leave-requests.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                        <i class="fas fa-calendar-plus mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>My Leave Requests
+                    </a>
+
+                    <a href="leave-balance.php" class="flex items-center <?php echo $current_page === 'leave-balance.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                        <i class="fas fa-chart-pie mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Leave Balance
+                    </a>
+
+                    <a href="leave-history.php" class="flex items-center <?php echo $current_page === 'leave-history.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                        <i class="fas fa-history mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Leave History
+                    </a>
+                </div>
+            </div>
+
             <!-- Reports & Analytics Section -->
             <div class="animate-fadeInUp" style="animation-delay: 0.5s;">
                 <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Reports & Analytics</h3>
