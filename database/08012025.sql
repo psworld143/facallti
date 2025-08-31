@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Aug 19, 2025 at 05:06 AM
+-- Generation Time: Aug 31, 2025 at 03:42 AM
 -- Server version: 10.4.28-MariaDB
 -- PHP Version: 8.1.17
 
@@ -22,9 +22,10 @@ SET time_zone = "+00:00";
 --
 
 DELIMITER $$
-
-CREATE PROCEDURE `GenerateTrainingSuggestions` (IN `teacher_id` INT)
-BEGIN
+--
+-- Procedures
+--
+CREATE DEFINER=`root`@`localhost` PROCEDURE `GenerateTrainingSuggestions` (IN `teacher_id` INT)   BEGIN
     DECLARE done INT DEFAULT FALSE;
     DECLARE sub_cat_id INT;
     DECLARE sub_cat_name VARCHAR(255);
@@ -91,10 +92,9 @@ BEGIN
     END LOOP;
 
     CLOSE score_cursor;
-END $$
+END$$
 
-CREATE PROCEDURE `GetTeacherTrainingRecommendations` (IN `teacher_id` INT)
-BEGIN
+CREATE DEFINER=`root`@`localhost` PROCEDURE `GetTeacherTrainingRecommendations` (IN `teacher_id` INT)   BEGIN
     SELECT 
         ts.id as training_id,
         ts.title,
@@ -130,7 +130,50 @@ BEGIN
             ELSE 5
         END,
         ts.start_date;
-END $$
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `MarkTeacherAvailable` (IN `p_teacher_id` INT, IN `p_notes` TEXT)   BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+    
+    START TRANSACTION;
+    
+    
+    INSERT INTO teacher_availability (teacher_id, availability_date, status, notes, last_activity)
+    VALUES (p_teacher_id, CURDATE(), 'available', p_notes, NOW())
+    ON DUPLICATE KEY UPDATE
+        status = 'available',
+        scan_time = NOW(),
+        last_activity = NOW(),
+        notes = COALESCE(p_notes, notes),
+        updated_at = NOW();
+    
+    COMMIT;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `MarkTeacherUnavailable` (IN `p_teacher_id` INT, IN `p_notes` TEXT)   BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+    
+    START TRANSACTION;
+    
+    
+    UPDATE teacher_availability 
+    SET status = 'unavailable',
+        last_activity = NOW(),
+        notes = COALESCE(p_notes, notes),
+        updated_at = NOW()
+    WHERE teacher_id = p_teacher_id 
+    AND availability_date = CURDATE();
+    
+    COMMIT;
+END$$
 
 DELIMITER ;
 
@@ -169,6 +212,50 @@ INSERT INTO `academic_programs` (`id`, `name`, `description`, `level`, `duration
 -- --------------------------------------------------------
 
 --
+-- Stand-in structure for view `active_consultation_leaves`
+-- (See below for the actual view)
+--
+CREATE TABLE `active_consultation_leaves` (
+`id` int(11)
+,`teacher_id` int(11)
+,`leave_date` date
+,`reason` text
+,`created_at` timestamp
+,`first_name` varchar(50)
+,`last_name` varchar(50)
+,`department` varchar(100)
+,`position` varchar(100)
+);
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `active_consultation_requests`
+-- (See below for the actual view)
+--
+CREATE TABLE `active_consultation_requests` (
+`id` int(11)
+,`teacher_id` int(11)
+,`teacher_first_name` varchar(50)
+,`teacher_last_name` varchar(50)
+,`teacher_department` varchar(100)
+,`student_name` varchar(255)
+,`student_dept` varchar(255)
+,`student_id` varchar(255)
+,`status` enum('pending','accepted','declined','completed','cancelled')
+,`session_id` varchar(255)
+,`request_time` timestamp
+,`response_time` timestamp
+,`start_time` timestamp
+,`end_time` timestamp
+,`duration_minutes` int(11)
+,`notes` text
+,`minutes_since_request` bigint(21)
+);
+
+-- --------------------------------------------------------
+
+--
 -- Stand-in structure for view `active_students_view`
 -- (See below for the actual view)
 --
@@ -187,6 +274,28 @@ CREATE TABLE `active_students_view` (
 ,`program_id` int(11)
 ,`year_level` varchar(20)
 ,`academic_status` enum('regular','probation','suspended','graduated','withdrawn')
+);
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `active_teachers_today`
+-- (See below for the actual view)
+--
+CREATE TABLE `active_teachers_today` (
+`id` int(11)
+,`teacher_id` int(11)
+,`first_name` varchar(50)
+,`last_name` varchar(50)
+,`email` varchar(100)
+,`department` varchar(100)
+,`position` varchar(100)
+,`image_url` varchar(255)
+,`availability_date` date
+,`scan_time` timestamp
+,`status` enum('available','unavailable')
+,`last_activity` timestamp
+,`minutes_since_last_activity` bigint(21)
 );
 
 -- --------------------------------------------------------
@@ -468,6 +577,15 @@ CREATE TABLE `class_announcements` (
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Dumping data for table `class_announcements`
+--
+
+INSERT INTO `class_announcements` (`id`, `class_id`, `teacher_id`, `title`, `content`, `priority`, `is_pinned`, `created_at`, `updated_at`) VALUES
+(7, 6, 2, 'Welcome to IT3B - Application Development and Emerging Technologies', 'Welcome everyone to our exciting journey into modern application development! This semester, we will explore cutting-edge technologies and build real-world applications.', 'medium', 0, '2025-08-24 11:13:46', NULL),
+(8, 6, 2, 'Environment Setup Due Date', 'All students must complete their development environment setup by Friday. This includes Git, Node.js, VS Code, and cloud platform accounts.', 'medium', 0, '2025-08-24 11:13:46', NULL),
+(9, 6, 2, 'First Assignment Posted', 'The first assignment on Git and GitHub basics has been posted. Due date: Next Monday.', 'medium', 0, '2025-08-24 11:13:46', NULL);
+
 -- --------------------------------------------------------
 
 --
@@ -553,7 +671,22 @@ INSERT INTO `class_enrollments` (`id`, `class_id`, `student_id`, `join_date`, `s
 (65, 5, 263, '2025-08-18 23:47:47', 'enrolled', '2025-08-18 23:47:47', NULL),
 (66, 5, 264, '2025-08-18 23:47:47', 'enrolled', '2025-08-18 23:47:47', NULL),
 (67, 5, 265, '2025-08-18 23:47:47', 'enrolled', '2025-08-18 23:47:47', NULL),
-(68, 5, 266, '2025-08-18 23:47:47', 'enrolled', '2025-08-18 23:47:47', NULL);
+(68, 5, 266, '2025-08-18 23:47:47', 'enrolled', '2025-08-18 23:47:47', NULL),
+(69, 6, 1, '2025-08-24 11:02:56', 'enrolled', '2025-08-24 11:02:56', NULL),
+(70, 6, 2, '2025-08-24 11:02:56', 'enrolled', '2025-08-24 11:02:56', NULL),
+(71, 6, 4, '2025-08-24 11:02:56', 'enrolled', '2025-08-24 11:02:56', NULL),
+(72, 6, 206, '2025-08-24 11:02:56', 'enrolled', '2025-08-24 11:02:56', NULL),
+(73, 6, 207, '2025-08-24 11:02:56', 'enrolled', '2025-08-24 11:02:56', NULL),
+(74, 6, 208, '2025-08-24 11:02:56', 'enrolled', '2025-08-24 11:02:56', NULL),
+(75, 6, 209, '2025-08-24 11:02:56', 'enrolled', '2025-08-24 11:02:56', NULL),
+(76, 6, 210, '2025-08-24 11:02:56', 'enrolled', '2025-08-24 11:02:56', NULL),
+(77, 6, 211, '2025-08-24 11:02:56', 'enrolled', '2025-08-24 11:02:56', NULL),
+(78, 6, 212, '2025-08-24 11:02:56', 'enrolled', '2025-08-24 11:02:56', NULL),
+(79, 6, 213, '2025-08-24 11:02:56', 'enrolled', '2025-08-24 11:02:56', NULL),
+(80, 6, 214, '2025-08-24 11:02:56', 'enrolled', '2025-08-24 11:02:56', NULL),
+(81, 6, 215, '2025-08-24 11:02:56', 'enrolled', '2025-08-24 11:02:56', NULL),
+(82, 6, 216, '2025-08-24 11:02:56', 'enrolled', '2025-08-24 11:02:56', NULL),
+(83, 6, 217, '2025-08-24 11:02:56', 'enrolled', '2025-08-24 11:02:56', NULL);
 
 -- --------------------------------------------------------
 
@@ -577,6 +710,55 @@ CREATE TABLE `class_materials` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `class_syllabus`
+--
+
+CREATE TABLE `class_syllabus` (
+  `id` int(11) NOT NULL,
+  `class_id` int(11) NOT NULL,
+  `teacher_id` int(11) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `description` text DEFAULT NULL,
+  `course_objectives` text DEFAULT NULL,
+  `learning_outcomes` text DEFAULT NULL,
+  `prerequisites` text DEFAULT NULL,
+  `course_requirements` text DEFAULT NULL,
+  `grading_system` text DEFAULT NULL,
+  `course_policies` text DEFAULT NULL,
+  `academic_integrity` text DEFAULT NULL,
+  `attendance_policy` text DEFAULT NULL,
+  `late_submission_policy` text DEFAULT NULL,
+  `office_hours` text DEFAULT NULL,
+  `contact_information` text DEFAULT NULL,
+  `textbooks` text DEFAULT NULL,
+  `course_references` text DEFAULT NULL,
+  `schedule` text DEFAULT NULL,
+  `assessment_methods` text DEFAULT NULL,
+  `course_units` varchar(10) DEFAULT NULL,
+  `course_credits` varchar(10) DEFAULT NULL,
+  `semester` varchar(50) DEFAULT NULL,
+  `academic_year` varchar(20) DEFAULT NULL,
+  `class_schedule` text DEFAULT NULL,
+  `classroom_location` varchar(255) DEFAULT NULL,
+  `course_website` varchar(500) DEFAULT NULL,
+  `emergency_contact` text DEFAULT NULL,
+  `disability_accommodations` text DEFAULT NULL,
+  `is_published` tinyint(1) DEFAULT 0,
+  `published_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `class_syllabus`
+--
+
+INSERT INTO `class_syllabus` (`id`, `class_id`, `teacher_id`, `title`, `description`, `course_objectives`, `learning_outcomes`, `prerequisites`, `course_requirements`, `grading_system`, `course_policies`, `academic_integrity`, `attendance_policy`, `late_submission_policy`, `office_hours`, `contact_information`, `textbooks`, `course_references`, `schedule`, `assessment_methods`, `course_units`, `course_credits`, `semester`, `academic_year`, `class_schedule`, `classroom_location`, `course_website`, `emergency_contact`, `disability_accommodations`, `is_published`, `published_at`, `created_at`, `updated_at`) VALUES
+(1, 6, 2, 'Application Development and Emerging Technologies - Course Syllabus', 'This course introduces students to modern application development practices and emerging technologies. Students will learn to develop applications using current frameworks, understand cloud computing concepts, and explore cutting-edge technologies like AI/ML integration, blockchain, and IoT.', '1. Understand modern application development methodologies and frameworks\n2. Master cloud computing concepts and deployment strategies\n3. Learn to integrate emerging technologies into applications\n4. Develop skills in full-stack development\n5. Understand security best practices in modern applications\n6. Gain experience with DevOps and CI/CD pipelines', 'Upon completion of this course, students will be able to:\n• Design and develop modern web and mobile applications\n• Deploy applications to cloud platforms\n• Integrate AI/ML services into applications\n• Implement security measures in applications\n• Use version control and collaborative development tools\n• Understand and apply emerging technology trends', '• ITCC115 - Programming Fundamentals\n• ITCC114 - Database Management Systems\n• Basic knowledge of HTML, CSS, and JavaScript\n• Familiarity with object-oriented programming concepts', '• Laptop with minimum 8GB RAM and 256GB storage\n• Stable internet connection\n• GitHub account\n• Cloud platform accounts (AWS/Azure/GCP)\n• Required software: VS Code, Git, Node.js, Python\n• Mobile device for testing mobile applications', '• Class Participation: 10%\n• Assignments and Projects: 40%\n• Midterm Examination: 20%\n• Final Project: 25%\n• Attendance: 5%\n\nGrading Scale:\n• 95-100: A (Excellent)\n• 90-94: B+ (Very Good)\n• 85-89: B (Good)\n• 80-84: C+ (Fair)\n• 75-79: C (Passing)\n• Below 75: F (Failed)', '• Students must attend at least 80% of classes\n• All assignments must be submitted on time\n• Group projects require equal participation from all members\n• Use of AI tools must be properly cited and documented\n• Respect for intellectual property and copyright laws\n• Professional conduct in all class activities', '• All work must be original unless properly cited\n• Plagiarism will result in automatic failure\n• Collaboration is encouraged but individual work must be clearly identified\n• Use of AI tools must be transparent and documented\n• Violations will be reported to the academic integrity committee', '• Regular attendance is mandatory (minimum 80%)\n• Absences must be excused with valid documentation\n• Late arrivals (more than 15 minutes) count as absences\n• Three unexcused absences may result in course failure\n• Attendance will be taken at the beginning of each class', '• Assignments submitted after the deadline will receive a 10% deduction per day\n• No assignments accepted after 5 days past the deadline\n• Extensions may be granted for valid reasons with prior approval\n• Final projects have no late submission allowance\n• Technical issues are not valid excuses for late submission', '• Monday to Friday: 9:00 AM - 11:00 AM\n• Tuesday and Thursday: 2:00 PM - 4:00 PM\n• By appointment via email\n• Virtual office hours available on request\n• Emergency consultations available during business hours', '• Email: rprudente@seait.edu.ph\n• Office: IT Department, Room 205\n• Phone: (02) 8-XXX-XXXX\n• Consultation Hours: By appointment\n• Emergency Contact: Available through department secretary', 'Required Textbooks:\n• \"Modern Web Development with React\" by John Doe (2023)\n• \"Cloud Computing: Concepts and Applications\" by Jane Smith (2023)\n• \"Emerging Technologies in Software Development\" by Tech Press (2023)\n\nRecommended Reading:\n• \"The Pragmatic Programmer\" by Andrew Hunt and David Thomas\n• \"Clean Code\" by Robert C. Martin\n• \"Design Patterns\" by Gang of Four', 'Additional Resources:\n• Official documentation for frameworks and tools\n• Online courses: Udemy, Coursera, edX\n• YouTube channels: Traversy Media, The Net Ninja\n• GitHub repositories with sample projects\n• Industry blogs and technical articles\n• Conference recordings and presentations', 'Course Schedule:\n• Week 1-3: Introduction to Modern Development\n• Week 4-6: Frontend Development with React\n• Week 7-9: Backend Development with Node.js\n• Week 10-12: Cloud Computing and Deployment\n• Week 13-15: Emerging Technologies Integration\n• Week 16-18: Final Project Development\n\nClass Schedule:\n• Monday: 9:00 AM - 12:00 PM (Lecture)\n• Wednesday: 9:00 AM - 12:00 PM (Laboratory)\n• Friday: 9:00 AM - 12:00 PM (Project Work)', 'Assessment Methods:\n• Individual Assignments (30%): Weekly coding assignments\n• Group Projects (25%): Collaborative application development\n• Midterm Exam (20%): Theory and practical assessment\n• Final Project (20%): Complete application with documentation\n• Class Participation (5%): Active engagement in discussions and activities', '3', '3', 'First Semester', '2024-2025', 'Monday and Wednesday 9:00-10:30 AM', 'Room 101, Computer Science Building', 'https://canvas.university.edu/courses/12345', 'For emergencies during class, contact campus security at (555) 999-1111', 'Students with disabilities should contact the Office of Disability Services for accommodations.', 0, NULL, '2025-08-24 11:09:14', '2025-08-25 01:55:56');
 
 -- --------------------------------------------------------
 
@@ -609,6 +791,114 @@ INSERT INTO `colleges` (`id`, `name`, `short_name`, `description`, `logo_url`, `
 (6, 'Department of Civil Engineering', 'DCE', '', 'assets/images/colleges/college_1754571645.jpg', '#86442d', 1, 4, 3, '2025-08-07 13:00:45', '2025-08-07 13:00:45'),
 (7, 'College of Criminal Justice Education', 'CCJE', 'The College of Criminal Justice Education is a premier academic institution dedicated to the development of future professionals in the field of law enforcement, criminology, corrections, and public safety. With a strong commitment to academic excellence, ethical leadership, and community service, the college equips students with the knowledge, skills, and values necessary to contribute effectively to the justice system', 'assets/images/colleges/college_1754571977.jpg', '#ff6b35', 1, 0, 3, '2025-08-07 13:06:17', '2025-08-07 13:06:17'),
 (8, 'College of Agriculture and Fishiries', 'CAF', 'The College of Agriculture and Fisheries is a vital academic institution committed to advancing sustainable agriculture, aquaculture, and food security through education, research, and community engagement. Rooted in innovation and environmental stewardship, the college prepares students to become skilled professionals, researchers, and leaders in the agricultural and fisheries sectors.', 'assets/images/colleges/college_1754572098.jpg', '#29a027', 1, 0, 3, '2025-08-07 13:08:18', '2025-08-07 13:08:18');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `consultation_hours`
+--
+
+CREATE TABLE `consultation_hours` (
+  `id` int(11) NOT NULL,
+  `teacher_id` int(11) NOT NULL,
+  `semester` varchar(20) NOT NULL,
+  `academic_year` varchar(10) NOT NULL,
+  `day_of_week` enum('Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday') NOT NULL,
+  `start_time` time NOT NULL,
+  `end_time` time NOT NULL,
+  `room` varchar(50) DEFAULT 'Faculty Office',
+  `notes` text DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_by` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `consultation_hours`
+--
+
+INSERT INTO `consultation_hours` (`id`, `teacher_id`, `semester`, `academic_year`, `day_of_week`, `start_time`, `end_time`, `room`, `notes`, `is_active`, `created_by`, `created_at`, `updated_at`) VALUES
+(1, 2, 'First Semester', '2024-2025', 'Friday', '13:00:00', '19:00:00', 'Faculty Office', '', 1, 7, '2025-08-29 07:51:16', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `consultation_hours_summary`
+-- (See below for the actual view)
+--
+CREATE TABLE `consultation_hours_summary` (
+`id` int(11)
+,`teacher_id` int(11)
+,`first_name` varchar(50)
+,`last_name` varchar(50)
+,`email` varchar(100)
+,`department` varchar(100)
+,`semester` varchar(20)
+,`academic_year` varchar(10)
+,`day_of_week` enum('Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday')
+,`start_time` time
+,`end_time` time
+,`room` varchar(50)
+,`notes` text
+,`is_active` tinyint(1)
+,`created_at` timestamp
+,`updated_at` timestamp
+);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `consultation_leave`
+--
+
+CREATE TABLE `consultation_leave` (
+  `id` int(11) NOT NULL,
+  `teacher_id` int(11) NOT NULL,
+  `leave_date` date NOT NULL,
+  `reason` text NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `consultation_requests`
+--
+
+CREATE TABLE `consultation_requests` (
+  `id` int(11) NOT NULL,
+  `teacher_id` int(11) NOT NULL,
+  `student_name` varchar(255) NOT NULL,
+  `student_dept` varchar(255) DEFAULT NULL,
+  `student_id` varchar(255) DEFAULT NULL,
+  `status` enum('pending','accepted','declined','completed','cancelled') NOT NULL DEFAULT 'pending',
+  `decline_reason` varchar(255) DEFAULT NULL,
+  `teacher_response_notes` text DEFAULT NULL,
+  `session_id` varchar(255) DEFAULT NULL,
+  `request_time` timestamp NOT NULL DEFAULT current_timestamp(),
+  `response_time` timestamp NULL DEFAULT NULL,
+  `response_duration_seconds` int(11) DEFAULT NULL,
+  `start_time` timestamp NULL DEFAULT NULL,
+  `end_time` timestamp NULL DEFAULT NULL,
+  `duration_minutes` int(11) DEFAULT NULL,
+  `notes` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `consultation_requests`
+--
+
+INSERT INTO `consultation_requests` (`id`, `teacher_id`, `student_name`, `student_dept`, `student_id`, `status`, `decline_reason`, `teacher_response_notes`, `session_id`, `request_time`, `response_time`, `response_duration_seconds`, `start_time`, `end_time`, `duration_minutes`, `notes`, `created_at`, `updated_at`) VALUES
+(1, 2, 'Learner //2021-01545', 'General', '0', 'accepted', NULL, NULL, 'consultation_68b15c17935185.78599004', '2025-08-29 07:51:51', '2025-08-29 07:51:55', 4, NULL, NULL, NULL, NULL, '2025-08-29 07:51:51', '2025-08-29 07:51:55'),
+(2, 2, 'Learner //2021-01545', 'History', '0', 'accepted', NULL, NULL, 'consultation_68b15d45cd55e8.02435212', '2025-08-29 07:56:53', '2025-08-29 07:57:03', 10, NULL, NULL, NULL, NULL, '2025-08-29 07:56:53', '2025-08-29 07:57:03'),
+(3, 2, 'Learner //2021-01545', 'History', '0', 'accepted', NULL, NULL, 'consultation_68b15e6d6cbb53.39666173', '2025-08-29 08:01:49', '2025-08-29 08:01:53', 4, NULL, NULL, NULL, NULL, '2025-08-29 08:01:49', '2025-08-29 08:01:53'),
+(4, 2, 'Learner //2021-01545', 'History', '0', 'declined', 'Busy with other consultation', NULL, 'consultation_68b15eb63b73f6.81619109', '2025-08-29 08:03:02', '2025-08-29 08:03:07', 6, NULL, NULL, NULL, NULL, '2025-08-29 08:03:02', '2025-08-29 08:03:07'),
+(5, 2, 'Academic //2021-01545', 'General', '0', 'accepted', NULL, NULL, 'consultation_68b15f14b5e050.50836980', '2025-08-29 08:04:36', '2025-08-29 08:04:50', 4, NULL, NULL, NULL, NULL, '2025-08-29 08:04:36', '2025-08-29 08:04:50'),
+(6, 2, 'Student //2021-01545', 'Mathematics', '0', 'accepted', NULL, NULL, 'consultation_68b16114bbcd44.03020711', '2025-08-29 08:13:08', '2025-08-29 08:13:14', 6, NULL, NULL, NULL, NULL, '2025-08-29 08:13:08', '2025-08-29 08:13:14');
 
 -- --------------------------------------------------------
 
@@ -869,7 +1159,7 @@ CREATE TABLE `departments` (
   `created_by` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `departments`
@@ -932,6 +1222,324 @@ INSERT INTO `department_contacts` (`id`, `department_id`, `contact_type`, `title
 (22, 6, 'email', 'HR Email', 'hr@seait.edu.ph', 'fas fa-envelope', 2, 1, 1, '2025-08-05 16:50:53', '2025-08-05 16:50:53'),
 (23, 6, 'address', 'Office Location', 'Admin Building, Room 401', 'fas fa-map-marker-alt', 3, 1, 1, '2025-08-05 16:50:53', '2025-08-05 16:50:53'),
 (24, 6, 'office_hours', 'Office Hours', 'Monday - Friday: 8:00 AM - 5:00 PM', 'fas fa-clock', 4, 1, 1, '2025-08-05 16:50:53', '2025-08-05 16:50:53');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `department_heads`
+--
+
+CREATE TABLE `department_heads` (
+  `id` int(11) NOT NULL,
+  `employee_id` int(11) NOT NULL,
+  `department` varchar(100) NOT NULL,
+  `position` varchar(100) NOT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `department_heads`
+--
+
+INSERT INTO `department_heads` (`id`, `employee_id`, `department`, `position`, `is_active`, `created_at`, `updated_at`) VALUES
+(1, 4, 'College of Information and Communication Technology', 'Department Head', 1, '2025-08-28 15:19:36', NULL),
+(2, 2, 'College of Business and Good Governance', 'Department Head', 1, '2025-08-28 15:19:36', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `employees`
+--
+
+CREATE TABLE `employees` (
+  `id` int(11) NOT NULL,
+  `employee_id` varchar(20) NOT NULL,
+  `first_name` varchar(50) NOT NULL,
+  `last_name` varchar(50) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `password` varchar(255) DEFAULT NULL,
+  `position` varchar(100) NOT NULL,
+  `department` varchar(100) NOT NULL,
+  `employee_type` enum('faculty','staff','admin') DEFAULT 'staff',
+  `hire_date` date NOT NULL,
+  `phone` varchar(20) DEFAULT NULL,
+  `address` text DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `employees`
+--
+
+INSERT INTO `employees` (`id`, `employee_id`, `first_name`, `last_name`, `email`, `password`, `position`, `department`, `employee_type`, `hire_date`, `phone`, `address`, `is_active`, `created_at`, `updated_at`) VALUES
+(1, 'EMP001', 'John', 'Doe', 'john.doe@seait.edu.ph', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Professor', 'College of Information and Communication Technology', 'faculty', '2020-01-15', '+63 912 345 6789', NULL, 1, '2025-08-28 15:19:36', NULL),
+(2, 'EMP002', 'Jane', 'Smith', 'jane.smith@seait.edu.ph', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Associate Professor', 'College of Business and Good Governance', 'faculty', '2019-03-20', '+63 923 456 7890', NULL, 1, '2025-08-28 15:19:36', NULL),
+(3, 'EMP003', 'Michael', 'Johnson', 'michael.johnson@seait.edu.ph', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'HR Manager', 'Human Resources', 'admin', '2018-06-10', '+63 934 567 8901', NULL, 1, '2025-08-28 15:19:36', NULL),
+(4, 'EMP004', 'Sarah', 'Williams', 'sarah.williams@seait.edu.ph', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Department Head', 'College of Information and Communication Technology', 'faculty', '2017-08-05', '+63 945 678 9012', NULL, 1, '2025-08-28 15:19:36', NULL),
+(5, 'EMP005', 'David', 'Brown', 'david.brown@seait.edu.ph', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Administrative Staff', 'Administration', 'staff', '2021-02-14', '+63 956 789 0123', NULL, 1, '2025-08-28 15:19:36', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `employee_leave_balances`
+--
+
+CREATE TABLE `employee_leave_balances` (
+  `id` int(11) NOT NULL,
+  `employee_id` int(11) NOT NULL,
+  `leave_type_id` int(11) NOT NULL,
+  `year` int(4) NOT NULL,
+  `total_days` int(11) NOT NULL DEFAULT 0,
+  `used_days` int(11) NOT NULL DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `employee_leave_balances`
+--
+
+INSERT INTO `employee_leave_balances` (`id`, `employee_id`, `leave_type_id`, `year`, `total_days`, `used_days`, `created_at`, `updated_at`) VALUES
+(1, 1, 1, 2025, 15, 0, '2025-08-28 15:19:36', NULL),
+(2, 1, 2, 2025, 15, 0, '2025-08-28 15:19:36', NULL),
+(3, 1, 6, 2025, 3, 0, '2025-08-28 15:19:36', NULL),
+(4, 2, 1, 2025, 15, 0, '2025-08-28 15:19:36', NULL),
+(5, 2, 2, 2025, 15, 0, '2025-08-28 15:19:36', NULL),
+(6, 2, 6, 2025, 3, 0, '2025-08-28 15:19:36', NULL),
+(7, 4, 1, 2025, 15, 0, '2025-08-28 15:19:36', NULL),
+(8, 4, 2, 2025, 15, 0, '2025-08-28 15:19:36', NULL),
+(9, 4, 6, 2025, 3, 0, '2025-08-28 15:19:36', NULL),
+(10, 5, 1, 2025, 15, 0, '2025-08-28 15:19:36', NULL),
+(11, 5, 2, 2025, 15, 0, '2025-08-28 15:19:36', NULL),
+(12, 5, 6, 2025, 3, 0, '2025-08-28 15:19:36', NULL),
+(13, 3, 1, 2025, 15, 0, '2025-08-28 15:19:36', NULL),
+(14, 3, 2, 2025, 15, 0, '2025-08-28 15:19:36', NULL),
+(15, 3, 6, 2025, 3, 0, '2025-08-28 15:19:36', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `employee_leave_requests`
+--
+
+CREATE TABLE `employee_leave_requests` (
+  `id` int(11) NOT NULL,
+  `employee_id` int(11) NOT NULL,
+  `leave_type_id` int(11) NOT NULL,
+  `start_date` date NOT NULL,
+  `end_date` date NOT NULL,
+  `total_days` decimal(5,2) NOT NULL,
+  `reason` text NOT NULL,
+  `status` enum('pending','approved_by_head','approved_by_hr','rejected','cancelled') DEFAULT 'pending',
+  `department_head_approval` enum('pending','approved','rejected') DEFAULT 'pending',
+  `hr_approval` enum('pending','approved','rejected') DEFAULT 'pending',
+  `department_head_id` int(11) DEFAULT NULL,
+  `hr_approver_id` int(11) DEFAULT NULL,
+  `department_head_comment` text DEFAULT NULL,
+  `hr_comment` text DEFAULT NULL,
+  `department_head_approved_at` timestamp NULL DEFAULT NULL,
+  `hr_approved_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `employee_leave_requests`
+--
+
+INSERT INTO `employee_leave_requests` (`id`, `employee_id`, `leave_type_id`, `start_date`, `end_date`, `total_days`, `reason`, `status`, `department_head_approval`, `hr_approval`, `department_head_id`, `hr_approver_id`, `department_head_comment`, `hr_comment`, `department_head_approved_at`, `hr_approved_at`, `created_at`, `updated_at`) VALUES
+(1, 1, 1, '2025-09-01', '2025-09-05', 5.00, 'Annual family vacation', 'pending', 'pending', 'pending', NULL, NULL, NULL, NULL, NULL, NULL, '2025-08-28 15:22:06', NULL),
+(2, 2, 2, '2025-09-10', '2025-09-12', 3.00, 'Medical appointment and recovery', 'pending', 'pending', 'pending', NULL, NULL, NULL, NULL, NULL, NULL, '2025-08-28 15:22:06', NULL),
+(3, 4, 5, '2025-09-15', '2025-09-20', 6.00, 'Professional development training', 'pending', 'approved', 'pending', NULL, NULL, NULL, NULL, NULL, NULL, '2025-08-28 15:22:06', '2025-08-29 01:28:11');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `error_logs`
+--
+
+CREATE TABLE `error_logs` (
+  `id` int(11) NOT NULL,
+  `error_type` varchar(50) NOT NULL COMMENT 'Type of error (404, 500, etc.)',
+  `requested_url` text NOT NULL COMMENT 'The URL that caused the error',
+  `referrer` text DEFAULT NULL COMMENT 'The referring page',
+  `user_agent` text DEFAULT NULL COMMENT 'User agent string',
+  `ip_address` varchar(45) DEFAULT NULL COMMENT 'IP address of the user',
+  `user_id` int(11) DEFAULT NULL COMMENT 'User ID if logged in',
+  `session_id` varchar(255) DEFAULT NULL COMMENT 'Session ID',
+  `error_message` text DEFAULT NULL COMMENT 'Additional error details',
+  `stack_trace` text DEFAULT NULL COMMENT 'Stack trace for debugging',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Logs for tracking 404 errors and other issues';
+
+--
+-- Dumping data for table `error_logs`
+--
+
+INSERT INTO `error_logs` (`id`, `error_type`, `requested_url`, `referrer`, `user_agent`, `ip_address`, `user_id`, `session_id`, `error_message`, `stack_trace`, `created_at`) VALUES
+(1, '404', '/seait/login.php', 'http://localhost/seait/human-resource/admin-employee.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 16:54:12'),
+(2, '404', '/seait/404.php', 'http://localhost/seait/human-resource/manage-departments.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 16:58:52'),
+(3, '404', '/seait/404.php', 'http://localhost/seait/human-resource/manage-departments.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:00:43'),
+(4, '404', '/seait/human-resource/job-postings.php', 'http://localhost/seait/human-resource/manage-departments.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:01:30'),
+(5, '404', '/seait/human-resource/assets/css/dark-mode.css', 'http://localhost/seait/human-resource/job-postings.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:01:30'),
+(6, '404', '/seait/human-resource/assets/js/dark-mode.js', 'http://localhost/seait/human-resource/job-postings.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:01:30'),
+(7, '404', '/seait/404.php', 'http://localhost/seait/human-resource/manage-departments.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:01:38'),
+(8, '404', '/seait/404.php', 'http://localhost/seait/human-resource/manage-departments.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:04:29'),
+(9, '404', '/seait/404.php', 'http://localhost/seait/human-resource/manage-departments.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:05:04'),
+(10, '505', '/seait/505.php', 'http://localhost/seait/human-resource/manage-departments.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:06:31'),
+(11, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:07:01'),
+(12, '505', '/seait/505.php', 'http://localhost/seait/human-resource/manage-departments.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:07:22'),
+(13, '505', '/seait/505.php', 'http://localhost/seait/human-resource/manage-departments.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:07:29'),
+(14, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:08:00'),
+(15, '505', '/seait/505.php', 'http://localhost/seait/human-resource/manage-departments.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:10:33'),
+(16, '505', '/seait/505.php', 'http://localhost/seait/human-resource/manage-departments.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:12:01'),
+(17, '404', '/seait/human-resource/job-postings.php', 'http://localhost/seait/human-resource/index.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:13:20'),
+(18, '404', '/seait/human-resource/assets/css/dark-mode.css', 'http://localhost/seait/human-resource/job-postings.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:13:20'),
+(19, '404', '/seait/human-resource/assets/js/dark-mode.js', 'http://localhost/seait/human-resource/job-postings.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:13:20'),
+(20, '404', '/seait/human-resource/view-employee.php?id=oqONqAMxjJq1Z-GIjj4DU2dMjk3rTdcmRGIU5QWzuIA=', 'http://localhost/seait/human-resource/admin-employee.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:18:14'),
+(21, '404', '/seait/human-resource/assets/css/dark-mode.css', 'http://localhost/seait/human-resource/view-employee.php?id=oqONqAMxjJq1Z-GIjj4DU2dMjk3rTdcmRGIU5QWzuIA=', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:18:14'),
+(22, '404', '/seait/human-resource/assets/js/dark-mode.js', 'http://localhost/seait/human-resource/view-employee.php?id=oqONqAMxjJq1Z-GIjj4DU2dMjk3rTdcmRGIU5QWzuIA=', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:18:14'),
+(23, '404', '/seait/human-resource/leave-balances.php', 'http://localhost/seait/human-resource/index.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:19:29'),
+(24, '404', '/seait/human-resource/assets/css/dark-mode.css', 'http://localhost/seait/human-resource/leave-balances.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:19:29'),
+(25, '404', '/seait/human-resource/assets/js/dark-mode.js', 'http://localhost/seait/human-resource/leave-balances.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:19:29'),
+(26, '404', '/seait/human-resource/leave-reports.php', 'http://localhost/seait/human-resource/index.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:19:40'),
+(27, '404', '/seait/human-resource/assets/css/dark-mode.css', 'http://localhost/seait/human-resource/leave-reports.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:19:40'),
+(28, '404', '/seait/human-resource/assets/js/dark-mode.js', 'http://localhost/seait/human-resource/leave-reports.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:19:40'),
+(29, '404', '/seait/human-resource/job-postings.php', 'http://localhost/seait/human-resource/view-employee.php?id=_CIobUvQHfYoTq54Rgok2G3kCK_VZRbBww6tj54KpvA=', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:28:17'),
+(30, '404', '/seait/human-resource/assets/css/dark-mode.css', 'http://localhost/seait/human-resource/job-postings.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:28:17'),
+(31, '404', '/seait/human-resource/assets/js/dark-mode.js', 'http://localhost/seait/human-resource/job-postings.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:28:17'),
+(32, '404', '/seait/human-resource/edit-employee.php?id=WB3ZXcibtuVB847tKu5hdzZy0GrTtkOPWyB_3Y7VRwI=', 'http://localhost/seait/human-resource/view-employee.php?id=WB3ZXcibtuVB847tKu5hdzZy0GrTtkOPWyB_3Y7VRwI=', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:37:46'),
+(33, '404', '/seait/human-resource/assets/css/dark-mode.css', 'http://localhost/seait/human-resource/edit-employee.php?id=WB3ZXcibtuVB847tKu5hdzZy0GrTtkOPWyB_3Y7VRwI=', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:37:46'),
+(34, '404', '/seait/human-resource/assets/js/dark-mode.js', 'http://localhost/seait/human-resource/edit-employee.php?id=WB3ZXcibtuVB847tKu5hdzZy0GrTtkOPWyB_3Y7VRwI=', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:37:46'),
+(35, '505', '/seait/505.php', 'http://localhost/seait/human-resource/leave-management.php?tab=admin', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:52:54'),
+(36, '404', '/seait/404.php', 'http://localhost/seait/human-resource/leave-management.php?tab=all', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:52:56'),
+(37, '505', '/seait/505.php', 'http://localhost/seait/human-resource/leave-management.php?tab=admin', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:52:58'),
+(38, '404', '/seait/404.php', 'http://localhost/seait/human-resource/leave-management.php?tab=faculty', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:52:59'),
+(39, '505', '/seait/505.php', 'http://localhost/seait/human-resource/leave-management.php?tab=admin', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:53:00'),
+(40, '404', '/seait/404.php', 'http://localhost/seait/human-resource/leave-management.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:53:01'),
+(41, '505', '/seait/505.php', 'http://localhost/seait/human-resource/view-employee.php?id=WB3ZXcibtuVB847tKu5hdzZy0GrTtkOPWyB_3Y7VRwI=', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:53:01'),
+(42, '505', '/seait/505.php', 'http://localhost/seait/human-resource/view-employee.php?id=WB3ZXcibtuVB847tKu5hdzZy0GrTtkOPWyB_3Y7VRwI=', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:53:07'),
+(43, '505', '/seait/505.php', 'http://localhost/seait/human-resource/view-employee.php?id=WB3ZXcibtuVB847tKu5hdzZy0GrTtkOPWyB_3Y7VRwI=', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:54:24'),
+(44, '505', '/seait/505.php', 'http://localhost/seait/human-resource/view-employee.php?id=WB3ZXcibtuVB847tKu5hdzZy0GrTtkOPWyB_3Y7VRwI=', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:54:55'),
+(45, '505', '/seait/505.php', 'http://localhost/seait/human-resource/view-employee.php?id=WB3ZXcibtuVB847tKu5hdzZy0GrTtkOPWyB_3Y7VRwI=', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 17:57:43'),
+(46, '505', '/seait/505.php', 'http://localhost/seait/human-resource/view-employee.php?id=WB3ZXcibtuVB847tKu5hdzZy0GrTtkOPWyB_3Y7VRwI=', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:00:36'),
+(47, '505', '/seait/505.php', 'http://localhost/seait/human-resource/view-employee.php?id=WB3ZXcibtuVB847tKu5hdzZy0GrTtkOPWyB_3Y7VRwI=', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:01:55'),
+(48, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:02:26'),
+(49, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:02:57'),
+(50, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:03:28'),
+(51, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:03:59'),
+(52, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:04:30'),
+(53, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:05:01'),
+(54, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:05:32'),
+(55, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:06:03'),
+(56, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:06:34'),
+(57, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:07:05'),
+(58, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:07:36'),
+(59, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:08:07'),
+(60, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:08:38'),
+(61, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:09:09'),
+(62, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:09:40'),
+(63, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:10:11'),
+(64, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:10:42'),
+(65, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:11:13'),
+(66, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:11:44'),
+(67, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:12:15'),
+(68, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:12:46'),
+(69, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:13:17'),
+(70, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:13:48'),
+(71, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:14:19'),
+(72, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:14:50'),
+(73, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:15:21'),
+(74, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:15:52'),
+(75, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:16:23'),
+(76, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:16:54'),
+(77, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:17:25'),
+(78, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:17:56'),
+(79, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:18:27'),
+(80, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:18:58'),
+(81, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:19:29'),
+(82, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:20:00'),
+(83, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:20:31'),
+(84, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:21:02'),
+(85, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:21:33'),
+(86, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:22:04'),
+(87, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:22:35'),
+(88, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:23:06'),
+(89, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:23:37'),
+(90, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:24:08'),
+(91, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:24:39'),
+(92, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:25:10'),
+(93, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:25:41'),
+(94, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:26:12'),
+(95, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:26:43'),
+(96, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:27:14'),
+(97, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:27:45'),
+(98, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:28:16'),
+(99, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:28:47'),
+(100, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:29:18'),
+(101, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:29:49'),
+(102, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:30:20'),
+(103, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:30:51'),
+(104, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:31:22'),
+(105, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:31:53'),
+(106, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:32:24'),
+(107, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:32:55'),
+(108, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:33:26'),
+(109, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:33:57'),
+(110, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:34:28'),
+(111, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:34:59'),
+(112, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:35:30'),
+(113, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:36:01'),
+(114, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:36:32'),
+(115, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:37:03'),
+(116, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:37:34'),
+(117, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:38:05'),
+(118, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:38:36'),
+(119, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:39:07'),
+(120, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:39:38'),
+(121, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:40:09'),
+(122, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:40:40'),
+(123, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:41:11'),
+(124, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:41:42'),
+(125, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:42:13'),
+(126, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 18:42:44'),
+(127, '404', '/seait/human-resource/leave-balances.php', 'http://localhost/seait/human-resource/leave-management.php?tab=faculty', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 23:46:36'),
+(128, '404', '/seait/human-resource/assets/css/dark-mode.css', 'http://localhost/seait/human-resource/leave-balances.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 23:46:36'),
+(129, '404', '/seait/human-resource/assets/js/dark-mode.js', 'http://localhost/seait/human-resource/leave-balances.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 23:46:36'),
+(130, '404', '/seait/human-resource/leave-balances.php', 'http://localhost/seait/human-resource/leave-management.php?tab=faculty', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 23:46:41'),
+(131, '404', '/seait/human-resource/assets/css/dark-mode.css', 'http://localhost/seait/human-resource/leave-balances.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 23:46:41'),
+(132, '404', '/seait/human-resource/assets/js/dark-mode.js', 'http://localhost/seait/human-resource/leave-balances.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 23:46:41'),
+(133, '505', '/seait/505.php', 'http://localhost/seait/heads/leave-requests.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-28 23:47:10'),
+(134, '404', '/seait/human-resource/leave-balances.php', 'http://localhost/seait/human-resource/leave-management.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-29 00:57:13'),
+(135, '404', '/seait/human-resource/assets/css/dark-mode.css', 'http://localhost/seait/human-resource/leave-balances.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-29 00:57:13'),
+(136, '404', '/seait/human-resource/assets/js/dark-mode.js', 'http://localhost/seait/human-resource/leave-balances.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-29 00:57:13'),
+(137, '505', '/seait/505.php', 'http://localhost/seait/human-resource/leave-management.php?tab=faculty', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-29 00:58:08'),
+(138, '505', '/seait/505.php', 'http://localhost/seait/human-resource/leave-management.php?tab=faculty', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-29 00:58:14'),
+(139, '505', '/seait/505.php', 'http://localhost/seait/human-resource/leave-management.php?tab=faculty', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-29 00:58:53'),
+(140, '404', '/seait/human-resource/leave-balances.php', 'http://localhost/seait/human-resource/leave-management.php?tab=employee&status=&department=&date_from=&date_to=&search=', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-29 01:18:52'),
+(141, '404', '/seait/human-resource/assets/css/dark-mode.css', 'http://localhost/seait/human-resource/leave-balances.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-29 01:18:52'),
+(142, '404', '/seait/human-resource/assets/js/dark-mode.js', 'http://localhost/seait/human-resource/leave-balances.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-29 01:18:52'),
+(143, '505', '/seait/505.php', 'http://localhost/seait/heads/leave-requests.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-29 01:38:49'),
+(144, '505', '/seait/505.php', 'http://localhost/seait/heads/leave-requests.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-29 01:41:39'),
+(145, '505', '/seait/505.php', 'http://localhost/seait/heads/leave-requests.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-29 01:42:56'),
+(146, '505', '/seait/505.php', 'http://localhost/seait/heads/leave-requests.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-29 01:47:32'),
+(147, '505', '/seait/505.php', 'http://localhost/seait/faculty/dashboard.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-29 02:16:24'),
+(148, '505', '/seait/505.php', 'http://localhost/seait/faculty/leave-history.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-29 02:18:15'),
+(149, '505', '/seait/505.php', 'http://localhost/seait/faculty/leave-history.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-29 02:21:12'),
+(150, '505', '/seait/505.php', 'http://localhost/seait/faculty/leave-history.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-29 02:23:04'),
+(151, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-29 02:23:35'),
+(152, '505', '/seait/505.php', 'http://localhost/seait/faculty/leave-history.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-29 02:24:00'),
+(153, '505', '/seait/505.php', 'http://localhost/seait/faculty/leave-history.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-29 02:28:25'),
+(154, '505', '/seait/505.php', 'http://localhost/seait/faculty/leave-history.php', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Mobile Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-29 02:28:58'),
+(155, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-29 02:29:28'),
+(156, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-29 02:29:59'),
+(157, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-29 02:30:30'),
+(158, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-29 02:31:01'),
+(159, '505', '/seait/505.php', 'http://localhost/seait/505.php', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '::1', NULL, NULL, NULL, NULL, '2025-08-29 02:31:32');
 
 -- --------------------------------------------------------
 
@@ -1471,23 +2079,63 @@ CREATE TABLE `faculty` (
   `bio` text DEFAULT NULL,
   `image_url` varchar(255) DEFAULT NULL,
   `is_active` tinyint(1) DEFAULT 1,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `qrcode` varchar(255) DEFAULT NULL COMMENT 'QR code identifier for teacher'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Faculty members with comprehensive HR information';
 
 --
 -- Dumping data for table `faculty`
 --
 
-INSERT INTO `faculty` (`id`, `first_name`, `last_name`, `email`, `password`, `position`, `department`, `bio`, `image_url`, `is_active`, `created_at`) VALUES
-(1, 'Dr. Maria', 'Santos', 'msantos@seait.edu.ph', '$2y$10$NXCWm8t7bTMY4MU3HTwKYOHsiXA4uPQGWJdd06K38IKuLe/DKkqVC', 'Dean', 'College of Engineering', 'Expert in computer engineering with 15 years of experience', NULL, 1, '2025-08-05 10:14:11'),
-(2, 'Michael Paul', 'Sebando', 'msebando@seait.edu.ph', '$2y$10$KM8tKMYTqJ3De938qIT21OHM0oI7xCgcU1cqZmVDMwdh4aiqGoula', 'Professor', 'College of Information and Communication Technology', 'Specialist in software engineering and web development', '', 1, '2025-08-05 10:14:11'),
-(3, 'Dr. Ana', 'Reyes', 'areyes@seait.edu.ph', NULL, 'Associate Professor', 'College of Business', 'Expert in business management and entrepreneurship', NULL, 1, '2025-08-05 10:14:11'),
-(4, 'Dr. Roberto', 'Garcia', 'rgarcia@seait.edu.ph', NULL, 'Dean', 'College of Information Technology', 'Expert in software engineering and artificial intelligence with 20 years of experience', NULL, 1, '2025-08-05 10:17:11'),
-(5, 'Prof. Maria', 'Lopez', 'mlopez@seait.edu.ph', NULL, 'Professor', 'Department of Computer Science', 'Specialist in data science and machine learning applications', NULL, 1, '2025-08-05 10:17:11'),
-(6, 'Dr. Carlos', 'Martinez', 'cmartinez@seait.edu.ph', NULL, 'Associate Professor', 'Department of Electronics Engineering', 'Expert in embedded systems and IoT technologies', NULL, 1, '2025-08-05 10:17:11'),
-(7, 'Prof. Ana', 'Gonzalez', 'agonzalez@seait.edu.ph', NULL, 'Assistant Professor', 'College of Business', 'Specialist in digital marketing and e-commerce', NULL, 1, '2025-08-05 10:17:11'),
-(8, 'Dr. Jose', 'Rodriguez', 'jrodriguez@seait.edu.ph', NULL, 'Professor', 'Department of Information Systems', 'Expert in enterprise systems and business intelligence', NULL, 1, '2025-08-05 10:17:11'),
-(9, 'Mary Joy', 'Fernandez', 'mjfernandez@seait.edu.ph', '$2y$10$R24anZMA596YhGqULkFnd.5i3Rc8d4KP/G6FNNEsYgh53XRjw6kEK', 'Program Head', 'College of Information and Communication Technology', '', 'uploads/faculty/6898b0db649c3.jpg', 1, '2025-08-10 14:46:51');
+INSERT INTO `faculty` (`id`, `first_name`, `last_name`, `email`, `password`, `position`, `department`, `bio`, `image_url`, `is_active`, `created_at`, `qrcode`) VALUES
+(1, 'John', 'Smith', 'john.smith@seait.edu.ph', NULL, 'Associate Professor', 'Computer Science', NULL, NULL, 1, '2025-08-28 14:32:49', '2025-0001'),
+(2, 'Michael Paul', 'Sebando', 'msebando@seait.edu.ph', '$2y$10$KM8tKMYTqJ3De938qIT21OHM0oI7xCgcU1cqZmVDMwdh4aiqGoula', 'Professor', 'College of Information and Communication Technology', 'Specialist in software engineering and web development', '', 1, '2025-08-05 10:14:11', '2025-0002'),
+(3, 'Robert', 'Johnson', 'robert.johnson@seait.edu.ph', NULL, 'Professor', 'Information Technology', NULL, NULL, 1, '2025-08-28 14:32:49', '2025-0003'),
+(4, 'Ana', 'Martinez', 'ana.martinez@seait.edu.ph', NULL, 'Instructor', 'Information Technology', NULL, NULL, 1, '2025-08-28 14:32:49', '2025-0004'),
+(5, 'David', 'Brown', 'david.brown@seait.edu.ph', NULL, 'Associate Professor', 'Computer Engineering', NULL, NULL, 1, '2025-08-28 14:32:49', '2025-0005'),
+(6, 'Lisa', 'Davis', 'lisa.davis@seait.edu.ph', NULL, 'Assistant Professor', 'Computer Engineering', NULL, NULL, 1, '2025-08-28 14:32:49', '2025-0006'),
+(7, 'Michael', 'Wilson', 'michael.wilson@seait.edu.ph', NULL, 'Instructor', 'Computer Science', NULL, NULL, 1, '2025-08-28 14:32:49', '2025-0007'),
+(8, 'Sarah', 'Anderson', 'sarah.anderson@seait.edu.ph', NULL, 'Professor', 'Information Technology', NULL, NULL, 1, '2025-08-28 14:32:49', '2025-0008'),
+(9, 'Mary Joy', 'Fernandez', 'mjfernandez@seait.edu.ph', '$2y$10$R24anZMA596YhGqULkFnd.5i3Rc8d4KP/G6FNNEsYgh53XRjw6kEK', 'Program Head', 'College of Information and Communication Technology', '', 'uploads/faculty/6898b0db649c3.jpg', 1, '2025-08-10 14:46:51', '2025-0009'),
+(10, 'Emily', 'Thomas', 'emily.thomas@seait.edu.ph', NULL, 'Assistant Professor', 'Computer Science', NULL, NULL, 1, '2025-08-28 14:32:49', '2025-0010');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `faculty_details`
+--
+
+CREATE TABLE `faculty_details` (
+  `id` int(11) NOT NULL,
+  `faculty_id` int(11) NOT NULL COMMENT 'Foreign key to faculty table',
+  `middle_name` varchar(50) DEFAULT NULL COMMENT 'Middle name of the faculty member',
+  `date_of_birth` date DEFAULT NULL COMMENT 'Date of birth of the faculty member',
+  `gender` enum('Male','Female','Other') DEFAULT NULL COMMENT 'Gender of the faculty member',
+  `civil_status` enum('Single','Married','Widowed','Divorced','Separated') DEFAULT NULL COMMENT 'Civil status of the faculty member',
+  `nationality` varchar(50) DEFAULT NULL COMMENT 'Nationality of the faculty member',
+  `religion` varchar(100) DEFAULT NULL COMMENT 'Religion of the faculty member',
+  `phone` varchar(20) DEFAULT NULL COMMENT 'Phone number of the faculty member',
+  `emergency_contact_name` varchar(100) DEFAULT NULL COMMENT 'Name of emergency contact person',
+  `emergency_contact_number` varchar(20) DEFAULT NULL COMMENT 'Phone number of emergency contact',
+  `address` text DEFAULT NULL COMMENT 'Complete address of the faculty member',
+  `employee_id` varchar(50) DEFAULT NULL COMMENT 'Employee ID number',
+  `date_of_hire` date DEFAULT NULL COMMENT 'Date when faculty member was hired',
+  `employment_type` enum('Full-time','Part-time','Contract','Temporary','Probationary') DEFAULT NULL COMMENT 'Type of employment',
+  `basic_salary` decimal(10,2) DEFAULT NULL COMMENT 'Basic salary amount',
+  `salary_grade` varchar(20) DEFAULT NULL COMMENT 'Salary grade level',
+  `allowances` decimal(10,2) DEFAULT NULL COMMENT 'Additional allowances amount',
+  `pay_schedule` enum('Monthly','Bi-weekly','Weekly') DEFAULT NULL COMMENT 'Payment schedule',
+  `highest_education` enum('High School','Associate Degree','Bachelor''s Degree','Master''s Degree','Doctorate','Post-Doctorate') DEFAULT NULL COMMENT 'Highest educational attainment',
+  `field_of_study` varchar(100) DEFAULT NULL COMMENT 'Field of study or specialization',
+  `school_university` varchar(200) DEFAULT NULL COMMENT 'School or university attended',
+  `year_graduated` int(4) DEFAULT NULL COMMENT 'Year of graduation',
+  `tin_number` varchar(20) DEFAULT NULL COMMENT 'Tax Identification Number',
+  `sss_number` varchar(20) DEFAULT NULL COMMENT 'Social Security System number',
+  `philhealth_number` varchar(20) DEFAULT NULL COMMENT 'PhilHealth number',
+  `pagibig_number` varchar(20) DEFAULT NULL COMMENT 'PAG-IBIG number',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp() COMMENT 'Record creation timestamp',
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp() COMMENT 'Record update timestamp'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Comprehensive HR details for faculty members';
 
 -- --------------------------------------------------------
 
@@ -1519,7 +2167,83 @@ INSERT INTO `faculty_events` (`id`, `teacher_id`, `title`, `description`, `event
 (5, 1, 'First Class Meeting', 'Introduction to the course and syllabus review', '2025-08-11', 'class', NULL, '2025-08-10 23:46:46', NULL),
 (6, 1, 'Midterm Exam', 'Comprehensive exam covering chapters 1-5', '2025-08-18', 'exam', NULL, '2025-08-10 23:46:46', NULL),
 (7, 1, 'Assignment Submission', 'Final project submission deadline', '2025-08-25', 'assignment', NULL, '2025-08-10 23:46:46', NULL),
-(8, 1, 'Department Meeting', 'Monthly faculty meeting to discuss curriculum updates', '2025-08-14', 'meeting', NULL, '2025-08-10 23:46:46', NULL);
+(8, 1, 'Department Meeting', 'Monthly faculty meeting to discuss curriculum updates', '2025-08-14', 'meeting', NULL, '2025-08-10 23:46:46', NULL),
+(9, 2, 'Guest Speaker: Modern Web Development', 'Industry expert will discuss current trends in web development and career opportunities.', '2025-09-15', 'class', 6, '2025-08-24 11:15:02', NULL),
+(10, 2, 'Hackathon: Build a Modern Web App', '24-hour hackathon to build a complete web application using React and Node.js.', '2025-10-20', 'class', 6, '2025-08-24 11:15:02', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `faculty_leave_balances`
+--
+
+CREATE TABLE `faculty_leave_balances` (
+  `id` int(11) NOT NULL,
+  `faculty_id` int(11) NOT NULL,
+  `leave_type_id` int(11) NOT NULL,
+  `year` int(4) NOT NULL,
+  `total_days` int(11) NOT NULL DEFAULT 0,
+  `used_days` int(11) NOT NULL DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `faculty_leave_balances`
+--
+
+INSERT INTO `faculty_leave_balances` (`id`, `faculty_id`, `leave_type_id`, `year`, `total_days`, `used_days`, `created_at`, `updated_at`) VALUES
+(1, 1, 1, 2025, 15, 0, '2025-08-28 15:19:36', NULL),
+(2, 1, 2, 2025, 15, 0, '2025-08-28 15:19:36', NULL),
+(3, 1, 6, 2025, 3, 0, '2025-08-28 15:19:36', NULL),
+(4, 2, 1, 2025, 15, 0, '2025-08-28 15:19:36', NULL),
+(5, 2, 2, 2025, 15, 0, '2025-08-28 15:19:36', NULL),
+(6, 2, 6, 2025, 3, 0, '2025-08-28 15:19:36', NULL),
+(7, 3, 1, 2025, 15, 0, '2025-08-28 15:19:36', NULL),
+(8, 3, 2, 2025, 15, 0, '2025-08-28 15:19:36', NULL),
+(9, 3, 6, 2025, 3, 0, '2025-08-28 15:19:36', NULL),
+(10, 4, 1, 2025, 15, 0, '2025-08-28 15:19:36', NULL),
+(11, 4, 2, 2025, 15, 0, '2025-08-28 15:19:36', NULL),
+(12, 4, 6, 2025, 3, 0, '2025-08-28 15:19:36', NULL),
+(13, 5, 1, 2025, 15, 0, '2025-08-28 15:19:36', NULL),
+(14, 5, 2, 2025, 15, 0, '2025-08-28 15:19:36', NULL),
+(15, 5, 6, 2025, 3, 0, '2025-08-28 15:19:36', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `faculty_leave_requests`
+--
+
+CREATE TABLE `faculty_leave_requests` (
+  `id` int(11) NOT NULL,
+  `faculty_id` int(11) NOT NULL,
+  `leave_type_id` int(11) NOT NULL,
+  `start_date` date NOT NULL,
+  `end_date` date NOT NULL,
+  `total_days` decimal(5,2) NOT NULL,
+  `reason` text NOT NULL,
+  `status` enum('pending','approved_by_head','approved_by_hr','rejected','cancelled') DEFAULT 'pending',
+  `department_head_approval` enum('pending','approved','rejected') DEFAULT 'pending',
+  `hr_approval` enum('pending','approved','rejected') DEFAULT 'pending',
+  `department_head_id` int(11) DEFAULT NULL,
+  `hr_approver_id` int(11) DEFAULT NULL,
+  `department_head_comment` text DEFAULT NULL,
+  `hr_comment` text DEFAULT NULL,
+  `department_head_approved_at` timestamp NULL DEFAULT NULL,
+  `hr_approved_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `faculty_leave_requests`
+--
+
+INSERT INTO `faculty_leave_requests` (`id`, `faculty_id`, `leave_type_id`, `start_date`, `end_date`, `total_days`, `reason`, `status`, `department_head_approval`, `hr_approval`, `department_head_id`, `hr_approver_id`, `department_head_comment`, `hr_comment`, `department_head_approved_at`, `hr_approved_at`, `created_at`, `updated_at`) VALUES
+(1, 1, 1, '2025-09-01', '2025-09-05', 5.00, 'Annual family vacation', 'pending', 'pending', 'pending', NULL, NULL, NULL, NULL, NULL, NULL, '2025-08-28 15:22:06', NULL),
+(2, 2, 2, '2025-09-10', '2025-09-12', 3.00, 'Medical appointment and recovery', 'pending', 'pending', 'pending', NULL, NULL, NULL, NULL, NULL, NULL, '2025-08-28 15:22:06', NULL),
+(3, 4, 5, '2025-09-15', '2025-09-20', 6.00, 'Professional development training', 'approved_by_head', 'approved', 'pending', NULL, NULL, NULL, NULL, NULL, NULL, '2025-08-28 15:22:06', NULL);
 
 -- --------------------------------------------------------
 
@@ -1551,6 +2275,31 @@ INSERT INTO `faculty_notifications` (`id`, `teacher_id`, `title`, `message`, `ty
 (4, 1, 'New Student Enrollment', 'A new student has enrolled in your class \"Introduction to Programming\".', 'info', 1, 'class', 0, NULL, '2025-08-10 23:46:46'),
 (5, 1, 'Evaluation Completed', 'Your peer evaluation for Dr. Smith has been completed successfully.', 'success', 1, 'evaluation', 0, NULL, '2025-08-10 23:46:46'),
 (6, 1, 'Class Reminder', 'You have a class scheduled in 30 minutes.', 'warning', 1, 'class', 0, NULL, '2025-08-10 23:46:46');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `faculty_regularization`
+--
+
+CREATE TABLE `faculty_regularization` (
+  `id` int(11) NOT NULL,
+  `faculty_id` int(11) NOT NULL COMMENT 'Foreign key to faculty table',
+  `staff_category_id` int(11) NOT NULL COMMENT 'Foreign key to staff_categories table',
+  `current_status_id` int(11) NOT NULL COMMENT 'Foreign key to regularization_status table',
+  `date_of_hire` date NOT NULL COMMENT 'Original hire date',
+  `probation_start_date` date NOT NULL COMMENT 'Start of probation period',
+  `probation_end_date` date NOT NULL COMMENT 'End of probation period',
+  `regularization_review_date` date DEFAULT NULL COMMENT 'Date when regularization review is due',
+  `regularization_date` date DEFAULT NULL COMMENT 'Date when regularized',
+  `review_notes` text DEFAULT NULL COMMENT 'Notes from review process',
+  `reviewed_by` int(11) DEFAULT NULL COMMENT 'User ID who reviewed',
+  `reviewed_at` timestamp NULL DEFAULT NULL COMMENT 'When review was conducted',
+  `next_review_date` date DEFAULT NULL COMMENT 'Next review date if applicable',
+  `is_active` tinyint(1) DEFAULT 1 COMMENT 'Active status',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Main table tracking faculty regularization progress';
 
 -- --------------------------------------------------------
 
@@ -1636,9 +2385,131 @@ CREATE TABLE `head_teacher_assignments` (
 --
 
 INSERT INTO `head_teacher_assignments` (`id`, `head_id`, `teacher_id`, `assigned_date`, `status`, `created_at`, `updated_at`) VALUES
-(1, 11, 1, '2025-08-13 13:59:33', 'active', '2025-08-13 13:59:33', NULL),
-(2, 11, 2, '2025-08-13 13:59:33', 'active', '2025-08-13 13:59:33', NULL),
-(3, 7, 3, '2025-08-13 13:59:33', 'active', '2025-08-13 13:59:33', NULL);
+(2, 11, 2, '2025-08-13 13:59:33', 'active', '2025-08-13 13:59:33', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `leave_balances`
+--
+
+CREATE TABLE `leave_balances` (
+  `id` int(11) NOT NULL,
+  `employee_id` int(11) NOT NULL,
+  `leave_type_id` int(11) NOT NULL,
+  `year` int(4) NOT NULL,
+  `total_days` decimal(5,2) NOT NULL DEFAULT 0.00,
+  `used_days` decimal(5,2) NOT NULL DEFAULT 0.00,
+  `remaining_days` decimal(5,2) GENERATED ALWAYS AS (`total_days` - `used_days`) STORED,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `leave_balances`
+--
+
+INSERT INTO `leave_balances` (`id`, `employee_id`, `leave_type_id`, `year`, `total_days`, `used_days`, `created_at`, `updated_at`) VALUES
+(1, 1, 1, 2025, 15.00, 0.00, '2025-08-28 15:19:36', NULL),
+(2, 1, 2, 2025, 15.00, 0.00, '2025-08-28 15:19:36', NULL),
+(3, 1, 6, 2025, 3.00, 0.00, '2025-08-28 15:19:36', NULL),
+(4, 2, 1, 2025, 15.00, 0.00, '2025-08-28 15:19:36', NULL),
+(5, 2, 2, 2025, 15.00, 0.00, '2025-08-28 15:19:36', NULL),
+(6, 2, 6, 2025, 3.00, 0.00, '2025-08-28 15:19:36', NULL),
+(7, 3, 1, 2025, 15.00, 0.00, '2025-08-28 15:19:36', NULL),
+(8, 3, 2, 2025, 15.00, 0.00, '2025-08-28 15:19:36', NULL),
+(9, 3, 6, 2025, 3.00, 0.00, '2025-08-28 15:19:36', NULL),
+(10, 4, 1, 2025, 15.00, 0.00, '2025-08-28 15:19:36', NULL),
+(11, 4, 2, 2025, 15.00, 0.00, '2025-08-28 15:19:36', NULL),
+(12, 4, 6, 2025, 3.00, 0.00, '2025-08-28 15:19:36', NULL),
+(13, 5, 1, 2025, 15.00, 0.00, '2025-08-28 15:19:36', NULL),
+(14, 5, 2, 2025, 15.00, 0.00, '2025-08-28 15:19:36', NULL),
+(15, 5, 6, 2025, 3.00, 0.00, '2025-08-28 15:19:36', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `leave_notifications`
+--
+
+CREATE TABLE `leave_notifications` (
+  `id` int(11) NOT NULL,
+  `recipient_id` int(11) NOT NULL,
+  `recipient_type` enum('employee','department_head','hr') NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `message` text NOT NULL,
+  `type` enum('leave_request','leave_approved','leave_rejected','leave_cancelled','reminder') DEFAULT 'leave_request',
+  `related_leave_request_id` int(11) DEFAULT NULL,
+  `is_read` tinyint(1) DEFAULT 0,
+  `read_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `leave_requests`
+--
+
+CREATE TABLE `leave_requests` (
+  `id` int(11) NOT NULL,
+  `employee_id` int(11) NOT NULL,
+  `leave_type_id` int(11) NOT NULL,
+  `start_date` date NOT NULL,
+  `end_date` date NOT NULL,
+  `total_days` decimal(5,2) NOT NULL,
+  `reason` text NOT NULL,
+  `status` enum('pending','approved_by_head','approved_by_hr','rejected','cancelled') DEFAULT 'pending',
+  `department_head_approval` enum('pending','approved','rejected') DEFAULT 'pending',
+  `hr_approval` enum('pending','approved','rejected') DEFAULT 'pending',
+  `department_head_id` int(11) DEFAULT NULL,
+  `hr_approver_id` int(11) DEFAULT NULL,
+  `department_head_comment` text DEFAULT NULL,
+  `hr_comment` text DEFAULT NULL,
+  `department_head_approved_at` timestamp NULL DEFAULT NULL,
+  `hr_approved_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `leave_requests`
+--
+
+INSERT INTO `leave_requests` (`id`, `employee_id`, `leave_type_id`, `start_date`, `end_date`, `total_days`, `reason`, `status`, `department_head_approval`, `hr_approval`, `department_head_id`, `hr_approver_id`, `department_head_comment`, `hr_comment`, `department_head_approved_at`, `hr_approved_at`, `created_at`, `updated_at`) VALUES
+(1, 1, 1, '2025-09-01', '2025-09-05', 5.00, 'Annual family vacation', 'pending', 'pending', 'pending', NULL, NULL, NULL, NULL, NULL, NULL, '2025-08-28 15:22:06', NULL),
+(2, 2, 2, '2025-09-10', '2025-09-12', 3.00, 'Medical appointment and recovery', 'pending', 'pending', 'pending', NULL, NULL, NULL, NULL, NULL, NULL, '2025-08-28 15:22:06', NULL),
+(3, 4, 5, '2025-09-15', '2025-09-20', 6.00, 'Professional development training', 'approved_by_head', 'approved', 'pending', NULL, NULL, NULL, NULL, NULL, NULL, '2025-08-28 15:22:06', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `leave_types`
+--
+
+CREATE TABLE `leave_types` (
+  `id` int(11) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `description` text DEFAULT NULL,
+  `default_days_per_year` int(11) DEFAULT 0,
+  `requires_approval` tinyint(1) DEFAULT 1,
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `leave_types`
+--
+
+INSERT INTO `leave_types` (`id`, `name`, `description`, `default_days_per_year`, `requires_approval`, `is_active`, `created_at`) VALUES
+(1, 'Vacation Leave', 'Annual vacation leave for rest and recreation', 15, 1, 1, '2025-08-28 15:19:36'),
+(2, 'Sick Leave', 'Medical leave for illness or health-related reasons', 15, 1, 1, '2025-08-28 15:19:36'),
+(3, 'Maternity Leave', 'Leave for expecting mothers', 105, 1, 1, '2025-08-28 15:19:36'),
+(4, 'Paternity Leave', 'Leave for new fathers', 7, 1, 1, '2025-08-28 15:19:36'),
+(5, 'Study Leave', 'Leave for educational purposes and training', 6, 1, 1, '2025-08-28 15:19:36'),
+(6, 'Personal Leave', 'Personal or emergency leave', 3, 1, 1, '2025-08-28 15:19:36'),
+(7, 'Bereavement Leave', 'Leave due to death of immediate family member', 5, 1, 1, '2025-08-28 15:19:36'),
+(8, 'Official Business', 'Leave for official business or conferences', 10, 1, 1, '2025-08-28 15:19:36');
 
 -- --------------------------------------------------------
 
@@ -2186,6 +3057,32 @@ INSERT INTO `main_evaluation_categories` (`id`, `name`, `description`, `evaluati
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `migrations`
+--
+
+CREATE TABLE `migrations` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `migration` varchar(255) NOT NULL,
+  `batch` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `migrations`
+--
+
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
+(1, '2019_12_14_000001_create_personal_access_tokens_table', 1),
+(2, '2025_08_22_191733_create_users_table', 1),
+(3, '2025_08_22_191735_create_students_table', 1),
+(4, '2025_08_22_191739_create_faculties_table', 1),
+(5, '2025_08_22_191742_create_courses_table', 1),
+(6, '2025_08_22_191819_create_departments_table', 1),
+(7, '2025_08_22_191821_create_subjects_table', 1),
+(8, '2025_08_22_191824_create_colleges_table', 1);
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `mission_vision`
 --
 
@@ -2207,6 +3104,25 @@ CREATE TABLE `mission_vision` (
 INSERT INTO `mission_vision` (`id`, `type`, `title`, `content`, `is_active`, `created_by`, `created_at`, `updated_at`) VALUES
 (1, 'mission', 'Our Mission', 'To provide innovative, technology-driven education that empowers students to become leaders in their chosen fields while contributing to the advancement of society through excellence in teaching, research, and community service.', 1, 1, '2025-08-05 15:56:30', '2025-08-05 15:56:30'),
 (2, 'vision', 'Our Vision', 'To be the premier technology institution in Southeast Asia, recognized globally for academic excellence, research innovation, and community impact, shaping the future of technology education and industry development.', 1, 1, '2025-08-05 15:56:30', '2025-08-05 15:56:30');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `personal_access_tokens`
+--
+
+CREATE TABLE `personal_access_tokens` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `tokenable_type` varchar(255) NOT NULL,
+  `tokenable_id` bigint(20) UNSIGNED NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `token` varchar(64) NOT NULL,
+  `abilities` text DEFAULT NULL,
+  `last_used_at` timestamp NULL DEFAULT NULL,
+  `expires_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -2564,6 +3480,79 @@ CREATE TABLE `quiz_submission_answers` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `regularization_notifications`
+--
+
+CREATE TABLE `regularization_notifications` (
+  `id` int(11) NOT NULL,
+  `faculty_regularization_id` int(11) NOT NULL COMMENT 'Foreign key to faculty_regularization table',
+  `notification_type` enum('Review_Due','Review_Overdue','Regularization_Approved','Regularization_Denied','Probation_Extended') NOT NULL COMMENT 'Type of notification',
+  `recipient_id` int(11) NOT NULL COMMENT 'User ID to receive notification',
+  `subject` varchar(255) NOT NULL COMMENT 'Notification subject',
+  `message` text NOT NULL COMMENT 'Notification message',
+  `is_read` tinyint(1) DEFAULT 0 COMMENT 'Read status',
+  `read_at` timestamp NULL DEFAULT NULL COMMENT 'When notification was read',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='System notifications for regularization process';
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `regularization_reviews`
+--
+
+CREATE TABLE `regularization_reviews` (
+  `id` int(11) NOT NULL,
+  `faculty_regularization_id` int(11) NOT NULL COMMENT 'Foreign key to faculty_regularization table',
+  `review_type` enum('Initial','Follow-up','Final') NOT NULL COMMENT 'Type of review',
+  `review_date` date NOT NULL COMMENT 'Date of review',
+  `reviewer_id` int(11) NOT NULL COMMENT 'User ID who conducted review',
+  `status_before` int(11) NOT NULL COMMENT 'Status before review',
+  `status_after` int(11) NOT NULL COMMENT 'Status after review',
+  `performance_rating` decimal(3,2) DEFAULT NULL COMMENT 'Performance rating (1.00-5.00)',
+  `attendance_score` decimal(3,2) DEFAULT NULL COMMENT 'Attendance score (1.00-5.00)',
+  `work_quality_score` decimal(3,2) DEFAULT NULL COMMENT 'Work quality score (1.00-5.00)',
+  `teamwork_score` decimal(3,2) DEFAULT NULL COMMENT 'Teamwork score (1.00-5.00)',
+  `overall_rating` decimal(3,2) DEFAULT NULL COMMENT 'Overall rating (1.00-5.00)',
+  `strengths` text DEFAULT NULL COMMENT 'Employee strengths',
+  `areas_for_improvement` text DEFAULT NULL COMMENT 'Areas for improvement',
+  `recommendations` text DEFAULT NULL COMMENT 'Reviewer recommendations',
+  `decision` enum('Continue_Probation','Recommend_Regularization','Extend_Probation','Terminate') NOT NULL COMMENT 'Review decision',
+  `next_review_date` date DEFAULT NULL COMMENT 'Next review date if applicable',
+  `notes` text DEFAULT NULL COMMENT 'Additional notes',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Detailed review records for regularization decisions';
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `regularization_status`
+--
+
+CREATE TABLE `regularization_status` (
+  `id` int(11) NOT NULL,
+  `name` varchar(50) NOT NULL COMMENT 'Status name',
+  `description` text DEFAULT NULL COMMENT 'Status description',
+  `color` varchar(20) DEFAULT '#6B7280' COMMENT 'Color for UI display',
+  `is_active` tinyint(1) DEFAULT 1 COMMENT 'Active status',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Available statuses for regularization process';
+
+--
+-- Dumping data for table `regularization_status`
+--
+
+INSERT INTO `regularization_status` (`id`, `name`, `description`, `color`, `is_active`, `created_at`) VALUES
+(1, 'Probationary', 'Currently in probation period', '#F59E0B', 1, '2025-08-28 10:31:43'),
+(2, 'Under Review', 'Currently under review for regularization', '#3B82F6', 1, '2025-08-28 10:31:43'),
+(3, 'Regular', 'Successfully regularized', '#10B981', 1, '2025-08-28 10:31:43'),
+(4, 'Extended Probation', 'Probation period extended', '#F97316', 1, '2025-08-28 10:31:43'),
+(5, 'Terminated', 'Employment terminated', '#EF4444', 1, '2025-08-28 10:31:43'),
+(6, 'Pending Review', 'Awaiting review process', '#8B5CF6', 1, '2025-08-28 10:31:43');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `research_categories`
 --
 
@@ -2750,6 +3739,30 @@ INSERT INTO `settings` (`id`, `setting_key`, `setting_value`, `updated_at`) VALU
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `staff_categories`
+--
+
+CREATE TABLE `staff_categories` (
+  `id` int(11) NOT NULL,
+  `name` varchar(100) NOT NULL COMMENT 'Category name (Teaching/Non-Teaching)',
+  `description` text DEFAULT NULL COMMENT 'Description of the category',
+  `regularization_period_months` int(11) NOT NULL COMMENT 'Months required before regularization review',
+  `is_active` tinyint(1) DEFAULT 1 COMMENT 'Active status',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Defines staff categories with different regularization periods';
+
+--
+-- Dumping data for table `staff_categories`
+--
+
+INSERT INTO `staff_categories` (`id`, `name`, `description`, `regularization_period_months`, `is_active`, `created_at`, `updated_at`) VALUES
+(1, 'Teaching', 'Teaching staff including professors, instructors, and academic personnel', 36, 1, '2025-08-28 10:31:43', NULL),
+(2, 'Non-Teaching', 'Non-teaching staff including administrative, support, and technical personnel', 6, 1, '2025-08-28 10:31:43', NULL);
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `students`
 --
 
@@ -2835,7 +3848,22 @@ INSERT INTO `students` (`id`, `student_id`, `first_name`, `middle_name`, `last_n
 (263, '2022-04923', 'REGIE', NULL, 'RAPISTA', 'regie.rapista@seait.edu.ph', '$2y$10$tYGCU0VUlRRCOvNXu3qP9eUsmT1DRtGdBLo5yMRISNTAA2V5VZp3K', 'active', '2025-08-18 23:47:47', NULL, NULL),
 (264, '2022-04546', 'WAWEE MHEL JANE', NULL, 'RAYMUNDO', 'waweemheljane.raymundo@seait.edu.ph', '$2y$10$u2NZHw7ZRwt14knX93sfl.c9lNZcLYQd7jfEYqlVhb3wbz/uvBo9.', 'active', '2025-08-18 23:47:47', NULL, NULL),
 (265, '2021-03861', 'JOSHUA', NULL, 'TRAZO', 'joshua.trazo@seait.edu.ph', '$2y$10$dE7oWMT5K/au2s61qXUsr.vcSI05xQjtyv7TIKxD2tsRvMbBuc.8.', 'active', '2025-08-18 23:47:47', NULL, NULL),
-(266, '2022-00109', 'GERDWIN', NULL, 'MONDEJAR', 'gerdwin.mondejar@seait.edu.ph', '$2y$10$goxFZZZy.7dqb7K1jbYaT.V0VQnbyl6AiFsl.BGyAMq.MfpJbbXxy', 'active', '2025-08-18 23:47:47', NULL, NULL);
+(266, '2022-00109', 'GERDWIN', NULL, 'MONDEJAR', 'gerdwin.mondejar@seait.edu.ph', '$2y$10$goxFZZZy.7dqb7K1jbYaT.V0VQnbyl6AiFsl.BGyAMq.MfpJbbXxy', 'active', '2025-08-18 23:47:47', NULL, NULL),
+(267, '2021-IT-001', 'John Michael', NULL, 'Santos', 'john.santos@student.seait.edu.ph', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'active', '2025-08-24 10:55:43', NULL, NULL),
+(268, '2021-IT-002', 'Maria Angela', NULL, 'Cruz', 'maria.cruz@student.seait.edu.ph', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'active', '2025-08-24 10:55:43', NULL, NULL),
+(269, '2021-IT-003', 'Carlos Miguel', NULL, 'Reyes', 'carlos.reyes@student.seait.edu.ph', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'active', '2025-08-24 10:55:43', NULL, NULL),
+(270, '2021-IT-004', 'Ana Patricia', NULL, 'Garcia', 'ana.garcia@student.seait.edu.ph', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'active', '2025-08-24 10:55:43', NULL, NULL),
+(271, '2021-IT-005', 'Luis Antonio', NULL, 'Martinez', 'luis.martinez@student.seait.edu.ph', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'active', '2025-08-24 10:55:43', NULL, NULL),
+(272, '2021-IT-006', 'Isabella Rose', NULL, 'Lopez', 'isabella.lopez@student.seait.edu.ph', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'active', '2025-08-24 10:55:43', NULL, NULL),
+(273, '2021-IT-007', 'Diego Alejandro', NULL, 'Gonzalez', 'diego.gonzalez@student.seait.edu.ph', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'active', '2025-08-24 10:55:43', NULL, NULL),
+(274, '2021-IT-008', 'Sofia Isabel', NULL, 'Rodriguez', 'sofia.rodriguez@student.seait.edu.ph', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'active', '2025-08-24 10:55:43', NULL, NULL),
+(275, '2021-IT-009', 'Gabriel Jose', NULL, 'Perez', 'gabriel.perez@student.seait.edu.ph', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'active', '2025-08-24 10:55:43', NULL, NULL),
+(276, '2021-IT-010', 'Valentina Maria', NULL, 'Torres', 'valentina.torres@student.seait.edu.ph', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'active', '2025-08-24 10:55:43', NULL, NULL),
+(277, '2021-IT-011', 'Adrian Carlos', NULL, 'Flores', 'adrian.flores@student.seait.edu.ph', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'active', '2025-08-24 10:55:43', NULL, NULL),
+(278, '2021-IT-012', 'Camila Elena', NULL, 'Rivera', 'camila.rivera@student.seait.edu.ph', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'active', '2025-08-24 10:55:43', NULL, NULL),
+(279, '2021-IT-013', 'Mateo David', NULL, 'Morales', 'mateo.morales@student.seait.edu.ph', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'active', '2025-08-24 10:55:43', NULL, NULL),
+(280, '2021-IT-014', 'Lucia Carmen', NULL, 'Ortiz', 'lucia.ortiz@student.seait.edu.ph', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'active', '2025-08-24 10:55:43', NULL, NULL),
+(281, '2021-IT-015', 'Sebastian Luis', NULL, 'Silva', 'sebastian.silva@student.seait.edu.ph', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'active', '2025-08-24 10:55:43', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -3063,6 +4091,277 @@ INSERT INTO `subjects` (`id`, `code`, `name`, `description`, `units`, `status`, 
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `syllabus_clos`
+--
+
+CREATE TABLE `syllabus_clos` (
+  `id` int(11) NOT NULL,
+  `syllabus_id` int(11) NOT NULL,
+  `clo_code` varchar(10) NOT NULL,
+  `clo_description` text NOT NULL,
+  `order_number` int(11) DEFAULT 0,
+  `created_at` datetime DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `syllabus_clos`
+--
+
+INSERT INTO `syllabus_clos` (`id`, `syllabus_id`, `clo_code`, `clo_description`, `order_number`, `created_at`, `updated_at`) VALUES
+(1, 1, 'CLO1', 'Demonstrate understanding of fundamental programming concepts and syntax.', 1, '2024-08-15 10:00:00', '2024-08-15 10:00:00'),
+(2, 1, 'CLO2', 'Apply problem-solving techniques to develop algorithmic solutions.', 2, '2024-08-15 10:00:00', '2024-08-15 10:00:00'),
+(3, 1, 'CLO3', 'Implement and debug programs using appropriate programming constructs.', 3, '2024-08-15 10:00:00', '2024-08-15 10:00:00'),
+(4, 1, 'CLO4', 'Analyze and compare different data structures and their applications.', 4, '2024-08-15 10:00:00', '2024-08-15 10:00:00'),
+(5, 1, 'CLO5', 'Design and implement object-oriented programs with proper encapsulation and inheritance.', 5, '2024-08-15 10:00:00', '2024-08-15 10:00:00'),
+(6, 1, 'CLO6', 'Apply software engineering principles in program development and documentation.', 6, '2024-08-15 10:00:00', '2024-08-15 10:00:00');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `syllabus_clo_po_alignment`
+--
+
+CREATE TABLE `syllabus_clo_po_alignment` (
+  `id` int(11) NOT NULL,
+  `syllabus_id` int(11) NOT NULL,
+  `clo_id` int(11) NOT NULL,
+  `po_id` int(11) NOT NULL,
+  `is_aligned` tinyint(1) DEFAULT 0,
+  `created_at` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `syllabus_clo_po_alignment`
+--
+
+INSERT INTO `syllabus_clo_po_alignment` (`id`, `syllabus_id`, `clo_id`, `po_id`, `is_aligned`, `created_at`) VALUES
+(1, 1, 1, 1, 1, '2024-08-15 10:00:00'),
+(2, 1, 1, 5, 1, '2024-08-15 10:00:00'),
+(3, 1, 2, 2, 1, '2024-08-15 10:00:00'),
+(4, 1, 2, 3, 1, '2024-08-15 10:00:00'),
+(5, 1, 3, 1, 1, '2024-08-15 10:00:00'),
+(6, 1, 3, 5, 1, '2024-08-15 10:00:00'),
+(7, 1, 4, 2, 1, '2024-08-15 10:00:00'),
+(8, 1, 4, 3, 1, '2024-08-15 10:00:00'),
+(9, 1, 5, 3, 1, '2024-08-15 10:00:00'),
+(10, 1, 5, 5, 1, '2024-08-15 10:00:00'),
+(11, 1, 6, 8, 1, '2024-08-15 10:00:00'),
+(12, 1, 6, 10, 1, '2024-08-15 10:00:00');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `syllabus_files`
+--
+
+CREATE TABLE `syllabus_files` (
+  `id` int(11) NOT NULL,
+  `syllabus_id` int(11) NOT NULL,
+  `file_name` varchar(255) NOT NULL,
+  `file_path` varchar(500) NOT NULL,
+  `file_type` varchar(100) DEFAULT NULL,
+  `file_size` int(11) DEFAULT NULL,
+  `description` text DEFAULT NULL,
+  `uploaded_at` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `syllabus_files`
+--
+
+INSERT INTO `syllabus_files` (`id`, `syllabus_id`, `file_name`, `file_path`, `file_type`, `file_size`, `description`, `uploaded_at`) VALUES
+(1, 1, 'Course_Schedule_2024.pdf', 'syllabus/course_schedule_2024.pdf', 'application/pdf', 245760, 'Detailed weekly schedule with assignments and deadlines', '2024-08-15 10:00:00'),
+(2, 1, 'Programming_Exercises.pdf', 'syllabus/programming_exercises.pdf', 'application/pdf', 512000, 'Collection of practice problems and exercises', '2024-08-15 10:00:00'),
+(3, 1, 'Python_Cheat_Sheet.pdf', 'syllabus/python_cheat_sheet.pdf', 'application/pdf', 102400, 'Quick reference guide for Python syntax and functions', '2024-08-15 10:00:00');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `syllabus_peos`
+--
+
+CREATE TABLE `syllabus_peos` (
+  `id` int(11) NOT NULL,
+  `syllabus_id` int(11) NOT NULL,
+  `peo_code` varchar(10) NOT NULL,
+  `peo_description` text NOT NULL,
+  `aligned_to_mission` tinyint(1) DEFAULT 0,
+  `order_number` int(11) DEFAULT 0,
+  `created_at` datetime DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `syllabus_peos`
+--
+
+INSERT INTO `syllabus_peos` (`id`, `syllabus_id`, `peo_code`, `peo_description`, `aligned_to_mission`, `order_number`, `created_at`, `updated_at`) VALUES
+(1, 1, 'PEO1', 'Graduates will demonstrate technical competence in computer science and related fields, applying their knowledge to solve real-world problems effectively.', 1, 1, '2024-08-15 10:00:00', '2024-08-15 10:00:00'),
+(2, 1, 'PEO2', 'Graduates will exhibit strong communication skills, both written and oral, enabling them to collaborate effectively in diverse professional environments.', 1, 2, '2024-08-15 10:00:00', '2024-08-15 10:00:00'),
+(3, 1, 'PEO3', 'Graduates will demonstrate ethical responsibility and professional integrity in their work, contributing positively to society and the computing profession.', 1, 3, '2024-08-15 10:00:00', '2024-08-15 10:00:00'),
+(4, 1, 'PEO4', 'Graduates will engage in lifelong learning and professional development, adapting to evolving technologies and industry demands.', 0, 4, '2024-08-15 10:00:00', '2024-08-15 10:00:00');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `syllabus_peo_po_alignment`
+--
+
+CREATE TABLE `syllabus_peo_po_alignment` (
+  `id` int(11) NOT NULL,
+  `syllabus_id` int(11) NOT NULL,
+  `peo_id` int(11) NOT NULL,
+  `po_id` int(11) NOT NULL,
+  `is_aligned` tinyint(1) DEFAULT 0,
+  `created_at` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `syllabus_peo_po_alignment`
+--
+
+INSERT INTO `syllabus_peo_po_alignment` (`id`, `syllabus_id`, `peo_id`, `po_id`, `is_aligned`, `created_at`) VALUES
+(1, 1, 1, 1, 1, '2024-08-15 10:00:00'),
+(2, 1, 1, 2, 1, '2024-08-15 10:00:00'),
+(3, 1, 1, 3, 1, '2024-08-15 10:00:00'),
+(4, 1, 1, 5, 1, '2024-08-15 10:00:00'),
+(5, 1, 2, 9, 1, '2024-08-15 10:00:00'),
+(6, 1, 2, 10, 1, '2024-08-15 10:00:00'),
+(7, 1, 3, 6, 1, '2024-08-15 10:00:00'),
+(8, 1, 3, 7, 1, '2024-08-15 10:00:00'),
+(9, 1, 3, 8, 1, '2024-08-15 10:00:00'),
+(10, 1, 4, 4, 1, '2024-08-15 10:00:00'),
+(11, 1, 4, 11, 1, '2024-08-15 10:00:00'),
+(12, 1, 4, 12, 1, '2024-08-15 10:00:00');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `syllabus_pos`
+--
+
+CREATE TABLE `syllabus_pos` (
+  `id` int(11) NOT NULL,
+  `syllabus_id` int(11) NOT NULL,
+  `po_code` varchar(10) NOT NULL,
+  `po_description` text NOT NULL,
+  `order_number` int(11) DEFAULT 0,
+  `created_at` datetime DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `syllabus_pos`
+--
+
+INSERT INTO `syllabus_pos` (`id`, `syllabus_id`, `po_code`, `po_description`, `order_number`, `created_at`, `updated_at`) VALUES
+(1, 1, 'PO1', 'Apply knowledge of mathematics, science, and engineering fundamentals to solve complex engineering problems.', 1, '2024-08-15 10:00:00', '2024-08-15 10:00:00'),
+(2, 1, 'PO2', 'Identify, formulate, and solve complex engineering problems using appropriate engineering tools and techniques.', 2, '2024-08-15 10:00:00', '2024-08-15 10:00:00'),
+(3, 1, 'PO3', 'Design solutions for complex engineering problems and design system components or processes that meet specified needs.', 3, '2024-08-15 10:00:00', '2024-08-15 10:00:00'),
+(4, 1, 'PO4', 'Conduct investigations of complex problems using research-based knowledge and research methods.', 4, '2024-08-15 10:00:00', '2024-08-15 10:00:00'),
+(5, 1, 'PO5', 'Create, select, and apply appropriate techniques, resources, and modern engineering and IT tools.', 5, '2024-08-15 10:00:00', '2024-08-15 10:00:00'),
+(6, 1, 'PO6', 'Apply reasoning informed by contextual knowledge to assess societal, health, safety, legal, and cultural issues.', 6, '2024-08-15 10:00:00', '2024-08-15 10:00:00'),
+(7, 1, 'PO7', 'Understand the impact of professional engineering solutions in societal and environmental contexts.', 7, '2024-08-15 10:00:00', '2024-08-15 10:00:00'),
+(8, 1, 'PO8', 'Apply ethical principles and commit to professional ethics and responsibilities and norms of engineering practice.', 8, '2024-08-15 10:00:00', '2024-08-15 10:00:00'),
+(9, 1, 'PO9', 'Function effectively as an individual, and as a member or leader in diverse teams and in multidisciplinary settings.', 9, '2024-08-15 10:00:00', '2024-08-15 10:00:00'),
+(10, 1, 'PO10', 'Communicate effectively on complex engineering activities with the engineering community and society at large.', 10, '2024-08-15 10:00:00', '2024-08-15 10:00:00'),
+(11, 1, 'PO11', 'Demonstrate knowledge and understanding of engineering and management principles.', 11, '2024-08-15 10:00:00', '2024-08-15 10:00:00'),
+(12, 1, 'PO12', 'Recognize the need for and have the preparation and ability to engage in independent and life-long learning.', 12, '2024-08-15 10:00:00', '2024-08-15 10:00:00');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `syllabus_topics`
+--
+
+CREATE TABLE `syllabus_topics` (
+  `id` int(11) NOT NULL,
+  `syllabus_id` int(11) NOT NULL,
+  `week_number` int(11) DEFAULT NULL,
+  `order_number` int(11) DEFAULT 0,
+  `topic_title` varchar(255) NOT NULL,
+  `description` text DEFAULT NULL,
+  `learning_objectives` text DEFAULT NULL,
+  `materials` text DEFAULT NULL,
+  `references_field` text DEFAULT NULL,
+  `activities` text DEFAULT NULL,
+  `assessment` text DEFAULT NULL,
+  `values_integration` text DEFAULT NULL,
+  `target` text DEFAULT NULL,
+  `created_at` datetime DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `syllabus_topics`
+--
+
+INSERT INTO `syllabus_topics` (`id`, `syllabus_id`, `week_number`, `order_number`, `topic_title`, `description`, `learning_objectives`, `materials`, `references_field`, `activities`, `assessment`, `values_integration`, `target`, `created_at`, `updated_at`) VALUES
+(1, 1, 1, 1, 'Introduction to Programming Concepts', 'Overview of computer programming, algorithms, and problem-solving approaches. Introduction to the Python programming environment.', '• Understand what programming is and its applications\n• Learn about algorithms and problem-solving\n• Set up the Python development environment\n• Write and run a simple \"Hello World\" program', 'Python IDE (PyCharm or VS Code), Python 3.x, course textbook', 'Gaddis, T. (2020). Starting Out with Python (5th ed.). Pearson.\nPython Documentation: https://docs.python.org/3/\nOnline Python Tutorial: https://www.w3schools.com/python/', 'Interactive lecture, hands-on coding exercises, group discussions', 'Quiz on programming concepts (10 points)\nSimple program submission (15 points)', 'Ethical considerations in programming and software development. Understanding the impact of technology on society.', 'Students will be able to explain basic programming concepts and write simple Python programs.', '2024-08-15 10:00:00', '2024-08-15 10:00:00'),
+(2, 1, 2, 2, 'Variables and Data Types', 'Understanding variables, constants, and different data types in Python including integers, floats, strings, and booleans.', '• Define and use variables in Python\n• Understand different data types\n• Perform type conversion\n• Use input/output functions', 'Python IDE, course textbook, online resources', 'Gaddis, T. (2020). Starting Out with Python (5th ed.). Pearson.\nPython Data Types: https://docs.python.org/3/library/stdtypes.html', 'Hands-on coding exercises, type conversion practice, input/output programming', 'Programming assignment: Calculator program (20 points)\nData type quiz (10 points)', 'Accuracy and precision in data handling. Understanding the importance of correct data representation.', 'Students will demonstrate proficiency in using variables and data types to create functional programs.', '2024-08-15 10:00:00', '2024-08-15 10:00:00'),
+(3, 1, 3, 3, 'Control Structures: Decision Making', 'Introduction to conditional statements, if-else structures, and logical operators for program flow control.', '• Write conditional statements using if, elif, and else\n• Use comparison and logical operators\n• Implement decision-making logic\n• Debug conditional statements', 'Python IDE, course textbook, practice problems', 'Gaddis, T. (2020). Starting Out with Python (5th ed.). Pearson.\nPython Control Flow: https://docs.python.org/3/tutorial/controlflow.html', 'Problem-solving exercises, decision tree creation, debugging practice', 'Programming assignment: Grade calculator (25 points)\nControl structure quiz (15 points)', 'Fairness and objectivity in decision-making algorithms. Understanding bias in automated systems.', 'Students will create programs that make decisions based on input conditions.', '2024-08-15 10:00:00', '2024-08-15 10:00:00'),
+(4, 1, 4, 4, 'Control Structures: Loops', 'Understanding and implementing different types of loops including for loops, while loops, and nested loops.', '• Implement for loops and while loops\n• Use loop control statements (break, continue)\n• Create nested loop structures\n• Optimize loop performance', 'Python IDE, course textbook, loop practice problems', 'Gaddis, T. (2020). Starting Out with Python (5th ed.). Pearson.\nPython Loops: https://docs.python.org/3/tutorial/controlflow.html#for-statements', 'Loop pattern recognition, nested loop exercises, performance analysis', 'Programming assignment: Number pattern generator (30 points)\nLoop efficiency quiz (10 points)', 'Efficiency and optimization in programming. Understanding the impact of algorithm choices on performance.', 'Students will demonstrate mastery of loop structures and create efficient iterative solutions.', '2024-08-15 10:00:00', '2024-08-15 10:00:00'),
+(5, 1, 5, 5, 'Functions and Modular Programming', 'Creating and using functions, understanding parameters, return values, and the concept of modular programming.', '• Define and call functions\n• Use parameters and return values\n• Understand scope and lifetime of variables\n• Apply modular programming principles', 'Python IDE, course textbook, function examples', 'Gaddis, T. (2020). Starting Out with Python (5th ed.). Pearson.\nPython Functions: https://docs.python.org/3/tutorial/controlflow.html#defining-functions', 'Function design exercises, modular program development, code organization practice', 'Programming assignment: Library management system (35 points)\nFunction design quiz (15 points)', 'Collaboration and code sharing. Understanding the importance of reusable and maintainable code.', 'Students will create modular programs using functions and demonstrate code reusability.', '2024-08-15 10:00:00', '2024-08-15 10:00:00'),
+(6, 1, 6, 6, 'Frontend State Management', 'State management solutions including Redux, Context API, and modern alternatives.', 'Understand state management patterns\nImplement Redux\nCompare state management solutions', 'Redux documentation, state management guides', NULL, 'Redux implementation, state management comparison', 'State management project, Redux assessment', NULL, NULL, '2025-08-24 19:09:14', '2025-08-24 19:09:14'),
+(7, 1, 7, 7, 'Backend Development with Node.js', 'Server-side development using Node.js, Express.js, and RESTful API design.', 'Build RESTful APIs\nUnderstand server-side development\nImplement authentication', 'Node.js documentation, Express.js guides, API design patterns', NULL, 'API development, authentication implementation', 'Backend API project, authentication assessment', NULL, NULL, '2025-08-24 19:09:14', '2025-08-24 19:09:14'),
+(8, 1, 8, 8, 'Database Integration and ORM', 'Database design, integration with Node.js, and Object-Relational Mapping.', 'Design database schemas\nIntegrate databases with applications\nUse ORM tools', 'Database design guides, ORM documentation', NULL, 'Database design, ORM implementation', 'Database integration project, schema design assessment', NULL, NULL, '2025-08-24 19:09:14', '2025-08-24 19:09:14'),
+(9, 1, 9, 9, 'API Security and Authentication', 'Implementing security measures, authentication, and authorization in APIs.', 'Implement JWT authentication\nUnderstand security best practices\nProtect against common vulnerabilities', 'Security guides, JWT documentation, OWASP resources', NULL, 'Security implementation, vulnerability testing', 'Security assessment, authentication project', NULL, NULL, '2025-08-24 19:09:14', '2025-08-24 19:09:14'),
+(10, 1, 10, 10, 'Cloud Computing Fundamentals', 'Introduction to cloud computing, AWS/Azure/GCP services, and cloud deployment.', 'Understand cloud computing concepts\nDeploy applications to cloud\nUse cloud services', 'Cloud platform documentation, deployment guides', NULL, 'Cloud account setup, deployment exercises', 'Cloud deployment project, service utilization assessment', NULL, NULL, '2025-08-24 19:09:14', '2025-08-24 19:09:14'),
+(11, 1, 11, 11, 'DevOps and CI/CD', 'Continuous Integration/Continuous Deployment, automated testing, and deployment pipelines.', 'Set up CI/CD pipelines\nImplement automated testing\nUnderstand DevOps practices', 'CI/CD documentation, testing frameworks', NULL, 'Pipeline setup, automated testing implementation', 'CI/CD project, pipeline assessment', NULL, NULL, '2025-08-24 19:09:14', '2025-08-24 19:09:14'),
+(12, 1, 12, 12, 'Emerging Technologies Overview', 'Introduction to AI/ML, blockchain, IoT, and their integration into applications.', 'Understand emerging technology concepts\nIntegrate AI/ML services\nExplore blockchain and IoT', 'Technology documentation, integration guides', NULL, 'Service integration, technology exploration', 'Technology integration project, concept assessment', NULL, NULL, '2025-08-24 19:09:14', '2025-08-24 19:09:14'),
+(13, 1, 13, 13, 'AI/ML Integration', 'Integrating artificial intelligence and machine learning services into applications.', 'Integrate AI/ML APIs\nUnderstand AI/ML concepts\nImplement intelligent features', 'AI/ML service documentation, integration tutorials', NULL, 'API integration, intelligent feature development', 'AI/ML integration project, feature assessment', NULL, NULL, '2025-08-24 19:09:14', '2025-08-24 19:09:14'),
+(14, 1, 14, 14, 'Mobile Application Development', 'Cross-platform mobile development using React Native or similar frameworks.', 'Build mobile applications\nUnderstand mobile development concepts\nDeploy to app stores', 'React Native documentation, mobile development guides', NULL, 'Mobile app development, deployment preparation', 'Mobile app project, deployment assessment', NULL, NULL, '2025-08-24 19:09:14', '2025-08-24 19:09:14'),
+(15, 1, 15, 15, 'Performance Optimization', 'Application performance optimization, monitoring, and best practices.', 'Optimize application performance\nImplement monitoring\nUnderstand performance metrics', 'Performance guides, monitoring tools documentation', NULL, 'Performance testing, optimization implementation', 'Performance optimization project, monitoring assessment', NULL, NULL, '2025-08-24 19:09:14', '2025-08-24 19:09:14'),
+(16, 1, 16, 16, 'Final Project Planning', 'Planning and designing the final comprehensive application project.', 'Plan comprehensive application\nDesign system architecture\nCreate project timeline', 'Project planning templates, architecture guides', NULL, 'Project planning, architecture design', 'Project plan submission, architecture review', NULL, NULL, '2025-08-24 19:09:14', '2025-08-24 19:09:14'),
+(17, 1, 17, 17, 'Final Project Development', 'Development phase of the final project with regular check-ins and feedback.', 'Develop comprehensive application\nImplement all learned concepts\nCreate documentation', 'Development guidelines, documentation templates', NULL, 'Project development, regular check-ins', 'Progress assessments, milestone reviews', NULL, NULL, '2025-08-24 19:09:14', '2025-08-24 19:09:14'),
+(18, 1, 18, 18, 'Final Project Presentation', 'Presentation and demonstration of final projects with peer review and feedback.', 'Present project effectively\nDemonstrate functionality\nReceive and provide feedback', 'Presentation guidelines, demo preparation tips', NULL, 'Project presentation, peer review', 'Final project submission, presentation assessment', NULL, NULL, '2025-08-24 19:09:14', '2025-08-24 19:09:14'),
+(37, 1, 1, 1, 'Introduction to Modern Application Development', 'Overview of current trends in application development', 'Understand the evolution of application development', 'Course syllabus, setup guide', NULL, 'Environment setup, group discussion', 'Environment setup verification', NULL, NULL, '2025-08-24 19:13:18', '2025-08-24 19:13:18'),
+(38, 1, 2, 2, 'Version Control with Git and GitHub', 'Learning Git fundamentals and collaborative development', 'Master basic Git commands and workflows', 'Git documentation, tutorials', NULL, 'Git setup, repository creation', 'Git proficiency test', NULL, NULL, '2025-08-24 19:16:03', '2025-08-24 19:16:03'),
+(39, 1, 3, 3, 'Modern JavaScript and ES6+ Features', 'Advanced JavaScript concepts and modern patterns', 'Master ES6+ features and async programming', 'JavaScript documentation, examples', NULL, 'Coding exercises, implementation', 'JavaScript assessment', NULL, NULL, '2025-08-24 19:16:03', '2025-08-24 19:16:03'),
+(40, 1, 4, 4, 'React Fundamentals', 'Introduction to React library and components', 'Understand React concepts and state management', 'React documentation, tutorials', NULL, 'Component building exercises', 'React component project', NULL, NULL, '2025-08-24 19:16:03', '2025-08-24 19:16:03'),
+(41, 1, 5, 5, 'Advanced React Concepts', 'Advanced React patterns and optimization', 'Master React hooks and performance optimization', 'Advanced React guides', NULL, 'Hook implementation, optimization', 'Advanced React project', NULL, NULL, '2025-08-24 19:16:03', '2025-08-24 19:16:03');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `syllabus_topic_clo_alignment`
+--
+
+CREATE TABLE `syllabus_topic_clo_alignment` (
+  `id` int(11) NOT NULL,
+  `syllabus_id` int(11) NOT NULL,
+  `topic_id` int(11) NOT NULL,
+  `clo_id` int(11) NOT NULL,
+  `is_aligned` tinyint(1) DEFAULT 0,
+  `created_at` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `syllabus_topic_clo_alignment`
+--
+
+INSERT INTO `syllabus_topic_clo_alignment` (`id`, `syllabus_id`, `topic_id`, `clo_id`, `is_aligned`, `created_at`) VALUES
+(1, 1, 1, 1, 1, '2024-08-15 10:00:00'),
+(2, 1, 1, 2, 1, '2024-08-15 10:00:00'),
+(3, 1, 2, 1, 1, '2024-08-15 10:00:00'),
+(4, 1, 2, 3, 1, '2024-08-15 10:00:00'),
+(5, 1, 3, 2, 1, '2024-08-15 10:00:00'),
+(6, 1, 3, 3, 1, '2024-08-15 10:00:00'),
+(7, 1, 4, 2, 1, '2024-08-15 10:00:00'),
+(8, 1, 4, 3, 1, '2024-08-15 10:00:00'),
+(9, 1, 5, 3, 1, '2024-08-15 10:00:00'),
+(10, 1, 5, 6, 1, '2024-08-15 10:00:00'),
+(11, 1, 6, 4, 1, '2024-08-15 10:00:00'),
+(12, 1, 6, 3, 1, '2024-08-15 10:00:00'),
+(13, 1, 7, 5, 1, '2024-08-15 10:00:00'),
+(14, 1, 7, 6, 1, '2024-08-15 10:00:00'),
+(15, 1, 8, 3, 1, '2024-08-15 10:00:00'),
+(16, 1, 8, 6, 1, '2024-08-15 10:00:00');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `teachers`
 --
 
@@ -3086,6 +4385,34 @@ INSERT INTO `teachers` (`id`, `user_id`, `department`, `position`, `phone`, `sta
 (2, 2, 'Mathematics', 'Associate Professor', '+63 923 456 7890', 'active', '2025-08-10 14:08:33', NULL),
 (3, 3, 'English', 'Instructor', '+63 934 567 8901', 'active', '2025-08-10 14:08:33', NULL),
 (4, 5, 'History', 'Instructor', '+63 956 789 0123', 'active', '2025-08-10 14:08:33', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `teacher_availability`
+--
+
+CREATE TABLE `teacher_availability` (
+  `id` int(11) NOT NULL,
+  `teacher_id` int(11) NOT NULL COMMENT 'Foreign key to faculty table',
+  `availability_date` date NOT NULL COMMENT 'Date when teacher is available',
+  `scan_time` timestamp NOT NULL DEFAULT current_timestamp() COMMENT 'When the QR code was scanned',
+  `status` enum('available','unavailable') NOT NULL DEFAULT 'available' COMMENT 'Current availability status',
+  `last_activity` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp() COMMENT 'Last activity timestamp',
+  `notes` text DEFAULT NULL COMMENT 'Optional notes about availability',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Teacher availability tracking through QR code scanning';
+
+--
+-- Triggers `teacher_availability`
+--
+DELIMITER $$
+CREATE TRIGGER `update_teacher_activity` BEFORE UPDATE ON `teacher_availability` FOR EACH ROW BEGIN
+    SET NEW.last_activity = NOW();
+END
+$$
+DELIMITER ;
 
 -- --------------------------------------------------------
 
@@ -3408,7 +4735,7 @@ CREATE TABLE `users` (
   `password` varchar(255) NOT NULL,
   `first_name` varchar(50) NOT NULL,
   `last_name` varchar(50) NOT NULL,
-  `role` enum('admin','social_media_manager','content_creator','guidance_officer','teacher','head','student') NOT NULL DEFAULT 'student',
+  `role` enum('admin','social_media_manager','content_creator','guidance_officer','teacher','head','student','human_resource') NOT NULL DEFAULT 'student',
   `status` enum('active','inactive') NOT NULL DEFAULT 'active',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
@@ -3419,12 +4746,13 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `username`, `email`, `password`, `first_name`, `last_name`, `role`, `status`, `created_at`, `updated_at`) VALUES
-(1, 'admin', 'admin@seait.edu.ph', '$2y$10$.kwR9gKMUqFF4BN/JjbtleOPz4WeziWL.DA965DqWnAeTUz2McGMa', 'Admin', 'User', 'admin', 'active', '2025-08-05 10:14:11', '2025-08-17 17:50:10'),
-(2, 'social_manager', 'social@seait.edu.ph', '$2y$10$cMOojXGmDMOhjndcskIz7.SiyLe5qaJYxrtNrlLgpvpmUovMHFwPS', 'Social', 'Manager', 'social_media_manager', 'active', '2025-08-05 10:14:11', '2025-08-10 17:21:54'),
-(3, 'content_creator', 'content@seait.edu.ph', '$2y$10$cMOojXGmDMOhjndcskIz7.SiyLe5qaJYxrtNrlLgpvpmUovMHFwPS', 'Content', 'Creator', 'content_creator', 'active', '2025-08-05 10:14:11', '2025-08-17 13:28:48'),
+(1, 'admin', 'admin@seait.edu.ph', '$2y$10$cMOojXGmDMOhjndcskIz7.SiyLe5qaJYxrtNrlLgpvpmUovMHFwPS', 'Admin', 'User', 'admin', 'active', '2025-08-05 10:14:11', '2025-08-28 03:11:58'),
+(2, 'social_manager', 'social@seait.edu.ph', '$2y$10$cMOojXGmDMOhjndcskIz7.SiyLe5qaJYxrtNrlLgpvpmUovMHFwPS', 'Cedie', 'Gabriel', 'social_media_manager', 'active', '2025-08-05 10:14:11', '2025-08-28 03:12:26'),
+(3, 'content_creator', 'content@seait.edu.ph', '$2y$10$cMOojXGmDMOhjndcskIz7.SiyLe5qaJYxrtNrlLgpvpmUovMHFwPS', 'Charlon', 'Bullos', 'content_creator', 'active', '2025-08-05 10:14:11', '2025-08-28 03:12:13'),
 (5, 'guidance', 'guidance@seait.edu.ph', '$2y$10$cMOojXGmDMOhjndcskIz7.SiyLe5qaJYxrtNrlLgpvpmUovMHFwPS', 'Guidance', 'Officer', 'guidance_officer', 'active', '2025-08-10 12:41:23', '2025-08-10 17:21:54'),
 (7, 'rprudente@seait.edu.ph', 'rprudente@seait.edu.ph', '$2y$10$cMOojXGmDMOhjndcskIz7.SiyLe5qaJYxrtNrlLgpvpmUovMHFwPS', 'Reginald', 'Prudente', 'head', 'active', '2025-08-10 14:52:19', '2025-08-10 17:21:54'),
-(11, 'jpalate', 'jpalate@seait.edu.ph', '$2y$10$5uzRpQGhSmOqFmTrmwgw8uRN45yEL81Cvqj4QZ.rQnOjIPslRBuRO', 'Jestone', 'Palate', 'head', 'active', '2025-08-12 10:11:32', '2025-08-12 10:11:32');
+(11, 'jpalate', 'jpalate@seait.edu.ph', '$2y$10$5uzRpQGhSmOqFmTrmwgw8uRN45yEL81Cvqj4QZ.rQnOjIPslRBuRO', 'Jestone', 'Palate', 'head', 'active', '2025-08-12 10:11:32', '2025-08-12 10:11:32'),
+(20, 'hr_manager', 'hr@seait.edu.ph', '$2y$10$cMOojXGmDMOhjndcskIz7.SiyLe5qaJYxrtNrlLgpvpmUovMHFwPS', 'HR', 'Manager', 'human_resource', 'active', '2025-08-28 03:18:17', '2025-08-28 03:42:23');
 
 -- --------------------------------------------------------
 
@@ -3458,11 +4786,47 @@ INSERT INTO `user_inquiries` (`id`, `user_question`, `bot_response`, `user_email
 -- --------------------------------------------------------
 
 --
+-- Structure for view `active_consultation_leaves`
+--
+DROP TABLE IF EXISTS `active_consultation_leaves`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `active_consultation_leaves`  AS SELECT `cl`.`id` AS `id`, `cl`.`teacher_id` AS `teacher_id`, `cl`.`leave_date` AS `leave_date`, `cl`.`reason` AS `reason`, `cl`.`created_at` AS `created_at`, `f`.`first_name` AS `first_name`, `f`.`last_name` AS `last_name`, `f`.`department` AS `department`, `f`.`position` AS `position` FROM (`consultation_leave` `cl` join `faculty` `f` on(`cl`.`teacher_id` = `f`.`id`)) WHERE `cl`.`leave_date` >= curdate() ORDER BY `cl`.`leave_date` ASC, `f`.`last_name` ASC, `f`.`first_name` ASC ;
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `active_consultation_requests`
+--
+DROP TABLE IF EXISTS `active_consultation_requests`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `active_consultation_requests`  AS SELECT `cr`.`id` AS `id`, `cr`.`teacher_id` AS `teacher_id`, `f`.`first_name` AS `teacher_first_name`, `f`.`last_name` AS `teacher_last_name`, `f`.`department` AS `teacher_department`, `cr`.`student_name` AS `student_name`, `cr`.`student_dept` AS `student_dept`, `cr`.`student_id` AS `student_id`, `cr`.`status` AS `status`, `cr`.`session_id` AS `session_id`, `cr`.`request_time` AS `request_time`, `cr`.`response_time` AS `response_time`, `cr`.`start_time` AS `start_time`, `cr`.`end_time` AS `end_time`, `cr`.`duration_minutes` AS `duration_minutes`, `cr`.`notes` AS `notes`, timestampdiff(MINUTE,`cr`.`request_time`,current_timestamp()) AS `minutes_since_request` FROM (`consultation_requests` `cr` join `faculty` `f` on(`cr`.`teacher_id` = `f`.`id`)) WHERE `cr`.`status` in ('pending','accepted') AND `cr`.`request_time` > current_timestamp() - interval 10 minute ORDER BY `cr`.`request_time` DESC ;
+
+-- --------------------------------------------------------
+
+--
 -- Structure for view `active_students_view`
 --
 DROP TABLE IF EXISTS `active_students_view`;
 
-CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `active_students_view`  AS SELECT `s`.`id` AS `id`, `s`.`student_id` AS `student_id`, `s`.`first_name` AS `first_name`, `s`.`middle_name` AS `middle_name`, `s`.`last_name` AS `last_name`, `s`.`email` AS `email`, `s`.`status` AS `status`, `s`.`created_at` AS `created_at`, concat(`s`.`first_name`,' ',`s`.`last_name`) AS `full_name`, `sp`.`phone` AS `phone`, `sp`.`date_of_birth` AS `date_of_birth`, `sai`.`program_id` AS `program_id`, `sai`.`year_level` AS `year_level`, `sai`.`academic_status` AS `academic_status` FROM ((`students` `s` left join `student_profiles` `sp` on(`s`.`id` = `sp`.`student_id`)) left join `student_academic_info` `sai` on(`s`.`id` = `sai`.`student_id`)) WHERE `s`.`status` = 'active' ;
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `active_students_view`  AS SELECT `s`.`id` AS `id`, `s`.`student_id` AS `student_id`, `s`.`first_name` AS `first_name`, `s`.`middle_name` AS `middle_name`, `s`.`last_name` AS `last_name`, `s`.`email` AS `email`, `s`.`status` AS `status`, `s`.`created_at` AS `created_at`, concat(`s`.`first_name`,' ',`s`.`last_name`) AS `full_name`, `sp`.`phone` AS `phone`, `sp`.`date_of_birth` AS `date_of_birth`, `sai`.`program_id` AS `program_id`, `sai`.`year_level` AS `year_level`, `sai`.`academic_status` AS `academic_status` FROM ((`students` `s` left join `student_profiles` `sp` on(`s`.`id` = `sp`.`student_id`)) left join `student_academic_info` `sai` on(`s`.`id` = `sai`.`student_id`)) WHERE `s`.`status` = 'active' ;
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `active_teachers_today`
+--
+DROP TABLE IF EXISTS `active_teachers_today`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `active_teachers_today`  AS SELECT `ta`.`id` AS `id`, `ta`.`teacher_id` AS `teacher_id`, `f`.`first_name` AS `first_name`, `f`.`last_name` AS `last_name`, `f`.`email` AS `email`, `f`.`department` AS `department`, `f`.`position` AS `position`, `f`.`image_url` AS `image_url`, `ta`.`availability_date` AS `availability_date`, `ta`.`scan_time` AS `scan_time`, `ta`.`status` AS `status`, `ta`.`last_activity` AS `last_activity`, timestampdiff(MINUTE,`ta`.`last_activity`,current_timestamp()) AS `minutes_since_last_activity` FROM (`teacher_availability` `ta` join `faculty` `f` on(`ta`.`teacher_id` = `f`.`id`)) WHERE `ta`.`availability_date` = curdate() AND `ta`.`status` = 'available' AND `f`.`is_active` = 1 ORDER BY `ta`.`scan_time` DESC ;
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `consultation_hours_summary`
+--
+DROP TABLE IF EXISTS `consultation_hours_summary`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `consultation_hours_summary`  AS SELECT `ch`.`id` AS `id`, `ch`.`teacher_id` AS `teacher_id`, `f`.`first_name` AS `first_name`, `f`.`last_name` AS `last_name`, `f`.`email` AS `email`, `f`.`department` AS `department`, `ch`.`semester` AS `semester`, `ch`.`academic_year` AS `academic_year`, `ch`.`day_of_week` AS `day_of_week`, `ch`.`start_time` AS `start_time`, `ch`.`end_time` AS `end_time`, `ch`.`room` AS `room`, `ch`.`notes` AS `notes`, `ch`.`is_active` AS `is_active`, `ch`.`created_at` AS `created_at`, `ch`.`updated_at` AS `updated_at` FROM (`consultation_hours` `ch` join `faculty` `f` on(`ch`.`teacher_id` = `f`.`id`)) WHERE `ch`.`is_active` = 1 ORDER BY `f`.`last_name` ASC, `f`.`first_name` ASC, `ch`.`day_of_week` ASC, `ch`.`start_time` ASC ;
 
 -- --------------------------------------------------------
 
@@ -3471,7 +4835,7 @@ CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `active_students_view`  AS 
 --
 DROP TABLE IF EXISTS `evaluation_summary_view`;
 
-CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `evaluation_summary_view`  AS SELECT `es`.`id` AS `id`, `es`.`evaluator_id` AS `evaluator_id`, `es`.`evaluator_type` AS `evaluator_type`, `es`.`evaluatee_id` AS `evaluatee_id`, `es`.`evaluatee_type` AS `evaluatee_type`, `es`.`main_category_id` AS `main_category_id`, `mec`.`name` AS `main_category_name`, `mec`.`evaluation_type` AS `evaluation_type`, `es`.`evaluation_date` AS `evaluation_date`, `es`.`status` AS `status`, `es`.`notes` AS `notes`, count(`er`.`id`) AS `total_responses`, avg(`er`.`rating_value`) AS `average_rating`, count(case when `er`.`rating_value` = 5 then 1 end) AS `excellent_count`, count(case when `er`.`rating_value` = 4 then 1 end) AS `very_satisfactory_count`, count(case when `er`.`rating_value` = 3 then 1 end) AS `satisfactory_count`, count(case when `er`.`rating_value` = 2 then 1 end) AS `good_count`, count(case when `er`.`rating_value` = 1 then 1 end) AS `poor_count` FROM ((`evaluation_sessions` `es` join `main_evaluation_categories` `mec` on(`es`.`main_category_id` = `mec`.`id`)) left join `evaluation_responses` `er` on(`es`.`id` = `er`.`evaluation_session_id`)) GROUP BY `es`.`id` ;
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `evaluation_summary_view`  AS SELECT `es`.`id` AS `id`, `es`.`evaluator_id` AS `evaluator_id`, `es`.`evaluator_type` AS `evaluator_type`, `es`.`evaluatee_id` AS `evaluatee_id`, `es`.`evaluatee_type` AS `evaluatee_type`, `es`.`main_category_id` AS `main_category_id`, `mec`.`name` AS `main_category_name`, `mec`.`evaluation_type` AS `evaluation_type`, `es`.`evaluation_date` AS `evaluation_date`, `es`.`status` AS `status`, `es`.`notes` AS `notes`, count(`er`.`id`) AS `total_responses`, avg(`er`.`rating_value`) AS `average_rating`, count(case when `er`.`rating_value` = 5 then 1 end) AS `excellent_count`, count(case when `er`.`rating_value` = 4 then 1 end) AS `very_satisfactory_count`, count(case when `er`.`rating_value` = 3 then 1 end) AS `satisfactory_count`, count(case when `er`.`rating_value` = 2 then 1 end) AS `good_count`, count(case when `er`.`rating_value` = 1 then 1 end) AS `poor_count` FROM ((`evaluation_sessions` `es` join `main_evaluation_categories` `mec` on(`es`.`main_category_id` = `mec`.`id`)) left join `evaluation_responses` `er` on(`es`.`id` = `er`.`evaluation_session_id`)) GROUP BY `es`.`id` ;
 
 -- --------------------------------------------------------
 
@@ -3480,7 +4844,7 @@ CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `evaluation_summary_view`  
 --
 DROP TABLE IF EXISTS `lms_assignments_view`;
 
-CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `lms_assignments_view`  AS SELECT `a`.`id` AS `id`, `a`.`class_id` AS `class_id`, `a`.`category_id` AS `category_id`, `a`.`title` AS `title`, `a`.`description` AS `description`, `a`.`instructions` AS `instructions`, `a`.`due_date` AS `due_date`, `a`.`max_score` AS `max_score`, `a`.`allow_late_submission` AS `allow_late_submission`, `a`.`late_penalty` AS `late_penalty`, `a`.`file_required` AS `file_required`, `a`.`max_file_size` AS `max_file_size`, `a`.`allowed_file_types` AS `allowed_file_types`, `a`.`status` AS `status`, `a`.`created_by` AS `created_by`, `a`.`created_at` AS `created_at`, `a`.`updated_at` AS `updated_at`, `ac`.`name` AS `category_name`, `ac`.`color` AS `category_color`, count(`s`.`id`) AS `submission_count`, count(case when `s`.`status` = 'graded' then 1 end) AS `graded_count`, `u`.`first_name` AS `created_by_name`, `u`.`last_name` AS `created_by_last_name` FROM (((`lms_assignments` `a` join `lms_assignment_categories` `ac` on(`a`.`category_id` = `ac`.`id`)) join `users` `u` on(`a`.`created_by` = `u`.`id`)) left join `lms_assignment_submissions` `s` on(`a`.`id` = `s`.`assignment_id`)) WHERE `a`.`status` <> 'draft' GROUP BY `a`.`id` ;
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `lms_assignments_view`  AS SELECT `a`.`id` AS `id`, `a`.`class_id` AS `class_id`, `a`.`category_id` AS `category_id`, `a`.`title` AS `title`, `a`.`description` AS `description`, `a`.`instructions` AS `instructions`, `a`.`due_date` AS `due_date`, `a`.`max_score` AS `max_score`, `a`.`allow_late_submission` AS `allow_late_submission`, `a`.`late_penalty` AS `late_penalty`, `a`.`file_required` AS `file_required`, `a`.`max_file_size` AS `max_file_size`, `a`.`allowed_file_types` AS `allowed_file_types`, `a`.`status` AS `status`, `a`.`created_by` AS `created_by`, `a`.`created_at` AS `created_at`, `a`.`updated_at` AS `updated_at`, `ac`.`name` AS `category_name`, `ac`.`color` AS `category_color`, count(`s`.`id`) AS `submission_count`, count(case when `s`.`status` = 'graded' then 1 end) AS `graded_count`, `u`.`first_name` AS `created_by_name`, `u`.`last_name` AS `created_by_last_name` FROM (((`lms_assignments` `a` join `lms_assignment_categories` `ac` on(`a`.`category_id` = `ac`.`id`)) join `users` `u` on(`a`.`created_by` = `u`.`id`)) left join `lms_assignment_submissions` `s` on(`a`.`id` = `s`.`assignment_id`)) WHERE `a`.`status` <> 'draft' GROUP BY `a`.`id` ;
 
 -- --------------------------------------------------------
 
@@ -3489,7 +4853,7 @@ CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `lms_assignments_view`  AS 
 --
 DROP TABLE IF EXISTS `lms_discussion_activity`;
 
-CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `lms_discussion_activity`  AS SELECT `d`.`id` AS `id`, `d`.`class_id` AS `class_id`, `d`.`title` AS `title`, `d`.`description` AS `description`, `d`.`is_pinned` AS `is_pinned`, `d`.`is_locked` AS `is_locked`, `d`.`allow_replies` AS `allow_replies`, `d`.`status` AS `status`, `d`.`created_by` AS `created_by`, `d`.`created_at` AS `created_at`, `d`.`updated_at` AS `updated_at`, count(`p`.`id`) AS `post_count`, count(distinct `p`.`author_id`) AS `participant_count`, max(`p`.`created_at`) AS `last_activity`, `u`.`first_name` AS `created_by_name`, `u`.`last_name` AS `created_by_last_name` FROM ((`lms_discussions` `d` join `users` `u` on(`d`.`created_by` = `u`.`id`)) left join `lms_discussion_posts` `p` on(`d`.`id` = `p`.`discussion_id` and `p`.`status` = 'active')) WHERE `d`.`status` = 'active' GROUP BY `d`.`id` ;
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `lms_discussion_activity`  AS SELECT `d`.`id` AS `id`, `d`.`class_id` AS `class_id`, `d`.`title` AS `title`, `d`.`description` AS `description`, `d`.`is_pinned` AS `is_pinned`, `d`.`is_locked` AS `is_locked`, `d`.`allow_replies` AS `allow_replies`, `d`.`status` AS `status`, `d`.`created_by` AS `created_by`, `d`.`created_at` AS `created_at`, `d`.`updated_at` AS `updated_at`, count(`p`.`id`) AS `post_count`, count(distinct `p`.`author_id`) AS `participant_count`, max(`p`.`created_at`) AS `last_activity`, `u`.`first_name` AS `created_by_name`, `u`.`last_name` AS `created_by_last_name` FROM ((`lms_discussions` `d` join `users` `u` on(`d`.`created_by` = `u`.`id`)) left join `lms_discussion_posts` `p` on(`d`.`id` = `p`.`discussion_id` and `p`.`status` = 'active')) WHERE `d`.`status` = 'active' GROUP BY `d`.`id` ;
 
 -- --------------------------------------------------------
 
@@ -3498,7 +4862,7 @@ CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `lms_discussion_activity`  
 --
 DROP TABLE IF EXISTS `lms_materials_view`;
 
-CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `lms_materials_view`  AS SELECT `m`.`id` AS `id`, `m`.`class_id` AS `class_id`, `m`.`category_id` AS `category_id`, `m`.`title` AS `title`, `m`.`description` AS `description`, `m`.`file_path` AS `file_path`, `m`.`file_name` AS `file_name`, `m`.`file_size` AS `file_size`, `m`.`mime_type` AS `mime_type`, `m`.`external_url` AS `external_url`, `m`.`content` AS `content`, `m`.`type` AS `type`, `m`.`order_number` AS `order_number`, `m`.`is_public` AS `is_public`, `m`.`status` AS `status`, `m`.`created_by` AS `created_by`, `m`.`created_at` AS `created_at`, `m`.`updated_at` AS `updated_at`, `mc`.`name` AS `category_name`, `mc`.`icon` AS `category_icon`, `mc`.`color` AS `category_color`, count(`ml`.`id`) AS `access_count`, `u`.`first_name` AS `created_by_name`, `u`.`last_name` AS `created_by_last_name` FROM (((`lms_materials` `m` join `lms_material_categories` `mc` on(`m`.`category_id` = `mc`.`id`)) join `users` `u` on(`m`.`created_by` = `u`.`id`)) left join `lms_material_access_logs` `ml` on(`m`.`id` = `ml`.`material_id`)) WHERE `m`.`status` = 'active' GROUP BY `m`.`id` ;
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `lms_materials_view`  AS SELECT `m`.`id` AS `id`, `m`.`class_id` AS `class_id`, `m`.`category_id` AS `category_id`, `m`.`title` AS `title`, `m`.`description` AS `description`, `m`.`file_path` AS `file_path`, `m`.`file_name` AS `file_name`, `m`.`file_size` AS `file_size`, `m`.`mime_type` AS `mime_type`, `m`.`external_url` AS `external_url`, `m`.`content` AS `content`, `m`.`type` AS `type`, `m`.`order_number` AS `order_number`, `m`.`is_public` AS `is_public`, `m`.`status` AS `status`, `m`.`created_by` AS `created_by`, `m`.`created_at` AS `created_at`, `m`.`updated_at` AS `updated_at`, `mc`.`name` AS `category_name`, `mc`.`icon` AS `category_icon`, `mc`.`color` AS `category_color`, count(`ml`.`id`) AS `access_count`, `u`.`first_name` AS `created_by_name`, `u`.`last_name` AS `created_by_last_name` FROM (((`lms_materials` `m` join `lms_material_categories` `mc` on(`m`.`category_id` = `mc`.`id`)) join `users` `u` on(`m`.`created_by` = `u`.`id`)) left join `lms_material_access_logs` `ml` on(`m`.`id` = `ml`.`material_id`)) WHERE `m`.`status` = 'active' GROUP BY `m`.`id` ;
 
 -- --------------------------------------------------------
 
@@ -3507,7 +4871,7 @@ CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `lms_materials_view`  AS SE
 --
 DROP TABLE IF EXISTS `lms_student_grades_summary`;
 
-CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `lms_student_grades_summary`  AS SELECT `sg`.`class_id` AS `class_id`, `sg`.`student_id` AS `student_id`, `s`.`first_name` AS `first_name`, `s`.`last_name` AS `last_name`, `s`.`student_id` AS `student_number`, `gc`.`name` AS `category_name`, `gc`.`weight` AS `weight`, count(`sg`.`id`) AS `grade_count`, avg(`sg`.`percentage`) AS `average_percentage`, sum(`sg`.`score`) AS `total_score`, sum(`sg`.`max_score`) AS `total_max_score` FROM ((`lms_student_grades` `sg` join `students` `s` on(`sg`.`student_id` = `s`.`id`)) join `lms_grade_categories` `gc` on(`sg`.`category_id` = `gc`.`id`)) WHERE `sg`.`status` = 'published' GROUP BY `sg`.`class_id`, `sg`.`student_id`, `gc`.`id` ;
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `lms_student_grades_summary`  AS SELECT `sg`.`class_id` AS `class_id`, `sg`.`student_id` AS `student_id`, `s`.`first_name` AS `first_name`, `s`.`last_name` AS `last_name`, `s`.`student_id` AS `student_number`, `gc`.`name` AS `category_name`, `gc`.`weight` AS `weight`, count(`sg`.`id`) AS `grade_count`, avg(`sg`.`percentage`) AS `average_percentage`, sum(`sg`.`score`) AS `total_score`, sum(`sg`.`max_score`) AS `total_max_score` FROM ((`lms_student_grades` `sg` join `students` `s` on(`sg`.`student_id` = `s`.`id`)) join `lms_grade_categories` `gc` on(`sg`.`category_id` = `gc`.`id`)) WHERE `sg`.`status` = 'published' GROUP BY `sg`.`class_id`, `sg`.`student_id`, `gc`.`id` ;
 
 -- --------------------------------------------------------
 
@@ -3516,7 +4880,7 @@ CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `lms_student_grades_summary
 --
 DROP TABLE IF EXISTS `student_statistics_view`;
 
-CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `student_statistics_view`  AS SELECT count(0) AS `total_students`, sum(case when `students`.`status` = 'active' then 1 else 0 end) AS `active_students`, sum(case when `students`.`status` = 'pending' then 1 else 0 end) AS `pending_students`, sum(case when `students`.`status` = 'inactive' then 1 else 0 end) AS `inactive_students`, sum(case when cast(`students`.`created_at` as date) = curdate() then 1 else 0 end) AS `today_registrations`, sum(case when month(`students`.`created_at`) = month(curdate()) and year(`students`.`created_at`) = year(curdate()) then 1 else 0 end) AS `this_month_registrations` FROM `students` WHERE `students`.`status` <> 'deleted' ;
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `student_statistics_view`  AS SELECT count(0) AS `total_students`, sum(case when `students`.`status` = 'active' then 1 else 0 end) AS `active_students`, sum(case when `students`.`status` = 'pending' then 1 else 0 end) AS `pending_students`, sum(case when `students`.`status` = 'inactive' then 1 else 0 end) AS `inactive_students`, sum(case when cast(`students`.`created_at` as date) = curdate() then 1 else 0 end) AS `today_registrations`, sum(case when month(`students`.`created_at`) = month(curdate()) and year(`students`.`created_at`) = year(curdate()) then 1 else 0 end) AS `this_month_registrations` FROM `students` WHERE `students`.`status` <> 'deleted' ;
 
 -- --------------------------------------------------------
 
@@ -3525,7 +4889,7 @@ CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `student_statistics_view`  
 --
 DROP TABLE IF EXISTS `teacher_dashboard_stats`;
 
-CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `teacher_dashboard_stats`  AS SELECT `t`.`id` AS `teacher_id`, count(distinct `tc`.`id`) AS `total_classes`, count(distinct case when `tc`.`status` = 'active' then `tc`.`id` end) AS `active_classes`, count(distinct `ce`.`id`) AS `total_enrollments`, count(distinct case when `ce`.`status` = 'active' then `ce`.`id` end) AS `active_enrollments`, count(distinct `es`.`id`) AS `total_evaluations`, count(distinct case when `es`.`status` = 'completed' then `es`.`id` end) AS `completed_evaluations` FROM (((`users` `t` left join `teacher_classes` `tc` on(`t`.`id` = `tc`.`teacher_id`)) left join `class_enrollments` `ce` on(`tc`.`id` = `ce`.`class_id`)) left join `evaluation_sessions` `es` on(`t`.`id` = `es`.`evaluator_id`)) WHERE `t`.`role` = 'teacher' GROUP BY `t`.`id` ;
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `teacher_dashboard_stats`  AS SELECT `t`.`id` AS `teacher_id`, count(distinct `tc`.`id`) AS `total_classes`, count(distinct case when `tc`.`status` = 'active' then `tc`.`id` end) AS `active_classes`, count(distinct `ce`.`id`) AS `total_enrollments`, count(distinct case when `ce`.`status` = 'active' then `ce`.`id` end) AS `active_enrollments`, count(distinct `es`.`id`) AS `total_evaluations`, count(distinct case when `es`.`status` = 'completed' then `es`.`id` end) AS `completed_evaluations` FROM (((`users` `t` left join `teacher_classes` `tc` on(`t`.`id` = `tc`.`teacher_id`)) left join `class_enrollments` `ce` on(`tc`.`id` = `ce`.`class_id`)) left join `evaluation_sessions` `es` on(`t`.`id` = `es`.`evaluator_id`)) WHERE `t`.`role` = 'teacher' GROUP BY `t`.`id` ;
 
 -- --------------------------------------------------------
 
@@ -3534,7 +4898,7 @@ CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `teacher_dashboard_stats`  
 --
 DROP TABLE IF EXISTS `training_summary_view`;
 
-CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `training_summary_view`  AS SELECT `ts`.`id` AS `id`, `ts`.`title` AS `title`, `ts`.`type` AS `type`, `ts`.`status` AS `status`, `ts`.`start_date` AS `start_date`, `ts`.`end_date` AS `end_date`, `tc`.`name` AS `category_name`, `mec`.`name` AS `main_category_name`, `esc`.`name` AS `sub_category_name`, `ts`.`max_participants` AS `max_participants`, count(`tr`.`id`) AS `registered_count`, count(case when `tr`.`status` = 'completed' then 1 end) AS `completed_count`, avg(`tr`.`feedback_rating`) AS `average_feedback_rating` FROM ((((`trainings_seminars` `ts` left join `training_categories` `tc` on(`ts`.`category_id` = `tc`.`id`)) left join `main_evaluation_categories` `mec` on(`ts`.`main_category_id` = `mec`.`id`)) left join `evaluation_sub_categories` `esc` on(`ts`.`sub_category_id` = `esc`.`id`)) left join `training_registrations` `tr` on(`ts`.`id` = `tr`.`training_id`)) GROUP BY `ts`.`id` ;
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `training_summary_view`  AS SELECT `ts`.`id` AS `id`, `ts`.`title` AS `title`, `ts`.`type` AS `type`, `ts`.`status` AS `status`, `ts`.`start_date` AS `start_date`, `ts`.`end_date` AS `end_date`, `tc`.`name` AS `category_name`, `mec`.`name` AS `main_category_name`, `esc`.`name` AS `sub_category_name`, `ts`.`max_participants` AS `max_participants`, count(`tr`.`id`) AS `registered_count`, count(case when `tr`.`status` = 'completed' then 1 end) AS `completed_count`, avg(`tr`.`feedback_rating`) AS `average_feedback_rating` FROM ((((`trainings_seminars` `ts` left join `training_categories` `tc` on(`ts`.`category_id` = `tc`.`id`)) left join `main_evaluation_categories` `mec` on(`ts`.`main_category_id` = `mec`.`id`)) left join `evaluation_sub_categories` `esc` on(`ts`.`sub_category_id` = `esc`.`id`)) left join `training_registrations` `tr` on(`ts`.`id` = `tr`.`training_id`)) GROUP BY `ts`.`id` ;
 
 --
 -- Indexes for dumped tables
@@ -3639,11 +5003,59 @@ ALTER TABLE `class_materials`
   ADD KEY `created_at` (`created_at`);
 
 --
+-- Indexes for table `class_syllabus`
+--
+ALTER TABLE `class_syllabus`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `class_id` (`class_id`),
+  ADD KEY `teacher_id` (`teacher_id`);
+
+--
 -- Indexes for table `colleges`
 --
 ALTER TABLE `colleges`
   ADD PRIMARY KEY (`id`),
   ADD KEY `created_by` (`created_by`);
+
+--
+-- Indexes for table `consultation_hours`
+--
+ALTER TABLE `consultation_hours`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `teacher_id` (`teacher_id`),
+  ADD KEY `semester` (`semester`),
+  ADD KEY `academic_year` (`academic_year`),
+  ADD KEY `day_of_week` (`day_of_week`),
+  ADD KEY `is_active` (`is_active`),
+  ADD KEY `created_by` (`created_by`),
+  ADD KEY `idx_consultation_teacher_semester` (`teacher_id`,`semester`,`academic_year`),
+  ADD KEY `idx_consultation_active` (`is_active`,`semester`,`academic_year`),
+  ADD KEY `idx_consultation_day_time` (`day_of_week`,`start_time`,`end_time`),
+  ADD KEY `idx_consultation_semester_active` (`semester`,`academic_year`,`is_active`),
+  ADD KEY `idx_consultation_teacher_active` (`teacher_id`,`is_active`);
+
+--
+-- Indexes for table `consultation_leave`
+--
+ALTER TABLE `consultation_leave`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `teacher_id` (`teacher_id`),
+  ADD KEY `idx_consultation_leave_current_date` (`leave_date`);
+
+--
+-- Indexes for table `consultation_requests`
+--
+ALTER TABLE `consultation_requests`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `teacher_id` (`teacher_id`),
+  ADD KEY `student_id` (`student_id`),
+  ADD KEY `status` (`status`),
+  ADD KEY `request_time` (`request_time`),
+  ADD KEY `session_id` (`session_id`),
+  ADD KEY `idx_consultation_teacher_status` (`teacher_id`,`status`),
+  ADD KEY `idx_consultation_pending` (`status`,`request_time`),
+  ADD KEY `idx_consultation_requests_recent` (`teacher_id`,`status`,`request_time`),
+  ADD KEY `idx_consultation_requests_session` (`session_id`,`status`);
 
 --
 -- Indexes for table `contact_messages`
@@ -3697,6 +5109,58 @@ ALTER TABLE `department_contacts`
   ADD PRIMARY KEY (`id`),
   ADD KEY `department_id` (`department_id`),
   ADD KEY `created_by` (`created_by`);
+
+--
+-- Indexes for table `department_heads`
+--
+ALTER TABLE `department_heads`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_department_head` (`department`,`employee_id`),
+  ADD KEY `idx_employee_id` (`employee_id`),
+  ADD KEY `idx_department` (`department`);
+
+--
+-- Indexes for table `employees`
+--
+ALTER TABLE `employees`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `employee_id` (`employee_id`),
+  ADD UNIQUE KEY `email` (`email`),
+  ADD KEY `idx_department` (`department`),
+  ADD KEY `idx_employee_type` (`employee_type`);
+
+--
+-- Indexes for table `employee_leave_balances`
+--
+ALTER TABLE `employee_leave_balances`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_employee_leave_year` (`employee_id`,`leave_type_id`,`year`),
+  ADD KEY `idx_employee_id` (`employee_id`),
+  ADD KEY `idx_leave_type_id` (`leave_type_id`),
+  ADD KEY `idx_year` (`year`);
+
+--
+-- Indexes for table `employee_leave_requests`
+--
+ALTER TABLE `employee_leave_requests`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_employee_id` (`employee_id`),
+  ADD KEY `idx_leave_type_id` (`leave_type_id`),
+  ADD KEY `idx_start_date` (`start_date`),
+  ADD KEY `idx_status` (`status`),
+  ADD KEY `idx_department_head_approval` (`department_head_approval`),
+  ADD KEY `idx_hr_approval` (`hr_approval`),
+  ADD KEY `department_head_id` (`department_head_id`),
+  ADD KEY `hr_approver_id` (`hr_approver_id`);
+
+--
+-- Indexes for table `error_logs`
+--
+ALTER TABLE `error_logs`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_error_type` (`error_type`),
+  ADD KEY `idx_created_at` (`created_at`),
+  ADD KEY `idx_ip_address` (`ip_address`);
 
 --
 -- Indexes for table `evaluation_categories`
@@ -3779,7 +5243,21 @@ ALTER TABLE `evaluation_sub_categories`
 --
 ALTER TABLE `faculty`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `email` (`email`);
+  ADD UNIQUE KEY `email` (`email`),
+  ADD KEY `idx_department` (`department`),
+  ADD KEY `idx_is_active` (`is_active`),
+  ADD KEY `idx_qrcode` (`qrcode`) COMMENT 'Index for QR code lookups';
+
+--
+-- Indexes for table `faculty_details`
+--
+ALTER TABLE `faculty_details`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_faculty_id` (`faculty_id`) COMMENT 'One detail record per faculty member',
+  ADD KEY `idx_employee_id` (`employee_id`) COMMENT 'Index for employee ID lookups',
+  ADD KEY `idx_employment_type` (`employment_type`) COMMENT 'Index for employment type filtering',
+  ADD KEY `idx_date_of_hire` (`date_of_hire`) COMMENT 'Index for hire date queries',
+  ADD KEY `idx_created_at` (`created_at`) COMMENT 'Index for creation date queries';
 
 --
 -- Indexes for table `faculty_events`
@@ -3793,6 +5271,30 @@ ALTER TABLE `faculty_events`
   ADD KEY `idx_events_teacher_date` (`teacher_id`,`event_date`);
 
 --
+-- Indexes for table `faculty_leave_balances`
+--
+ALTER TABLE `faculty_leave_balances`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_faculty_leave_year` (`faculty_id`,`leave_type_id`,`year`),
+  ADD KEY `idx_faculty_id` (`faculty_id`),
+  ADD KEY `idx_leave_type_id` (`leave_type_id`),
+  ADD KEY `idx_year` (`year`);
+
+--
+-- Indexes for table `faculty_leave_requests`
+--
+ALTER TABLE `faculty_leave_requests`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_faculty_id` (`faculty_id`),
+  ADD KEY `idx_leave_type_id` (`leave_type_id`),
+  ADD KEY `idx_start_date` (`start_date`),
+  ADD KEY `idx_status` (`status`),
+  ADD KEY `idx_department_head_approval` (`department_head_approval`),
+  ADD KEY `idx_hr_approval` (`hr_approval`),
+  ADD KEY `department_head_id` (`department_head_id`),
+  ADD KEY `hr_approver_id` (`hr_approver_id`);
+
+--
 -- Indexes for table `faculty_notifications`
 --
 ALTER TABLE `faculty_notifications`
@@ -3802,6 +5304,19 @@ ALTER TABLE `faculty_notifications`
   ADD KEY `is_read` (`is_read`),
   ADD KEY `created_at` (`created_at`),
   ADD KEY `idx_notifications_teacher_read` (`teacher_id`,`is_read`,`created_at`);
+
+--
+-- Indexes for table `faculty_regularization`
+--
+ALTER TABLE `faculty_regularization`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_faculty_id` (`faculty_id`) COMMENT 'One regularization record per faculty',
+  ADD KEY `idx_staff_category` (`staff_category_id`),
+  ADD KEY `idx_current_status` (`current_status_id`),
+  ADD KEY `idx_regularization_review_date` (`regularization_review_date`),
+  ADD KEY `idx_probation_end_date` (`probation_end_date`),
+  ADD KEY `idx_is_active` (`is_active`),
+  ADD KEY `idx_faculty_regularization_dates` (`probation_start_date`,`probation_end_date`,`regularization_review_date`);
 
 --
 -- Indexes for table `faqs`
@@ -3836,6 +5351,45 @@ ALTER TABLE `head_teacher_assignments`
   ADD KEY `idx_head_teacher_assignments_head_status` (`head_id`,`status`),
   ADD KEY `idx_head_teacher_assignments_teacher_status` (`teacher_id`,`status`),
   ADD KEY `idx_head_teacher_assignments_assigned_date` (`assigned_date`);
+
+--
+-- Indexes for table `leave_balances`
+--
+ALTER TABLE `leave_balances`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_employee_leave_year` (`employee_id`,`leave_type_id`,`year`),
+  ADD KEY `idx_employee_id` (`employee_id`),
+  ADD KEY `idx_leave_type_id` (`leave_type_id`),
+  ADD KEY `idx_year` (`year`);
+
+--
+-- Indexes for table `leave_notifications`
+--
+ALTER TABLE `leave_notifications`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_recipient_id` (`recipient_id`),
+  ADD KEY `idx_recipient_type` (`recipient_type`),
+  ADD KEY `idx_is_read` (`is_read`),
+  ADD KEY `idx_related_leave_request_id` (`related_leave_request_id`);
+
+--
+-- Indexes for table `leave_requests`
+--
+ALTER TABLE `leave_requests`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_employee_id` (`employee_id`),
+  ADD KEY `idx_leave_type_id` (`leave_type_id`),
+  ADD KEY `idx_status` (`status`),
+  ADD KEY `idx_department_head_approval` (`department_head_approval`),
+  ADD KEY `idx_hr_approval` (`hr_approval`),
+  ADD KEY `idx_start_date` (`start_date`),
+  ADD KEY `idx_end_date` (`end_date`);
+
+--
+-- Indexes for table `leave_types`
+--
+ALTER TABLE `leave_types`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `lessons`
@@ -4046,11 +5600,25 @@ ALTER TABLE `main_evaluation_categories`
   ADD KEY `idx_main_evaluation_categories_type_status` (`evaluation_type`,`status`);
 
 --
+-- Indexes for table `migrations`
+--
+ALTER TABLE `migrations`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indexes for table `mission_vision`
 --
 ALTER TABLE `mission_vision`
   ADD PRIMARY KEY (`id`),
   ADD KEY `created_by` (`created_by`);
+
+--
+-- Indexes for table `personal_access_tokens`
+--
+ALTER TABLE `personal_access_tokens`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `personal_access_tokens_token_unique` (`token`),
+  ADD KEY `personal_access_tokens_tokenable_type_tokenable_id_index` (`tokenable_type`,`tokenable_id`);
 
 --
 -- Indexes for table `posts`
@@ -4168,6 +5736,35 @@ ALTER TABLE `quiz_submission_answers`
   ADD KEY `is_correct` (`is_correct`);
 
 --
+-- Indexes for table `regularization_notifications`
+--
+ALTER TABLE `regularization_notifications`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_faculty_regularization` (`faculty_regularization_id`),
+  ADD KEY `idx_recipient` (`recipient_id`),
+  ADD KEY `idx_notification_type` (`notification_type`),
+  ADD KEY `idx_is_read` (`is_read`),
+  ADD KEY `idx_notifications_unread` (`recipient_id`,`is_read`,`created_at`);
+
+--
+-- Indexes for table `regularization_reviews`
+--
+ALTER TABLE `regularization_reviews`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_faculty_regularization` (`faculty_regularization_id`),
+  ADD KEY `idx_review_date` (`review_date`),
+  ADD KEY `idx_reviewer` (`reviewer_id`),
+  ADD KEY `idx_decision` (`decision`),
+  ADD KEY `idx_regularization_reviews_comprehensive` (`review_date`,`decision`,`overall_rating`);
+
+--
+-- Indexes for table `regularization_status`
+--
+ALTER TABLE `regularization_status`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_name` (`name`);
+
+--
 -- Indexes for table `research_categories`
 --
 ALTER TABLE `research_categories`
@@ -4209,6 +5806,13 @@ ALTER TABLE `service_details`
 ALTER TABLE `settings`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `setting_key` (`setting_key`);
+
+--
+-- Indexes for table `staff_categories`
+--
+ALTER TABLE `staff_categories`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_name` (`name`);
 
 --
 -- Indexes for table `students`
@@ -4320,6 +5924,68 @@ ALTER TABLE `subjects`
   ADD KEY `status` (`status`);
 
 --
+-- Indexes for table `syllabus_clos`
+--
+ALTER TABLE `syllabus_clos`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `syllabus_id` (`syllabus_id`);
+
+--
+-- Indexes for table `syllabus_clo_po_alignment`
+--
+ALTER TABLE `syllabus_clo_po_alignment`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_clo_po` (`syllabus_id`,`clo_id`,`po_id`),
+  ADD KEY `clo_id` (`clo_id`),
+  ADD KEY `po_id` (`po_id`);
+
+--
+-- Indexes for table `syllabus_files`
+--
+ALTER TABLE `syllabus_files`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `syllabus_id` (`syllabus_id`);
+
+--
+-- Indexes for table `syllabus_peos`
+--
+ALTER TABLE `syllabus_peos`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `syllabus_id` (`syllabus_id`);
+
+--
+-- Indexes for table `syllabus_peo_po_alignment`
+--
+ALTER TABLE `syllabus_peo_po_alignment`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_peo_po` (`syllabus_id`,`peo_id`,`po_id`),
+  ADD KEY `peo_id` (`peo_id`),
+  ADD KEY `po_id` (`po_id`);
+
+--
+-- Indexes for table `syllabus_pos`
+--
+ALTER TABLE `syllabus_pos`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `syllabus_id` (`syllabus_id`);
+
+--
+-- Indexes for table `syllabus_topics`
+--
+ALTER TABLE `syllabus_topics`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `syllabus_id` (`syllabus_id`);
+
+--
+-- Indexes for table `syllabus_topic_clo_alignment`
+--
+ALTER TABLE `syllabus_topic_clo_alignment`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_topic_clo` (`syllabus_id`,`topic_id`,`clo_id`),
+  ADD KEY `topic_id` (`topic_id`),
+  ADD KEY `clo_id` (`clo_id`);
+
+--
 -- Indexes for table `teachers`
 --
 ALTER TABLE `teachers`
@@ -4329,6 +5995,20 @@ ALTER TABLE `teachers`
   ADD KEY `status` (`status`),
   ADD KEY `idx_teachers_department_status` (`department`,`status`),
   ADD KEY `idx_teachers_position` (`position`);
+
+--
+-- Indexes for table `teacher_availability`
+--
+ALTER TABLE `teacher_availability`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_teacher_date` (`teacher_id`,`availability_date`) COMMENT 'One availability record per teacher per day',
+  ADD KEY `idx_teacher_id` (`teacher_id`) COMMENT 'Index for teacher lookups',
+  ADD KEY `idx_availability_date` (`availability_date`) COMMENT 'Index for date queries',
+  ADD KEY `idx_status` (`status`) COMMENT 'Index for status filtering',
+  ADD KEY `idx_scan_time` (`scan_time`) COMMENT 'Index for scan time queries',
+  ADD KEY `idx_active_teachers` (`teacher_id`,`availability_date`,`status`) COMMENT 'Composite index for active teacher queries',
+  ADD KEY `idx_teacher_availability_active` (`teacher_id`,`status`,`availability_date`),
+  ADD KEY `idx_teacher_availability_recent` (`scan_time`,`status`);
 
 --
 -- Indexes for table `teacher_classes`
@@ -4502,13 +6182,13 @@ ALTER TABLE `carousel_slides`
 -- AUTO_INCREMENT for table `class_announcements`
 --
 ALTER TABLE `class_announcements`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `class_enrollments`
 --
 ALTER TABLE `class_enrollments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=69;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=85;
 
 --
 -- AUTO_INCREMENT for table `class_materials`
@@ -4517,10 +6197,34 @@ ALTER TABLE `class_materials`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `class_syllabus`
+--
+ALTER TABLE `class_syllabus`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
 -- AUTO_INCREMENT for table `colleges`
 --
 ALTER TABLE `colleges`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+
+--
+-- AUTO_INCREMENT for table `consultation_hours`
+--
+ALTER TABLE `consultation_hours`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `consultation_leave`
+--
+ALTER TABLE `consultation_leave`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+
+--
+-- AUTO_INCREMENT for table `consultation_requests`
+--
+ALTER TABLE `consultation_requests`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `contact_messages`
@@ -4565,6 +6269,36 @@ ALTER TABLE `department_contacts`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
+-- AUTO_INCREMENT for table `department_heads`
+--
+ALTER TABLE `department_heads`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `employees`
+--
+ALTER TABLE `employees`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
+-- AUTO_INCREMENT for table `employee_leave_balances`
+--
+ALTER TABLE `employee_leave_balances`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+
+--
+-- AUTO_INCREMENT for table `employee_leave_requests`
+--
+ALTER TABLE `employee_leave_requests`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT for table `error_logs`
+--
+ALTER TABLE `error_logs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=160;
+
+--
 -- AUTO_INCREMENT for table `evaluation_categories`
 --
 ALTER TABLE `evaluation_categories`
@@ -4604,19 +6338,43 @@ ALTER TABLE `evaluation_sub_categories`
 -- AUTO_INCREMENT for table `faculty`
 --
 ALTER TABLE `faculty`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+
+--
+-- AUTO_INCREMENT for table `faculty_details`
+--
+ALTER TABLE `faculty_details`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `faculty_events`
 --
 ALTER TABLE `faculty_events`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+
+--
+-- AUTO_INCREMENT for table `faculty_leave_balances`
+--
+ALTER TABLE `faculty_leave_balances`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+
+--
+-- AUTO_INCREMENT for table `faculty_leave_requests`
+--
+ALTER TABLE `faculty_leave_requests`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `faculty_notifications`
 --
 ALTER TABLE `faculty_notifications`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT for table `faculty_regularization`
+--
+ALTER TABLE `faculty_regularization`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `faqs`
@@ -4635,6 +6393,30 @@ ALTER TABLE `heads`
 --
 ALTER TABLE `head_teacher_assignments`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT for table `leave_balances`
+--
+ALTER TABLE `leave_balances`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+
+--
+-- AUTO_INCREMENT for table `leave_notifications`
+--
+ALTER TABLE `leave_notifications`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `leave_requests`
+--
+ALTER TABLE `leave_requests`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT for table `leave_types`
+--
+ALTER TABLE `leave_types`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `lessons`
@@ -4745,10 +6527,22 @@ ALTER TABLE `main_evaluation_categories`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
+-- AUTO_INCREMENT for table `migrations`
+--
+ALTER TABLE `migrations`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+
+--
 -- AUTO_INCREMENT for table `mission_vision`
 --
 ALTER TABLE `mission_vision`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `personal_access_tokens`
+--
+ALTER TABLE `personal_access_tokens`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `posts`
@@ -4817,6 +6611,24 @@ ALTER TABLE `quiz_submission_answers`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `regularization_notifications`
+--
+ALTER TABLE `regularization_notifications`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `regularization_reviews`
+--
+ALTER TABLE `regularization_reviews`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `regularization_status`
+--
+ALTER TABLE `regularization_status`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
 -- AUTO_INCREMENT for table `research_categories`
 --
 ALTER TABLE `research_categories`
@@ -4853,10 +6665,16 @@ ALTER TABLE `settings`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
+-- AUTO_INCREMENT for table `staff_categories`
+--
+ALTER TABLE `staff_categories`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
 -- AUTO_INCREMENT for table `students`
 --
 ALTER TABLE `students`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=267;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=283;
 
 --
 -- AUTO_INCREMENT for table `student_academic_info`
@@ -4919,10 +6737,64 @@ ALTER TABLE `subjects`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
 
 --
+-- AUTO_INCREMENT for table `syllabus_clos`
+--
+ALTER TABLE `syllabus_clos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
+-- AUTO_INCREMENT for table `syllabus_clo_po_alignment`
+--
+ALTER TABLE `syllabus_clo_po_alignment`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+
+--
+-- AUTO_INCREMENT for table `syllabus_files`
+--
+ALTER TABLE `syllabus_files`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT for table `syllabus_peos`
+--
+ALTER TABLE `syllabus_peos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
+-- AUTO_INCREMENT for table `syllabus_peo_po_alignment`
+--
+ALTER TABLE `syllabus_peo_po_alignment`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+
+--
+-- AUTO_INCREMENT for table `syllabus_pos`
+--
+ALTER TABLE `syllabus_pos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+
+--
+-- AUTO_INCREMENT for table `syllabus_topics`
+--
+ALTER TABLE `syllabus_topics`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=42;
+
+--
+-- AUTO_INCREMENT for table `syllabus_topic_clo_alignment`
+--
+ALTER TABLE `syllabus_topic_clo_alignment`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
+
+--
 -- AUTO_INCREMENT for table `teachers`
 --
 ALTER TABLE `teachers`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
+-- AUTO_INCREMENT for table `teacher_availability`
+--
+ALTER TABLE `teacher_availability`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `teacher_classes`
@@ -4982,7 +6854,7 @@ ALTER TABLE `training_suggestions`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT for table `user_inquiries`
@@ -5055,10 +6927,36 @@ ALTER TABLE `class_enrollments`
   ADD CONSTRAINT `fk_class_enrollments_student` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE CASCADE;
 
 --
+-- Constraints for table `class_syllabus`
+--
+ALTER TABLE `class_syllabus`
+  ADD CONSTRAINT `class_syllabus_ibfk_1` FOREIGN KEY (`class_id`) REFERENCES `teacher_classes` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `class_syllabus_ibfk_2` FOREIGN KEY (`teacher_id`) REFERENCES `faculty` (`id`) ON DELETE CASCADE;
+
+--
 -- Constraints for table `colleges`
 --
 ALTER TABLE `colleges`
   ADD CONSTRAINT `colleges_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`);
+
+--
+-- Constraints for table `consultation_hours`
+--
+ALTER TABLE `consultation_hours`
+  ADD CONSTRAINT `fk_consultation_hours_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_consultation_hours_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `faculty` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `consultation_leave`
+--
+ALTER TABLE `consultation_leave`
+  ADD CONSTRAINT `consultation_leave_ibfk_1` FOREIGN KEY (`teacher_id`) REFERENCES `faculty` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `consultation_requests`
+--
+ALTER TABLE `consultation_requests`
+  ADD CONSTRAINT `fk_consultation_requests_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `faculty` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `core_values`
@@ -5102,6 +7000,28 @@ ALTER TABLE `department_contacts`
   ADD CONSTRAINT `department_contacts_ibfk_2` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
+-- Constraints for table `department_heads`
+--
+ALTER TABLE `department_heads`
+  ADD CONSTRAINT `department_heads_ibfk_1` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `employee_leave_balances`
+--
+ALTER TABLE `employee_leave_balances`
+  ADD CONSTRAINT `employee_leave_balances_ibfk_1` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `employee_leave_balances_ibfk_2` FOREIGN KEY (`leave_type_id`) REFERENCES `leave_types` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `employee_leave_requests`
+--
+ALTER TABLE `employee_leave_requests`
+  ADD CONSTRAINT `employee_leave_requests_ibfk_1` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `employee_leave_requests_ibfk_2` FOREIGN KEY (`leave_type_id`) REFERENCES `leave_types` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `employee_leave_requests_ibfk_3` FOREIGN KEY (`department_head_id`) REFERENCES `employees` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `employee_leave_requests_ibfk_4` FOREIGN KEY (`hr_approver_id`) REFERENCES `employees` (`id`) ON DELETE SET NULL;
+
+--
 -- Constraints for table `evaluation_categories`
 --
 ALTER TABLE `evaluation_categories`
@@ -5143,6 +7063,12 @@ ALTER TABLE `evaluation_sub_categories`
   ADD CONSTRAINT `fk_evaluation_sub_categories_main` FOREIGN KEY (`main_category_id`) REFERENCES `main_evaluation_categories` (`id`) ON DELETE CASCADE;
 
 --
+-- Constraints for table `faculty_details`
+--
+ALTER TABLE `faculty_details`
+  ADD CONSTRAINT `fk_faculty_details_faculty` FOREIGN KEY (`faculty_id`) REFERENCES `faculty` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
 -- Constraints for table `faculty_events`
 --
 ALTER TABLE `faculty_events`
@@ -5150,10 +7076,34 @@ ALTER TABLE `faculty_events`
   ADD CONSTRAINT `fk_events_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
+-- Constraints for table `faculty_leave_balances`
+--
+ALTER TABLE `faculty_leave_balances`
+  ADD CONSTRAINT `faculty_leave_balances_ibfk_1` FOREIGN KEY (`faculty_id`) REFERENCES `faculty` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `faculty_leave_balances_ibfk_2` FOREIGN KEY (`leave_type_id`) REFERENCES `leave_types` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `faculty_leave_requests`
+--
+ALTER TABLE `faculty_leave_requests`
+  ADD CONSTRAINT `faculty_leave_requests_ibfk_1` FOREIGN KEY (`faculty_id`) REFERENCES `faculty` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `faculty_leave_requests_ibfk_2` FOREIGN KEY (`leave_type_id`) REFERENCES `leave_types` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `faculty_leave_requests_ibfk_3` FOREIGN KEY (`department_head_id`) REFERENCES `faculty` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `faculty_leave_requests_ibfk_4` FOREIGN KEY (`hr_approver_id`) REFERENCES `faculty` (`id`) ON DELETE SET NULL;
+
+--
 -- Constraints for table `faculty_notifications`
 --
 ALTER TABLE `faculty_notifications`
   ADD CONSTRAINT `fk_notifications_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `faculty_regularization`
+--
+ALTER TABLE `faculty_regularization`
+  ADD CONSTRAINT `fk_faculty_regularization_category` FOREIGN KEY (`staff_category_id`) REFERENCES `staff_categories` (`id`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_faculty_regularization_faculty` FOREIGN KEY (`faculty_id`) REFERENCES `faculty` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_faculty_regularization_status` FOREIGN KEY (`current_status_id`) REFERENCES `regularization_status` (`id`) ON UPDATE CASCADE;
 
 --
 -- Constraints for table `heads`
@@ -5167,6 +7117,26 @@ ALTER TABLE `heads`
 ALTER TABLE `head_teacher_assignments`
   ADD CONSTRAINT `fk_head_teacher_assignments_head` FOREIGN KEY (`head_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_head_teacher_assignments_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `faculty` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `leave_balances`
+--
+ALTER TABLE `leave_balances`
+  ADD CONSTRAINT `leave_balances_ibfk_1` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `leave_balances_ibfk_2` FOREIGN KEY (`leave_type_id`) REFERENCES `leave_types` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `leave_notifications`
+--
+ALTER TABLE `leave_notifications`
+  ADD CONSTRAINT `leave_notifications_ibfk_1` FOREIGN KEY (`related_leave_request_id`) REFERENCES `leave_requests` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `leave_requests`
+--
+ALTER TABLE `leave_requests`
+  ADD CONSTRAINT `leave_requests_ibfk_1` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `leave_requests_ibfk_2` FOREIGN KEY (`leave_type_id`) REFERENCES `leave_types` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `lessons`
@@ -5383,6 +7353,18 @@ ALTER TABLE `quiz_submission_answers`
   ADD CONSTRAINT `fk_submission_answers_submission` FOREIGN KEY (`submission_id`) REFERENCES `quiz_submissions` (`id`) ON DELETE CASCADE;
 
 --
+-- Constraints for table `regularization_notifications`
+--
+ALTER TABLE `regularization_notifications`
+  ADD CONSTRAINT `fk_regularization_notifications_regularization` FOREIGN KEY (`faculty_regularization_id`) REFERENCES `faculty_regularization` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `regularization_reviews`
+--
+ALTER TABLE `regularization_reviews`
+  ADD CONSTRAINT `fk_regularization_reviews_regularization` FOREIGN KEY (`faculty_regularization_id`) REFERENCES `faculty_regularization` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
 -- Constraints for table `research_categories`
 --
 ALTER TABLE `research_categories`
@@ -5472,10 +7454,70 @@ ALTER TABLE `subjects`
   ADD CONSTRAINT `fk_subjects_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
+-- Constraints for table `syllabus_clos`
+--
+ALTER TABLE `syllabus_clos`
+  ADD CONSTRAINT `syllabus_clos_ibfk_1` FOREIGN KEY (`syllabus_id`) REFERENCES `class_syllabus` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `syllabus_clo_po_alignment`
+--
+ALTER TABLE `syllabus_clo_po_alignment`
+  ADD CONSTRAINT `syllabus_clo_po_alignment_ibfk_1` FOREIGN KEY (`syllabus_id`) REFERENCES `class_syllabus` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `syllabus_clo_po_alignment_ibfk_2` FOREIGN KEY (`clo_id`) REFERENCES `syllabus_clos` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `syllabus_clo_po_alignment_ibfk_3` FOREIGN KEY (`po_id`) REFERENCES `syllabus_pos` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `syllabus_files`
+--
+ALTER TABLE `syllabus_files`
+  ADD CONSTRAINT `syllabus_files_ibfk_1` FOREIGN KEY (`syllabus_id`) REFERENCES `class_syllabus` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `syllabus_peos`
+--
+ALTER TABLE `syllabus_peos`
+  ADD CONSTRAINT `syllabus_peos_ibfk_1` FOREIGN KEY (`syllabus_id`) REFERENCES `class_syllabus` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `syllabus_peo_po_alignment`
+--
+ALTER TABLE `syllabus_peo_po_alignment`
+  ADD CONSTRAINT `syllabus_peo_po_alignment_ibfk_1` FOREIGN KEY (`syllabus_id`) REFERENCES `class_syllabus` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `syllabus_peo_po_alignment_ibfk_2` FOREIGN KEY (`peo_id`) REFERENCES `syllabus_peos` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `syllabus_peo_po_alignment_ibfk_3` FOREIGN KEY (`po_id`) REFERENCES `syllabus_pos` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `syllabus_pos`
+--
+ALTER TABLE `syllabus_pos`
+  ADD CONSTRAINT `syllabus_pos_ibfk_1` FOREIGN KEY (`syllabus_id`) REFERENCES `class_syllabus` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `syllabus_topics`
+--
+ALTER TABLE `syllabus_topics`
+  ADD CONSTRAINT `syllabus_topics_ibfk_1` FOREIGN KEY (`syllabus_id`) REFERENCES `class_syllabus` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `syllabus_topic_clo_alignment`
+--
+ALTER TABLE `syllabus_topic_clo_alignment`
+  ADD CONSTRAINT `syllabus_topic_clo_alignment_ibfk_1` FOREIGN KEY (`syllabus_id`) REFERENCES `class_syllabus` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `syllabus_topic_clo_alignment_ibfk_2` FOREIGN KEY (`topic_id`) REFERENCES `syllabus_topics` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `syllabus_topic_clo_alignment_ibfk_3` FOREIGN KEY (`clo_id`) REFERENCES `syllabus_clos` (`id`) ON DELETE CASCADE;
+
+--
 -- Constraints for table `teachers`
 --
 ALTER TABLE `teachers`
   ADD CONSTRAINT `fk_teachers_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `teacher_availability`
+--
+ALTER TABLE `teacher_availability`
+  ADD CONSTRAINT `fk_teacher_availability_faculty` FOREIGN KEY (`teacher_id`) REFERENCES `faculty` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `teacher_classes`
