@@ -33,8 +33,8 @@ $is_active = isset($_POST['is_active']) ? (int)$_POST['is_active'] : 1;
 // Get form data for faculty_details table
 $middle_name = isset($_POST['middle_name']) ? sanitize_input($_POST['middle_name']) : '';
 $date_of_birth = isset($_POST['date_of_birth']) ? sanitize_input($_POST['date_of_birth']) : '';
-$gender = isset($_POST['gender']) ? sanitize_input($_POST['gender']) : '';
-$civil_status = isset($_POST['civil_status']) ? sanitize_input($_POST['civil_status']) : '';
+$gender = isset($_POST['gender']) ? trim($_POST['gender']) : '';
+$civil_status = isset($_POST['civil_status']) ? trim($_POST['civil_status']) : '';
 $nationality = isset($_POST['nationality']) ? sanitize_input($_POST['nationality']) : '';
 $religion = isset($_POST['religion']) ? sanitize_input($_POST['religion']) : '';
 $phone = isset($_POST['phone']) ? sanitize_input($_POST['phone']) : '';
@@ -68,12 +68,12 @@ if (empty($employee_id)) {
     }
 }
 $date_of_hire = isset($_POST['date_of_hire']) ? sanitize_input($_POST['date_of_hire']) : '';
-$employment_type = isset($_POST['employment_type']) ? sanitize_input($_POST['employment_type']) : '';
+$employment_type = isset($_POST['employment_type']) ? trim($_POST['employment_type']) : '';
 $basic_salary = isset($_POST['basic_salary']) ? (float)$_POST['basic_salary'] : 0;
 $salary_grade = isset($_POST['salary_grade']) ? sanitize_input($_POST['salary_grade']) : '';
 $allowances = isset($_POST['allowances']) ? (float)$_POST['allowances'] : 0;
-$pay_schedule = isset($_POST['pay_schedule']) ? sanitize_input($_POST['pay_schedule']) : '';
-$highest_education = isset($_POST['highest_education']) ? sanitize_input($_POST['highest_education']) : '';
+$pay_schedule = isset($_POST['pay_schedule']) ? trim($_POST['pay_schedule']) : '';
+$highest_education = isset($_POST['highest_education']) ? trim($_POST['highest_education']) : '';
 $field_of_study = isset($_POST['field_of_study']) ? sanitize_input($_POST['field_of_study']) : '';
 $school_university = isset($_POST['school_university']) ? sanitize_input($_POST['school_university']) : '';
 $year_graduated = isset($_POST['year_graduated']) ? (int)$_POST['year_graduated'] : null;
@@ -108,6 +108,43 @@ if (!empty($missing_fields)) {
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     header('Content-Type: application/json');
     echo json_encode(['success' => false, 'message' => 'Please enter a valid email address']);
+    exit();
+}
+
+// Validate enum values
+$valid_genders = ['Male', 'Female', 'Other'];
+$valid_civil_statuses = ['Single', 'Married', 'Widowed', 'Divorced', 'Separated'];
+$valid_employment_types = ['Full-time', 'Part-time', 'Contract', 'Temporary', 'Probationary'];
+$valid_pay_schedules = ['Monthly', 'Bi-weekly', 'Weekly'];
+$valid_highest_education = ['High School', 'Associate Degree', 'Bachelor\'s Degree', 'Master\'s Degree', 'Doctorate', 'Post-Doctorate'];
+
+if (!empty($gender) && !in_array($gender, $valid_genders)) {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Invalid gender value']);
+    exit();
+}
+
+if (!empty($civil_status) && !in_array($civil_status, $valid_civil_statuses)) {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Invalid civil status value']);
+    exit();
+}
+
+if (!empty($employment_type) && !in_array($employment_type, $valid_employment_types)) {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Invalid employment type value']);
+    exit();
+}
+
+if (!empty($pay_schedule) && !in_array($pay_schedule, $valid_pay_schedules)) {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Invalid pay schedule value']);
+    exit();
+}
+
+if (!empty($highest_education) && !in_array($highest_education, $valid_highest_education)) {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Invalid highest education value: ' . $highest_education]);
     exit();
 }
 
@@ -162,7 +199,7 @@ try {
         throw new Exception('Error preparing details insert: ' . mysqli_error($conn));
     }
 
-    mysqli_stmt_bind_param($insert_details_stmt, "isssssssssssssdsisssssssssssss", 
+    mysqli_stmt_bind_param($insert_details_stmt, "isssssssssssssdsdsssssssss", 
         $faculty_id, $middle_name, $date_of_birth, $gender, $civil_status, $nationality, $religion,
         $phone, $emergency_contact_name, $emergency_contact_number, $address,
         $employee_id, $date_of_hire, $employment_type, $basic_salary, $salary_grade, $allowances, $pay_schedule,
@@ -174,14 +211,33 @@ try {
         throw new Exception('Error inserting faculty details: ' . mysqli_error($conn));
     }
     
-    // Log the action
-    $user_id = $_SESSION['user_id'];
-    $action = "Added new faculty member: $first_name $last_name";
-    $log_query = "INSERT INTO activity_logs (user_id, action, created_at) VALUES (?, ?, NOW())";
-    $log_stmt = mysqli_prepare($conn, $log_query);
-    if ($log_stmt) {
-        mysqli_stmt_bind_param($log_stmt, "is", $user_id, $action);
-        mysqli_stmt_execute($log_stmt);
+    // Log the action (optional - don't fail faculty addition if logging fails)
+    try {
+        $admin_id = $_SESSION['user_id'];
+        
+        // Check if the user exists in the users table
+        $check_user_query = "SELECT id FROM users WHERE id = ?";
+        $check_user_stmt = mysqli_prepare($conn, $check_user_query);
+        mysqli_stmt_bind_param($check_user_stmt, "i", $admin_id);
+        mysqli_stmt_execute($check_user_stmt);
+        $check_user_result = mysqli_stmt_get_result($check_user_stmt);
+        
+        if (mysqli_num_rows($check_user_result) > 0) {
+            // User exists, proceed with logging
+            $action = "Added new faculty member: $first_name $last_name";
+            $log_query = "INSERT INTO admin_activity_logs (admin_id, action, created_at) VALUES (?, ?, NOW())";
+            $log_stmt = mysqli_prepare($conn, $log_query);
+            if ($log_stmt) {
+                mysqli_stmt_bind_param($log_stmt, "is", $admin_id, $action);
+                mysqli_stmt_execute($log_stmt);
+            }
+        } else {
+            // User doesn't exist, skip logging
+            error_log("Activity logging skipped: User ID $admin_id not found in users table");
+        }
+    } catch (Exception $e) {
+        // Log error but don't fail the faculty addition
+        error_log("Activity logging failed: " . $e->getMessage());
     }
     
     // Commit transaction

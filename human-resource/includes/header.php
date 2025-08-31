@@ -24,6 +24,11 @@
         }
     </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- jQuery and jGrowl -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jgrowl/1.4.8/jquery.jgrowl.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jgrowl/1.4.8/jquery.jgrowl.min.css">
     <style>
         .sidebar {
             transform: translateX(-100%);
@@ -93,6 +98,71 @@
         .flex-1 {
             min-width: 0;
             max-width: 100%;
+        }
+
+        /* Custom jGrowl Success Theme */
+        .jGrowl-success {
+            background-color: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #16a34a;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .jGrowl-success .jGrowl-header {
+            color: #16a34a;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .jGrowl-success .jGrowl-message {
+            color: #16a34a;
+            font-size: 13px;
+        }
+        
+        .jGrowl-success .jGrowl-close {
+            color: #16a34a;
+        }
+        
+        .jGrowl-success .jGrowl-close:hover {
+            color: #15803d;
+        }
+        
+        /* Custom jGrowl Error Theme */
+        .jGrowl-error {
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .jGrowl-error .jGrowl-header {
+            color: #dc2626;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .jGrowl-error .jGrowl-message {
+            color: #dc2626;
+            font-size: 13px;
+        }
+        
+        .jGrowl-error .jGrowl-close {
+            color: #dc2626;
+        }
+        
+        .jGrowl-error .jGrowl-close:hover {
+            color: #b91c1c;
+        }
+        
+        /* jGrowl Container Styling */
+        #jGrowl {
+            z-index: 9999;
+        }
+        
+        .jGrowl-notification {
+            font-family: 'Poppins', sans-serif;
         }
 
         /* Custom animations */

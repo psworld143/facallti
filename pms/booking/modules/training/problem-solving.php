@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once '../../../includes/error_handler.php';
 require_once '../../includes/config.php';
 require_once '../../includes/functions.php';
 
@@ -149,13 +150,7 @@ include '../../includes/sidebar-unified.php';
 
         <!-- Main Content -->
         <main class="lg:ml-64 mt-16 p-4 lg:p-6 flex-1 transition-all duration-300">
-            <div class="flex justify-between items-center mb-8">
-                <h2 class="text-3xl font-semibold text-gray-800">Problem Solving Training</h2>
-                <div class="text-right">
-                    <div id="current-date" class="text-sm text-gray-600"></div>
-                    <div id="current-time" class="text-sm text-gray-600"></div>
-                </div>
-            </div>
+            
 
             <!-- Page Header -->
             <div class="mb-6">
@@ -195,7 +190,7 @@ include '../../includes/sidebar-unified.php';
                         </div>
                         <div class="ml-4">
                             <p class="text-sm font-medium text-gray-600">Average Score</p>
-                            <p class="text-2xl font-bold text-gray-900"><?php echo number_format($user_stats['avg_score'], 1); ?>%</p>
+                            <p class="text-2xl font-bold text-gray-900"><?php echo number_format($user_stats['avg_score'] ?? 0, 1); ?>%</p>
                         </div>
                     </div>
                 </div>
@@ -256,7 +251,7 @@ include '../../includes/sidebar-unified.php';
                                     <span class="text-sm font-medium text-gray-600"><?php echo ucfirst($performance['severity']); ?></span>
                                 </div>
                                 <div class="text-right">
-                                    <p class="text-sm font-semibold text-gray-900"><?php echo number_format($performance['avg_score'], 1); ?>%</p>
+                                    <p class="text-sm font-semibold text-gray-900"><?php echo number_format($performance['avg_score'] ?? 0, 1); ?>%</p>
                                     <p class="text-xs text-gray-500"><?php echo $performance['attempts']; ?> attempts</p>
                                 </div>
                             </div>
@@ -314,7 +309,7 @@ include '../../includes/sidebar-unified.php';
                                         <p class="text-sm font-medium text-gray-800">Problem solved</p>
                                         <p class="text-xs text-gray-500"><?php echo date('M j, Y', strtotime($attempt['created_at'])); ?></p>
                                     </div>
-                                    <span class="text-sm font-semibold text-green-600"><?php echo number_format($attempt['score'], 1); ?>%</span>
+                                    <span class="text-sm font-semibold text-green-600"><?php echo number_format($attempt['score'] ?? 0, 1); ?>%</span>
                                 </div>
                             <?php endforeach; ?>
                         <?php endif; ?>
@@ -439,7 +434,7 @@ include '../../includes/sidebar-unified.php';
                                     </div>
                                     <div class="text-center">
                                         <p class="text-sm text-gray-500">Avg Score</p>
-                                        <p class="text-lg font-semibold text-gray-900"><?php echo number_format($scenario['avg_score'], 1); ?>%</p>
+                                        <p class="text-lg font-semibold text-gray-900"><?php echo number_format($scenario['avg_score'] ?? 0, 1); ?>%</p>
                                     </div>
                                 </div>
                                 

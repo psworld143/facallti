@@ -160,63 +160,78 @@ include 'includes/header.php';
     </div>
     
     <!-- Desktop Table View -->
-    <div class="hidden lg:block overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
+    <div class="hidden xl:block">
+        <table class="w-full divide-y divide-gray-200">
             <thead class="bg-hr-secondary">
                 <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Faculty Member</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Position</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Department</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Email</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Status</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Actions</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider w-1/4">Faculty Member</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider w-1/5">Position</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider w-1/5">Department</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider w-1/4">Email</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider w-1/12">Status</th>
+                    <th class="px-4 py-3 text-center text-xs font-medium text-white uppercase tracking-wider w-1/12">Actions</th>
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
                 <?php if (empty($faculty_members)): ?>
                     <tr>
-                        <td colspan="6" class="px-6 py-4 text-center text-gray-500">No faculty members found</td>
+                        <td colspan="6" class="px-4 py-4 text-center text-gray-500">No faculty members found</td>
                     </tr>
                 <?php else: ?>
                     <?php foreach ($faculty_members as $faculty): ?>
                         <tr class="hover:bg-gray-50 transition-colors">
-                            <td class="px-6 py-4 whitespace-nowrap">
+                            <td class="px-4 py-4">
                                 <div class="flex items-center">
                                     <div class="flex-shrink-0">
-                                        <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                        <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
                                             <?php echo strtoupper(substr($faculty['first_name'], 0, 1) . substr($faculty['last_name'], 0, 1)); ?>
                                         </div>
                                     </div>
-                                    <div class="ml-4">
-                                        <div class="text-sm font-medium text-gray-900">
+                                    <div class="ml-3 min-w-0 flex-1">
+                                        <div class="text-sm font-medium text-gray-900 truncate">
                                             <?php echo $faculty['first_name'] . ' ' . $faculty['last_name']; ?>
                                         </div>
                                     </div>
                                 </div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                <?php echo $faculty['position']; ?>
+                            <td class="px-4 py-4">
+                                <div class="text-sm text-gray-900 truncate" title="<?php echo htmlspecialchars($faculty['position']); ?>">
+                                    <?php echo $faculty['position']; ?>
+                                </div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <?php echo $faculty['department']; ?>
+                            <td class="px-4 py-4">
+                                <div class="text-sm text-gray-500 truncate" title="<?php echo htmlspecialchars($faculty['department']); ?>">
+                                    <?php echo $faculty['department']; ?>
+                                </div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <?php echo $faculty['email']; ?>
+                            <td class="px-4 py-4">
+                                <div class="text-sm text-gray-500 truncate" title="<?php echo htmlspecialchars($faculty['email']); ?>">
+                                    <?php echo $faculty['email']; ?>
+                                </div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="px-3 py-1 text-xs rounded-full font-semibold <?php echo $faculty['is_active'] ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'; ?>">
+                            <td class="px-4 py-4">
+                                <span class="px-2 py-1 text-xs rounded-full font-semibold <?php echo $faculty['is_active'] ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'; ?>">
                                     <?php echo $faculty['is_active'] ? 'Active' : 'Inactive'; ?>
                                 </span>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <a href="view-faculty.php?id=<?php echo encrypt_id($faculty['id']); ?>" 
-                                   class="text-seait-orange hover:text-seait-dark font-medium mr-3 transition-colors">
-                                    <i class="fas fa-eye"></i> View
-                                </a>
-                                <a href="edit-faculty.php?id=<?php echo encrypt_id($faculty['id']); ?>" 
-                                   class="text-blue-500 hover:text-blue-700 font-medium transition-colors">
-                                    <i class="fas fa-edit"></i> Edit
-                                </a>
+                            <td class="px-4 py-4 text-center">
+                                <div class="flex items-center justify-center space-x-2">
+                                    <a href="view-faculty.php?id=<?php echo encrypt_id($faculty['id']); ?>" 
+                                       class="p-2 text-seait-orange hover:text-seait-dark hover:bg-orange-50 rounded-lg transition-all duration-200"
+                                       title="View Faculty Details">
+                                        <i class="fas fa-eye text-lg"></i>
+                                    </a>
+                                    <a href="edit-faculty.php?id=<?php echo encrypt_id($faculty['id']); ?>" 
+                                       class="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                                       title="Edit Faculty Member">
+                                        <i class="fas fa-edit text-lg"></i>
+                                    </a>
+                                    <button onclick="deleteFaculty(<?php echo $faculty['id']; ?>, '<?php echo htmlspecialchars($faculty['first_name'] . ' ' . $faculty['last_name']); ?>')" 
+                                            class="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200"
+                                            title="Delete Faculty Member">
+                                        <i class="fas fa-trash text-lg"></i>
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -225,18 +240,93 @@ include 'includes/header.php';
         </table>
     </div>
     
-    <!-- Mobile/Tablet Card View -->
+    <!-- Tablet Table View (Simplified) -->
+    <div class="hidden lg:block xl:hidden">
+        <table class="w-full divide-y divide-gray-200">
+            <thead class="bg-hr-secondary">
+                <tr>
+                    <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Faculty Member</th>
+                    <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Position</th>
+                    <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Status</th>
+                    <th class="px-3 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                <?php if (empty($faculty_members)): ?>
+                    <tr>
+                        <td colspan="4" class="px-3 py-4 text-center text-gray-500">No faculty members found</td>
+                    </tr>
+                <?php else: ?>
+                    <?php foreach ($faculty_members as $faculty): ?>
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-3 py-4">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0">
+                                        <div class="w-8 h-8 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xs">
+                                            <?php echo strtoupper(substr($faculty['first_name'], 0, 1) . substr($faculty['last_name'], 0, 1)); ?>
+                                        </div>
+                                    </div>
+                                    <div class="ml-2 min-w-0 flex-1">
+                                        <div class="text-sm font-medium text-gray-900 truncate">
+                                            <?php echo $faculty['first_name'] . ' ' . $faculty['last_name']; ?>
+                                        </div>
+                                        <div class="text-xs text-gray-500 truncate">
+                                            <?php echo $faculty['email']; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-3 py-4">
+                                <div class="text-sm text-gray-900 truncate" title="<?php echo htmlspecialchars($faculty['position']); ?>">
+                                    <?php echo $faculty['position']; ?>
+                                </div>
+                                <div class="text-xs text-gray-500 truncate">
+                                    <?php echo $faculty['department']; ?>
+                                </div>
+                            </td>
+                            <td class="px-3 py-4">
+                                <span class="px-2 py-1 text-xs rounded-full font-semibold <?php echo $faculty['is_active'] ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'; ?>">
+                                    <?php echo $faculty['is_active'] ? 'Active' : 'Inactive'; ?>
+                                </span>
+                            </td>
+                            <td class="px-3 py-4 text-center">
+                                <div class="flex items-center justify-center space-x-1">
+                                    <a href="view-faculty.php?id=<?php echo encrypt_id($faculty['id']); ?>" 
+                                       class="p-1.5 text-seait-orange hover:text-seait-dark hover:bg-orange-50 rounded transition-all duration-200"
+                                       title="View Faculty Details">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="edit-faculty.php?id=<?php echo encrypt_id($faculty['id']); ?>" 
+                                       class="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-all duration-200"
+                                       title="Edit Faculty Member">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <button onclick="deleteFaculty(<?php echo $faculty['id']; ?>, '<?php echo htmlspecialchars($faculty['first_name'] . ' ' . $faculty['last_name']); ?>')" 
+                                            class="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-all duration-200"
+                                            title="Delete Faculty Member">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Mobile Card View -->
     <div class="lg:hidden">
         <?php if (empty($faculty_members)): ?>
-            <div class="px-6 py-4 text-center text-gray-500">No faculty members found</div>
+            <div class="px-4 py-4 text-center text-gray-500">No faculty members found</div>
         <?php else: ?>
             <div class="divide-y divide-gray-200">
                 <?php foreach ($faculty_members as $faculty): ?>
                     <div class="p-4 hover:bg-gray-50 transition-colors">
                         <div class="flex items-start justify-between">
-                            <div class="flex items-center space-x-3">
+                            <div class="flex items-center space-x-3 flex-1 min-w-0">
                                 <div class="flex-shrink-0">
-                                    <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                    <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
                                         <?php echo strtoupper(substr($faculty['first_name'], 0, 1) . substr($faculty['last_name'], 0, 1)); ?>
                                     </div>
                                 </div>
@@ -247,30 +337,37 @@ include 'includes/header.php';
                                     <div class="text-sm text-gray-500 truncate">
                                         <?php echo $faculty['position']; ?>
                                     </div>
+                                    <div class="text-xs text-gray-400 truncate mt-1">
+                                        <?php echo $faculty['department']; ?>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="flex flex-col items-end space-y-2">
-                                <span class="px-3 py-1 text-xs rounded-full font-semibold <?php echo $faculty['is_active'] ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'; ?>">
+                            <div class="flex flex-col items-end space-y-2 ml-3">
+                                <span class="px-2 py-1 text-xs rounded-full font-semibold <?php echo $faculty['is_active'] ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'; ?>">
                                     <?php echo $faculty['is_active'] ? 'Active' : 'Inactive'; ?>
                                 </span>
-                                <div class="flex space-x-2">
+                                <div class="flex space-x-1">
                                     <a href="view-faculty.php?id=<?php echo encrypt_id($faculty['id']); ?>" 
-                                       class="text-seait-orange hover:text-seait-dark font-medium text-sm transition-colors">
-                                        <i class="fas fa-eye"></i>
+                                       class="p-2 text-seait-orange hover:text-seait-dark hover:bg-orange-50 rounded-lg transition-all duration-200"
+                                       title="View Faculty Details">
+                                        <i class="fas fa-eye text-lg"></i>
                                     </a>
                                     <a href="edit-faculty.php?id=<?php echo encrypt_id($faculty['id']); ?>" 
-                                       class="text-blue-500 hover:text-blue-700 font-medium text-sm transition-colors">
-                                        <i class="fas fa-edit"></i>
+                                       class="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                                       title="Edit Faculty Member">
+                                        <i class="fas fa-edit text-lg"></i>
                                     </a>
+                                    <button onclick="deleteFaculty(<?php echo $faculty['id']; ?>, '<?php echo htmlspecialchars($faculty['first_name'] . ' ' . $faculty['last_name']); ?>')" 
+                                            class="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200"
+                                            title="Delete Faculty Member">
+                                        <i class="fas fa-trash text-lg"></i>
+                                    </button>
                                 </div>
                             </div>
                         </div>
-                        <div class="mt-3 space-y-1">
-                            <div class="text-sm text-gray-500">
-                                <span class="font-medium">Department:</span> <?php echo $faculty['department']; ?>
-                            </div>
-                            <div class="text-sm text-gray-500 truncate">
-                                <span class="font-medium">Email:</span> <?php echo $faculty['email']; ?>
+                        <div class="mt-3 pt-3 border-t border-gray-100">
+                            <div class="text-xs text-gray-500 truncate">
+                                <i class="fas fa-envelope mr-1"></i><?php echo $faculty['email']; ?>
                             </div>
                         </div>
                     </div>
@@ -765,6 +862,53 @@ include 'includes/header.php';
     </div>
 </div>
 
+    <!-- Delete Faculty Confirmation Modal -->
+    <div id="deleteFacultyModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-bounce-in">
+                <div class="p-6 text-center">
+                    <div class="mb-4">
+                        <div class="p-4 rounded-full bg-red-100 text-red-600 inline-block mb-4">
+                            <i class="fas fa-exclamation-triangle text-3xl"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-2">Delete Faculty Member</h3>
+                        <p class="text-gray-600 mb-4">Are you sure you want to delete <span id="facultyName" class="font-semibold"></span>? This action cannot be undone.</p>
+                        <div class="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                            <div class="flex items-center text-red-800">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>
+                                <span class="text-sm font-medium">Warning:</span>
+                            </div>
+                            <ul class="text-sm text-red-700 mt-2 text-left space-y-1">
+                                <li class="flex items-center">
+                                    <i class="fas fa-trash mr-2 text-red-500"></i>
+                                    Faculty profile will be permanently removed
+                                </li>
+                                <li class="flex items-center">
+                                    <i class="fas fa-eye-slash mr-2 text-red-500"></i>
+                                    No longer visible to students
+                                </li>
+                                <li class="flex items-center">
+                                    <i class="fas fa-undo mr-2 text-red-500"></i>
+                                    Cannot be recovered
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="flex justify-center space-x-3">
+                        <button onclick="closeDeleteFacultyModal()"
+                                class="px-6 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200">
+                            <i class="fas fa-times mr-2"></i>Cancel
+                        </button>
+                        <button onclick="confirmDeleteFaculty()"
+                                class="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 font-semibold">
+                            <i class="fas fa-trash mr-2"></i>Delete Permanently
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 <?php include 'includes/footer.php'; ?>
 
 <!-- Custom JavaScript for HR Dashboard -->
@@ -909,8 +1053,8 @@ document.getElementById('addFacultyForm').addEventListener('submit', function(e)
             
             // Show success animation
             const successIcon = document.createElement('div');
-            successIcon.className = 'fixed inset-0 bg-green-500 bg-opacity-20 flex items-center justify-center z-50';
-            successIcon.innerHTML = '<div class="bg-white p-8 rounded-lg shadow-lg text-center"><i class="fas fa-check-circle text-6xl text-green-500 mb-4"></i><h3 class="text-xl font-bold text-gray-900">Faculty Member Added Successfully!</h3></div>';
+            successIcon.className = 'fixed top-4 right-4 z-50';
+            successIcon.innerHTML = '<div class="bg-white p-6 rounded-lg shadow-lg text-center border border-green-200"><i class="fas fa-check-circle text-4xl text-green-500 mb-3"></i><h3 class="text-lg font-bold text-gray-900">Faculty Member Added Successfully!</h3></div>';
             document.body.appendChild(successIcon);
             
             setTimeout(() => {
@@ -1009,5 +1153,81 @@ window.addEventListener('click', function(e) {
     if (e.target === modal) {
         closeAddFacultyModal();
     }
+    
+    const deleteModal = document.getElementById('deleteFacultyModal');
+    if (e.target === deleteModal) {
+        closeDeleteFacultyModal();
+    }
 });
+
+// Delete faculty functions
+let facultyToDelete = null;
+
+function deleteFaculty(facultyId, facultyName) {
+    facultyToDelete = facultyId;
+    document.getElementById('facultyName').textContent = facultyName;
+    document.getElementById('deleteFacultyModal').classList.remove('hidden');
+}
+
+function closeDeleteFacultyModal() {
+    document.getElementById('deleteFacultyModal').classList.add('hidden');
+    facultyToDelete = null;
+}
+
+function confirmDeleteFaculty() {
+    if (!facultyToDelete) {
+        showToast('No faculty member selected for deletion', 'error');
+        return;
+    }
+    
+    // Show loading state
+    const deleteBtn = document.querySelector('#deleteFacultyModal button[onclick="confirmDeleteFaculty()"]');
+    const originalText = deleteBtn.innerHTML;
+    deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Deleting...';
+    deleteBtn.disabled = true;
+    
+    fetch('delete-faculty.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            faculty_id: facultyToDelete
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            showToast('Faculty member deleted successfully!', 'success');
+            closeDeleteFacultyModal();
+            
+            // Show success animation
+            const successIcon = document.createElement('div');
+            successIcon.className = 'fixed top-4 right-4 z-50';
+            successIcon.innerHTML = '<div class="bg-white p-6 rounded-lg shadow-lg text-center border border-green-200"><i class="fas fa-check-circle text-4xl text-green-500 mb-3"></i><h3 class="text-lg font-bold text-gray-900">Faculty Member Deleted Successfully!</h3></div>';
+            document.body.appendChild(successIcon);
+            
+            setTimeout(() => {
+                document.body.removeChild(successIcon);
+                window.location.reload();
+            }, 2000);
+        } else {
+            showToast(data.message || 'Error deleting faculty member', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Network error. Please try again.', 'error');
+    })
+    .finally(() => {
+        // Reset button state
+        deleteBtn.innerHTML = originalText;
+        deleteBtn.disabled = false;
+    });
+}
 </script>

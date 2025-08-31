@@ -63,11 +63,24 @@ function refreshMotivation() {
 function initializeTrainingDashboard() {
     switchTrainingTab('scenarios');
     
-    // Initialize filter change listeners
-    document.getElementById('scenario-difficulty-filter').addEventListener('change', loadScenarios);
-    document.getElementById('scenario-category-filter').addEventListener('change', loadScenarios);
-    document.getElementById('service-type-filter').addEventListener('change', loadCustomerService);
-    document.getElementById('problem-severity-filter').addEventListener('change', loadProblemScenarios);
+    // Initialize filter change listeners with null checks
+    const difficultyFilter = document.getElementById('scenario-difficulty-filter');
+    const categoryFilter = document.getElementById('scenario-category-filter');
+    const serviceTypeFilter = document.getElementById('service-type-filter');
+    const problemSeverityFilter = document.getElementById('problem-severity-filter');
+    
+    if (difficultyFilter) {
+        difficultyFilter.addEventListener('change', loadScenarios);
+    }
+    if (categoryFilter) {
+        categoryFilter.addEventListener('change', loadScenarios);
+    }
+    if (serviceTypeFilter) {
+        serviceTypeFilter.addEventListener('change', loadCustomerService);
+    }
+    if (problemSeverityFilter) {
+        problemSeverityFilter.addEventListener('change', loadProblemScenarios);
+    }
 }
 
 // Tab switching functionality
@@ -106,8 +119,16 @@ function switchTrainingTab(tabName) {
 // Load functions
 function loadScenarios() {
     const container = document.getElementById('scenarios-container');
-    const difficultyFilter = document.getElementById('scenario-difficulty-filter').value;
-    const categoryFilter = document.getElementById('scenario-category-filter').value;
+    const difficultyFilterElement = document.getElementById('scenario-difficulty-filter');
+    const categoryFilterElement = document.getElementById('scenario-category-filter');
+    
+    if (!container) {
+        console.warn('Scenarios container not found');
+        return;
+    }
+    
+    const difficultyFilter = difficultyFilterElement ? difficultyFilterElement.value : '';
+    const categoryFilter = categoryFilterElement ? categoryFilterElement.value : '';
     
     // Show loading state
     container.innerHTML = `
@@ -154,7 +175,14 @@ function loadScenarios() {
 
 function loadCustomerService() {
     const container = document.getElementById('customer-service-container');
-    const typeFilter = document.getElementById('service-type-filter').value;
+    const typeFilterElement = document.getElementById('service-type-filter');
+    
+    if (!container) {
+        console.warn('Customer service container not found');
+        return;
+    }
+    
+    const typeFilter = typeFilterElement ? typeFilterElement.value : '';
     
     // Show loading state
     container.innerHTML = `
@@ -164,41 +192,50 @@ function loadCustomerService() {
         </div>
     `;
     
-    // For now, show sample data since we don't have a specific API for customer service scenarios
-    setTimeout(() => {
-        const sampleScenarios = [
-            {
-                id: 'customer_service',
-                title: 'Handling Guest Complaints',
-                description: 'Practice responding to common guest complaints professionally.',
-                type: 'complaints',
-                difficulty: 'beginner',
-                estimated_time: 20,
-                points: 150
-            },
-            {
-                id: 'special_requests',
-                title: 'Special Guest Requests',
-                description: 'Handle unusual guest requests with professionalism and creativity.',
-                type: 'requests',
-                difficulty: 'intermediate',
-                estimated_time: 25,
-                points: 200
+    // Build query parameters
+    const params = new URLSearchParams();
+    if (typeFilter) params.append('type', typeFilter);
+    
+    // Fetch customer service scenarios from API
+    fetch(`../../api/get-customer-service-scenarios.php?${params.toString()}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-        ];
-        
-        // Apply filter
-        const filteredScenarios = typeFilter ? 
-            sampleScenarios.filter(s => s.type === typeFilter) : 
-            sampleScenarios;
-        
-        displayCustomerService(filteredScenarios);
-    }, 500);
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                displayCustomerService(data.scenarios);
+            } else {
+                throw new Error(data.message || 'Failed to load customer service scenarios');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading customer service scenarios:', error);
+            container.innerHTML = `
+                <div class="text-center py-8">
+                    <i class="fas fa-exclamation-triangle text-red-400 text-4xl mb-4"></i>
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">Error Loading Customer Service Scenarios</h3>
+                    <p class="text-gray-500 mb-4">Unable to load customer service scenarios. Please try again later.</p>
+                    <button onclick="loadCustomerService()" class="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors">
+                        <i class="fas fa-refresh mr-2"></i>Retry
+                    </button>
+                </div>
+            `;
+        });
 }
 
 function loadProblemScenarios() {
-    const container = document.getElementById('problem-scenarios-container');
-    const severityFilter = document.getElementById('problem-severity-filter').value;
+    const container = document.getElementById('problems-container');
+    const severityFilterElement = document.getElementById('problem-severity-filter');
+    
+    if (!container) {
+        console.warn('Problems container not found');
+        return;
+    }
+    
+    const severityFilter = severityFilterElement ? severityFilterElement.value : '';
     
     // Show loading state
     container.innerHTML = `
@@ -208,40 +245,47 @@ function loadProblemScenarios() {
         </div>
     `;
     
-    // For now, show sample data since we don't have a specific API for problem scenarios
-    setTimeout(() => {
-        const sampleScenarios = [
-            {
-                id: 'problem_solving',
-                title: 'System Failure Response',
-                description: 'Handle a critical system failure during peak hours.',
-                severity: 'high',
-                difficulty: 'advanced',
-                time_limit: 10,
-                points: 300
-            },
-            {
-                id: 'emergency_response',
-                title: 'Emergency Situation',
-                description: 'Respond to an emergency situation in the hotel.',
-                severity: 'critical',
-                difficulty: 'advanced',
-                time_limit: 15,
-                points: 400
+    // Build query parameters
+    const params = new URLSearchParams();
+    if (severityFilter) params.append('severity', severityFilter);
+    
+    // Fetch problem scenarios from API
+    fetch(`../../api/get-problem-scenarios.php?${params.toString()}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-        ];
-        
-        // Apply filter
-        const filteredScenarios = severityFilter ? 
-            sampleScenarios.filter(s => s.severity === severityFilter) : 
-            sampleScenarios;
-        
-        displayProblemScenarios(filteredScenarios);
-    }, 500);
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                displayProblemScenarios(data.scenarios);
+            } else {
+                throw new Error(data.message || 'Failed to load problem scenarios');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading problem scenarios:', error);
+            container.innerHTML = `
+                <div class="text-center py-8">
+                    <i class="fas fa-exclamation-triangle text-red-400 text-4xl mb-4"></i>
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">Error Loading Problem Scenarios</h3>
+                    <p class="text-gray-500 mb-4">Unable to load problem scenarios. Please try again later.</p>
+                    <button onclick="loadProblemScenarios()" class="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors">
+                        <i class="fas fa-refresh mr-2"></i>Retry
+                    </button>
+                </div>
+            `;
+        });
 }
 
 function loadProgress() {
     const container = document.getElementById('progress-container');
+    
+    if (!container) {
+        console.warn('Progress container not found');
+        return;
+    }
     
     // Show loading state
     container.innerHTML = `
@@ -635,6 +679,7 @@ function startCustomerService(scenarioId) {
 }
 
 function openCustomerServiceModal(scenario) {
+    window.currentCustomerServiceScenario = scenario.id;
     document.getElementById('cs-title').textContent = scenario.title;
     document.getElementById('cs-difficulty').textContent = getDifficultyLabel(scenario.difficulty);
     document.getElementById('cs-points').textContent = scenario.points;
@@ -686,6 +731,7 @@ function skipCustomerService() {
 
 function submitCustomerService() {
     const response = document.getElementById('customer-service-response').value;
+    const scenarioId = window.currentCustomerServiceScenario || 'customer_service';
     
     if (!response.trim()) {
         Utils.showNotification('Please provide a response', 'warning');
@@ -695,7 +741,10 @@ function submitCustomerService() {
     fetch('../../api/submit-customer-service.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ response: response })
+        body: JSON.stringify({ 
+            response: response,
+            scenario_id: scenarioId
+        })
     })
     .then(response => response.json())
     .then(data => {

@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once '../../includes/error_handler.php';
 require_once '../includes/config.php';
 require_once '../includes/functions.php';
 
@@ -24,11 +25,27 @@ try {
     $scenarios = [
         'customer_service' => [
             'id' => 'customer_service',
+            'title' => 'Customer Service Excellence',
+            'situation' => 'A guest approaches the front desk looking very upset. They have been waiting for room service for over an hour and their food is cold.',
+            'guest_request' => 'The guest demands immediate action and wants compensation for the poor service.',
+            'difficulty' => 'intermediate',
+            'points' => 200
+        ],
+        'complaint_handling' => [
+            'id' => 'complaint_handling',
             'title' => 'Handling Guest Complaints',
-            'situation' => 'A guest approaches the front desk visibly upset about their room condition.',
-            'guest_request' => 'The guest says their room is not clean and they want a refund or a new room immediately.',
+            'situation' => 'A guest calls the front desk complaining about noise from the room next door. They cannot sleep and are very frustrated.',
+            'guest_request' => 'The guest wants the noise to stop immediately and threatens to leave a negative review.',
             'difficulty' => 'beginner',
             'points' => 150
+        ],
+        'special_requests' => [
+            'id' => 'special_requests',
+            'title' => 'Special Guest Requests',
+            'situation' => 'A guest with a severe allergy requests a special meal preparation and room cleaning.',
+            'guest_request' => 'The guest needs assurance that their allergy will be taken seriously and wants special accommodations.',
+            'difficulty' => 'advanced',
+            'points' => 250
         ]
     ];
     
@@ -41,7 +58,7 @@ try {
         http_response_code(404);
         echo json_encode([
             'success' => false,
-            'message' => 'Scenario not found'
+            'message' => 'Customer service scenario not found'
         ]);
     }
     

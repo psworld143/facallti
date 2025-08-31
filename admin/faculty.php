@@ -10,6 +10,10 @@ $message_type = '';
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Debug logging
+    error_log("Faculty form submission received: " . print_r($_POST, true));
+    error_log("Files received: " . print_r($_FILES, true));
+    
     if (isset($_POST['action'])) {
         switch ($_POST['action']) {
             case 'add':
@@ -65,9 +69,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         if (mysqli_stmt_execute($stmt)) {
                             $message = "Faculty member added successfully!";
                             $message_type = "success";
+                            error_log("Faculty member added successfully: " . $email);
                         } else {
-                            $message = "Error adding faculty member.";
+                            $error_msg = mysqli_stmt_error($stmt);
+                            $message = "Error adding faculty member: " . $error_msg;
                             $message_type = "error";
+                            error_log("Error adding faculty member: " . $error_msg);
                         }
                     } else {
                         $message = "First name, last name, and email are required.";
@@ -255,9 +262,17 @@ while ($row = mysqli_fetch_assoc($colleges_result)) {
                         <h1 class="text-3xl font-bold text-seait-dark mb-2">Faculty Management</h1>
                         <p class="text-gray-600">Manage faculty members and staff</p>
                     </div>
-                    <button onclick="showAddModal()" class="bg-seait-orange text-white px-4 py-2 rounded-md hover:bg-orange-600 transition">
-                        <i class="fas fa-plus mr-2"></i>Add Faculty Member
-                    </button>
+                    <div class="flex space-x-3">
+                        <button onclick="showAddModal()" class="bg-seait-orange text-white px-4 py-2 rounded-md hover:bg-orange-600 transition">
+                            <i class="fas fa-plus mr-2"></i>Add Faculty Member
+                        </button>
+                        <a href="debug_faculty.php" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
+                            <i class="fas fa-bug mr-2"></i>Debug
+                        </a>
+                        <a href="test_db_connection.php" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition">
+                            <i class="fas fa-database mr-2"></i>Test DB
+                        </a>
+                    </div>
                 </div>
             </div>
 
@@ -484,6 +499,24 @@ while ($row = mysqli_fetch_assoc($colleges_result)) {
     </div>
 
     <script>
+        // Add form submission debugging
+        document.addEventListener('DOMContentLoaded', function() {
+            const facultyForm = document.getElementById('facultyForm');
+            if (facultyForm) {
+                facultyForm.addEventListener('submit', function(e) {
+                    console.log('Form submission started');
+                    console.log('Form action:', this.action);
+                    console.log('Form method:', this.method);
+                    
+                    // Log form data
+                    const formData = new FormData(this);
+                    for (let [key, value] of formData.entries()) {
+                        console.log(key + ': ' + value);
+                    }
+                });
+            }
+        });
+
         function showAddModal() {
             document.getElementById('modalTitle').textContent = 'Add Faculty Member';
             document.getElementById('formAction').value = 'add';
@@ -497,8 +530,16 @@ while ($row = mysqli_fetch_assoc($colleges_result)) {
         function editFaculty(id) {
             // Fetch faculty data via AJAX
             fetch(`get_faculty.php?id=${id}`)
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
                     document.getElementById('modalTitle').textContent = 'Edit Faculty Member';
                     document.getElementById('formAction').value = 'update';
                     document.getElementById('facultyId').value = data.id;
@@ -512,6 +553,10 @@ while ($row = mysqli_fetch_assoc($colleges_result)) {
                     document.getElementById('facultyActive').checked = data.is_active == 1;
                     document.getElementById('currentImage').value = data.image_url;
                     document.getElementById('facultyModal').classList.remove('hidden');
+                })
+                .catch(error => {
+                    console.error('Error fetching faculty data:', error);
+                    alert('Network error. Please try again. Error: ' + error.message);
                 });
         }
 

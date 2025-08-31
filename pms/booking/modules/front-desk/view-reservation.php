@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once '../../../includes/error_handler.php';
 require_once '../../includes/config.php';
 require_once '../../includes/functions.php';
 
@@ -29,6 +30,9 @@ $room_details = getRoomDetails($reservation['room_id'] ?? null);
 $billing_details = getBillingDetails($reservation_id);
 $check_in_details = getCheckInDetails($reservation_id);
 $additional_services = getAdditionalServicesForReservation($reservation_id);
+
+// Calculate nights if not already set
+$nights = $reservation['nights'] ?? ((strtotime($reservation['check_out_date']) - strtotime($reservation['check_in_date'])) / (60 * 60 * 24));
 
 // Set page title
 $page_title = 'View Reservation';
@@ -139,7 +143,7 @@ include '../../includes/sidebar-unified.php';
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Room Rate</label>
-                        <p class="text-gray-900">$<?php echo number_format($reservation['room_rate'], 2); ?> per night</p>
+                        <p class="text-gray-900">$<?php echo number_format(getRoomTypes()[$reservation['room_type'] ?? 'standard']['rate'], 2); ?> per night</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Check-in Date</label>
@@ -151,7 +155,7 @@ include '../../includes/sidebar-unified.php';
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Nights</label>
-                        <p class="text-gray-900"><?php echo $reservation['nights']; ?> night(s)</p>
+                        <p class="text-gray-900"><?php echo $nights; ?> night(s)</p>
                     </div>
                 </div>
             </div>
@@ -162,7 +166,7 @@ include '../../includes/sidebar-unified.php';
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Room Charges</label>
-                        <p class="text-gray-900 font-medium">$<?php echo number_format($reservation['room_rate'] * $reservation['nights'], 2); ?></p>
+                        <p class="text-gray-900 font-medium">$<?php echo number_format(getRoomTypes()[$reservation['room_type'] ?? 'standard']['rate'] * $nights, 2); ?></p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Additional Services</label>

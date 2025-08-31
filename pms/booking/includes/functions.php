@@ -1686,11 +1686,15 @@ function getServiceRequests($status_filter = '', $type_filter = '') {
             SELECT mr.*, 
                    r.room_number,
                    CONCAT(u1.name, ' (', u1.role, ')') as reported_by_name,
-                   u2.name as assigned_to_name
+                   u2.name as assigned_to_name,
+                   CONCAT(g.first_name, ' ', g.last_name) as guest_name,
+                   g.phone as guest_phone
             FROM maintenance_requests mr
             LEFT JOIN rooms r ON mr.room_id = r.id
             LEFT JOIN users u1 ON mr.reported_by = u1.id
             LEFT JOIN users u2 ON mr.assigned_to = u2.id
+            LEFT JOIN reservations res ON r.id = res.room_id AND res.status IN ('checked_in', 'confirmed')
+            LEFT JOIN guests g ON res.guest_id = g.id
             WHERE {$where_clause}
             ORDER BY mr.created_at DESC
         ";
@@ -2251,7 +2255,7 @@ function getTrainingScenarios($difficulty_filter = '', $category_filter = '') {
     global $pdo;
     
     try {
-        $where_conditions = ["1=1"];
+        $where_conditions = ["status = 'active'"];
         $params = [];
         
         if (!empty($difficulty_filter)) {
@@ -2292,17 +2296,19 @@ function getCustomerServiceScenarios($type_filter = '') {
     global $pdo;
     
     try {
-        $where_condition = "1=1";
+        $where_conditions = ["status = 'active'"];
         $params = [];
         
         if (!empty($type_filter)) {
-            $where_condition = "type = ?";
+            $where_conditions[] = "type = ?";
             $params[] = $type_filter;
         }
         
+        $where_clause = implode(" AND ", $where_conditions);
+        
         $query = "
             SELECT * FROM customer_service_scenarios 
-            WHERE {$where_condition}
+            WHERE {$where_clause}
             ORDER BY difficulty, title
         ";
         
@@ -2324,17 +2330,19 @@ function getProblemScenarios($severity_filter = '') {
     global $pdo;
     
     try {
-        $where_condition = "1=1";
+        $where_conditions = ["status = 'active'"];
         $params = [];
         
         if (!empty($severity_filter)) {
-            $where_condition = "severity = ?";
+            $where_conditions[] = "severity = ?";
             $params[] = $severity_filter;
         }
         
+        $where_clause = implode(" AND ", $where_conditions);
+        
         $query = "
             SELECT * FROM problem_scenarios 
-            WHERE {$where_condition}
+            WHERE {$where_clause}
             ORDER BY severity, difficulty, title
         ";
         
@@ -2826,11 +2834,23 @@ function getGuestStatistics() {
         ");
         $new_guests = $stmt->fetch()['total'];
         
+        // Pending feedback (if feedback table exists)
+        $pending_feedback = 0;
+        try {
+            $stmt = $pdo->query("SELECT COUNT(*) as total FROM feedback WHERE status = 'pending'");
+            $result = $stmt->fetch();
+            $pending_feedback = $result ? $result['total'] : 0;
+        } catch (PDOException $e) {
+            // Feedback table might not exist, so we'll use 0
+            $pending_feedback = 0;
+        }
+        
         return [
             'total_guests' => $total_guests,
             'vip_guests' => $vip_guests,
             'active_guests' => $active_guests,
-            'new_guests' => $new_guests
+            'new_guests' => $new_guests,
+            'pending_feedback' => $pending_feedback
         ];
         
     } catch (PDOException $e) {
@@ -2839,7 +2859,8 @@ function getGuestStatistics() {
             'total_guests' => 0,
             'vip_guests' => 0,
             'active_guests' => 0,
-            'new_guests' => 0
+            'new_guests' => 0,
+            'pending_feedback' => 0
         ];
     }
 }

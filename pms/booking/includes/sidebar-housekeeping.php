@@ -53,7 +53,7 @@ $navigation_items = [
 ?>
 
 <!-- Housekeeping Sidebar -->
-<nav id="sidebar" class="fixed left-0 top-16 w-64 h-[calc(100vh-4rem)] bg-white shadow-lg overflow-y-auto z-40 transform transition-all duration-300" data-collapsed="false">
+<nav id="sidebar" class="fixed left-0 top-16 w-64 h-[calc(100vh-4rem)] bg-white shadow-lg overflow-y-auto z-40 transition-all duration-300" data-collapsed="false">
     <div class="p-4 border-b border-gray-200">
         <div class="flex items-center justify-between">
             <div class="flex items-center sidebar-content">

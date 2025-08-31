@@ -1,6 +1,6 @@
 <?php
-require_once '../../includes/session-config.php';
 session_start();
+require_once '../../../includes/error_handler.php';
 require_once '../../includes/config.php';
 require_once '../../includes/functions.php';
 
@@ -10,11 +10,15 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['user_role'], ['front_de
     exit();
 }
 
+$user_role = $_SESSION['user_role'];
+$user_name = $_SESSION['user_name'];
+
 // Get service statistics
 $service_stats = getServiceStatistics();
 
 // Set page title
 $page_title = 'Service Management';
+$page_subtitle = 'Manage hotel services and requests';
 
 // Include unified navigation (automatically selects based on user role)
 include '../../includes/header-unified.php';
@@ -22,7 +26,15 @@ include '../../includes/sidebar-unified.php';
 ?>
 
         <!-- Main Content -->
-        <main class="ml-64 mt-16 p-6 flex-1">
+        <main class="lg:ml-64 mt-16 p-4 lg:p-6 flex-1 transition-all duration-300">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-3xl font-semibold text-gray-800">Service Management</h2>
+                <div class="text-right">
+                    <div id="current-date" class="text-sm text-gray-600"></div>
+                    <div id="current-time" class="text-sm text-gray-600"></div>
+                </div>
+            </div>
+
         <!-- Statistics Cards -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div class="bg-white rounded-lg shadow-sm border p-6">
@@ -542,9 +554,5 @@ include '../../includes/sidebar-unified.php';
     </div>
 
         </main>
-    </div>
 
-    <script src="../../assets/js/main.js"></script>
-    <script src="../../assets/js/service-management.js?v=<?php echo time(); ?>"></script>
-    
-    <?php include '../../includes/footer.php'; ?>
+<?php include '../../includes/footer.php'; ?>

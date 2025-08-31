@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once '../../includes/error_handler.php';
 require_once '../includes/config.php';
 require_once '../includes/functions.php';
 
@@ -59,6 +60,90 @@ try {
                         ['value' => 'b', 'text' => 'Name, ID, payment method, and room preferences'],
                         ['value' => 'c', 'text' => 'Just their credit card'],
                         ['value' => 'd', 'text' => 'Nothing, just give them the key']
+                    ],
+                    'correct_answer' => 'b'
+                ]
+            ]
+        ],
+        'customer_service' => [
+            'id' => 'customer_service',
+            'title' => 'Customer Service Excellence',
+            'description' => 'Handle various customer service situations including complaints, special requests, and difficult guests.',
+            'instructions' => 'Demonstrate excellent customer service skills by listening actively, showing empathy, and finding appropriate solutions.',
+            'difficulty' => 'intermediate',
+            'category' => 'customer_service',
+            'estimated_time' => 25,
+            'points' => 200,
+            'questions' => [
+                [
+                    'question' => 'A guest is complaining about slow room service. What should you do first?',
+                    'options' => [
+                        ['value' => 'a', 'text' => 'Apologize and offer a discount'],
+                        ['value' => 'b', 'text' => 'Listen to their concern and investigate the issue'],
+                        ['value' => 'c', 'text' => 'Tell them to call room service directly'],
+                        ['value' => 'd', 'text' => 'Ignore the complaint']
+                    ],
+                    'correct_answer' => 'b'
+                ],
+                [
+                    'question' => 'A guest requests a room change due to noise. What is the best approach?',
+                    'options' => [
+                        ['value' => 'a', 'text' => 'Tell them all rooms are the same'],
+                        ['value' => 'b', 'text' => 'Check availability and offer alternatives'],
+                        ['value' => 'c', 'text' => 'Ask them to wait until tomorrow'],
+                        ['value' => 'd', 'text' => 'Refuse the request']
+                    ],
+                    'correct_answer' => 'b'
+                ],
+                [
+                    'question' => 'A guest is upset about a billing error. How should you handle it?',
+                    'options' => [
+                        ['value' => 'a', 'text' => 'Tell them to contact accounting'],
+                        ['value' => 'b', 'text' => 'Investigate immediately and correct the error'],
+                        ['value' => 'c', 'text' => 'Ask them to come back later'],
+                        ['value' => 'd', 'text' => 'Blame the system']
+                    ],
+                    'correct_answer' => 'b'
+                ]
+            ]
+        ],
+        'problem_solving' => [
+            'id' => 'problem_solving',
+            'title' => 'Problem Solving & Crisis Management',
+            'description' => 'Handle various hotel problems and crisis situations that require quick thinking and effective solutions.',
+            'instructions' => 'Analyze the situation, identify the problem, and implement the best solution while maintaining guest satisfaction.',
+            'difficulty' => 'advanced',
+            'category' => 'problem_solving',
+            'estimated_time' => 30,
+            'points' => 300,
+            'questions' => [
+                [
+                    'question' => 'The hotel\'s main elevator is out of service. What should you do?',
+                    'options' => [
+                        ['value' => 'a', 'text' => 'Tell guests to use the stairs'],
+                        ['value' => 'b', 'text' => 'Coordinate with maintenance and inform guests with alternatives'],
+                        ['value' => 'c', 'text' => 'Ignore the issue'],
+                        ['value' => 'd', 'text' => 'Close the hotel']
+                    ],
+                    'correct_answer' => 'b'
+                ],
+                [
+                    'question' => 'A guest reports a security concern. What is your first action?',
+                    'options' => [
+                        ['value' => 'a', 'text' => 'Tell them to call security'],
+                        ['value' => 'b', 'text' => 'Listen carefully and escalate to security immediately'],
+                        ['value' => 'c', 'text' => 'Ask them to wait'],
+                        ['value' => 'd', 'text' => 'Ignore the concern']
+                    ],
+                    'correct_answer' => 'b'
+                ],
+                [
+                    'question' => 'The hotel is overbooked. How do you handle arriving guests?',
+                    'options' => [
+                        ['value' => 'a', 'text' => 'Turn them away'],
+                        ['value' => 'b', 'text' => 'Find alternative accommodations and compensate them'],
+                        ['value' => 'c', 'text' => 'Ask them to wait in the lobby'],
+                        ['value' => 'd', 'text' => 'Blame the booking system']
                     ],
                     'correct_answer' => 'b'
                 ]
