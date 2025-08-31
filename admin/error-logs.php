@@ -385,7 +385,7 @@ function exportErrorLogs() {
 }
 
 function clearOldLogs() {
-    if (confirm('Are you sure you want to clear error logs older than 30 days? This action cannot be undone.')) {
+    showConfirmModal('Are you sure you want to clear error logs older than 30 days? This action cannot be undone.', function() {
         fetch('clear-old-logs.php', {
             method: 'POST'
         })
@@ -404,7 +404,7 @@ function clearOldLogs() {
             console.error('Error:', error);
             showToast('Error clearing logs', 'error');
         });
-    }
+    });
 }
 
 // Close modal when clicking outside
@@ -433,4 +433,56 @@ function showToast(message, type = 'info') {
         }, 300);
     }, 3000);
 }
+
+// Modal functions
+function showConfirmModal(message, onConfirm) {
+    document.getElementById('confirmMessage').textContent = message;
+    document.getElementById('confirmModal').classList.remove('hidden');
+    
+    const confirmBtn = document.getElementById('confirmActionBtn');
+    confirmBtn.onclick = function() {
+        closeConfirmModal();
+        onConfirm();
+    };
+}
+
+function closeConfirmModal() {
+    document.getElementById('confirmModal').classList.add('hidden');
+}
+
+// Close confirmation modal when clicking outside
+document.addEventListener('DOMContentLoaded', function() {
+    const confirmModal = document.getElementById('confirmModal');
+    if (confirmModal) {
+        confirmModal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeConfirmModal();
+            }
+        });
+    }
+});
 </script>
+
+<!-- Confirmation Modal -->
+<div id="confirmModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+        <div class="text-center mb-6">
+            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-exclamation-triangle text-red-600 text-2xl"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">Confirm Action</h3>
+            <p class="text-gray-600 text-sm" id="confirmMessage">Are you sure you want to proceed?</p>
+        </div>
+        
+        <div class="flex justify-center space-x-3">
+            <button onclick="closeConfirmModal()"
+                    class="px-6 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200">
+                <i class="fas fa-times mr-2"></i>Cancel
+            </button>
+            <button id="confirmActionBtn"
+                    class="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 font-semibold">
+                <i class="fas fa-check mr-2"></i>Confirm
+            </button>
+        </div>
+    </div>
+</div>

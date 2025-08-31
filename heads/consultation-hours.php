@@ -260,6 +260,9 @@ include 'includes/header.php';
             <button id="leavesViewBtn" onclick="showLeavesView()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg font-medium">
                 <i class="fas fa-calendar-times mr-2"></i>Consultation Leaves
             </button>
+            <button id="availableTodayViewBtn" onclick="showAvailableTodayView()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg font-medium">
+                <i class="fas fa-user-check mr-2"></i>Available Today
+            </button>
         </div>
     </div>
 
@@ -1110,6 +1113,246 @@ include 'includes/header.php';
             <?php endif; ?>
         </div>
     </div>
+
+    <!-- Available Today View -->
+    <div id="availableTodayView" class="bg-white rounded-lg shadow-sm hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">Available Teachers Today - <?php echo date('l, F j, Y'); ?></h3>
+            <p class="text-sm text-gray-600 mt-1">Teachers who have consultation hours scheduled for today and are available for student consultations</p>
+        </div>
+        <div class="p-6">
+            <?php
+            // Get current day of week
+            $current_day = date('l'); // Returns Monday, Tuesday, etc.
+            $current_time = date('H:i:s'); // Current time in HH:MM:SS format
+            $current_date = date('Y-m-d'); // Current date
+            
+            // Get teachers available today (considering consultation hours and leaves)
+            // Group by teacher to avoid duplicates and concatenate time ranges
+            $available_today_query = "SELECT 
+                                        f.id,
+                                        f.first_name,
+                                        f.last_name,
+                                        f.email,
+                                        f.position,
+                                        f.department,
+                                        GROUP_CONCAT(DISTINCT ch.day_of_week) as day_of_week,
+                                        GROUP_CONCAT(DISTINCT CONCAT(TIME_FORMAT(ch.start_time, '%h:%i %p'), ' - ', TIME_FORMAT(ch.end_time, '%h:%i %p')) ORDER BY ch.start_time SEPARATOR ', ') as time_ranges,
+                                        GROUP_CONCAT(DISTINCT ch.room ORDER BY ch.start_time SEPARATOR ', ') as rooms,
+                                        GROUP_CONCAT(DISTINCT ch.notes ORDER BY ch.start_time SEPARATOR ' | ') as all_notes,
+                                        MIN(ch.start_time) as earliest_start,
+                                        MAX(ch.end_time) as latest_end,
+                                        CASE 
+                                            WHEN TIME(NOW()) BETWEEN MIN(ch.start_time) AND MAX(ch.end_time) THEN 'active'
+                                            WHEN TIME(NOW()) < MIN(ch.start_time) THEN 'upcoming'
+                                            ELSE 'ended'
+                                        END as status
+                                      FROM faculty f
+                                      JOIN consultation_hours ch ON f.id = ch.teacher_id
+                                      LEFT JOIN consultation_leave cl ON f.id = cl.teacher_id AND cl.leave_date = CURDATE()
+                                      WHERE f.department = ? 
+                                        AND f.is_active = 1 
+                                        AND ch.is_active = 1
+                                        AND ch.day_of_week = ?
+                                        AND cl.id IS NULL
+                                      GROUP BY f.id, f.first_name, f.last_name, f.email, f.position, f.department
+                                      ORDER BY 
+                                        CASE 
+                                            WHEN TIME(NOW()) BETWEEN MIN(ch.start_time) AND MAX(ch.end_time) THEN 1
+                                            WHEN TIME(NOW()) < MIN(ch.start_time) THEN 2
+                                            ELSE 3
+                                        END,
+                                        MIN(ch.start_time) ASC";
+            
+            $available_today_result = null;
+            if ($head_info) {
+                $available_today_stmt = mysqli_prepare($conn, $available_today_query);
+                if ($available_today_stmt) {
+                    mysqli_stmt_bind_param($available_today_stmt, "ss", $head_info['department'], $current_day);
+                    if (mysqli_stmt_execute($available_today_stmt)) {
+                        $available_today_result = mysqli_stmt_get_result($available_today_stmt);
+                    }
+                }
+            }
+            
+            if (!$available_today_result || mysqli_num_rows($available_today_result) === 0): ?>
+                <div class="text-center py-12">
+                    <div class="mx-auto h-16 w-16 text-gray-400 mb-4">
+                        <i class="fas fa-user-clock text-6xl"></i>
+                    </div>
+                    <h3 class="mt-2 text-lg font-medium text-gray-900">No Teachers Available Today</h3>
+                    <p class="mt-1 text-sm text-gray-500">No teachers have consultation hours scheduled for <?php echo $current_day; ?> or they may be on leave.</p>
+                    <div class="mt-6">
+                        <button onclick="openAddModal()" class="bg-seait-orange hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center mx-auto">
+                            <i class="fas fa-plus mr-2"></i>
+                            Add Consultation Hours
+                        </button>
+                    </div>
+                </div>
+            <?php else: ?>
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                    <?php
+                    $active_count = 0;
+                    $upcoming_count = 0;
+                    $ended_count = 0;
+                    
+                    // Count statuses
+                    mysqli_data_seek($available_today_result, 0);
+                    while ($teacher = mysqli_fetch_assoc($available_today_result)) {
+                        switch ($teacher['status']) {
+                            case 'active':
+                                $active_count++;
+                                break;
+                            case 'upcoming':
+                                $upcoming_count++;
+                                break;
+                            case 'ended':
+                                $ended_count++;
+                                break;
+                        }
+                    }
+                    ?>
+                    
+                    <!-- Active Now Card -->
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <div class="flex items-center">
+                            <div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mr-4">
+                                <i class="fas fa-user-check text-white text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-lg font-semibold text-green-900"><?php echo $active_count; ?></h4>
+                                <p class="text-sm text-green-700">Active Now</p>
+                                <p class="text-xs text-green-600">Available for consultation</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Upcoming Card -->
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div class="flex items-center">
+                            <div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center mr-4">
+                                <i class="fas fa-clock text-white text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-lg font-semibold text-blue-900"><?php echo $upcoming_count; ?></h4>
+                                <p class="text-sm text-blue-700">Upcoming</p>
+                                <p class="text-xs text-blue-600">Will be available later</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Ended Card -->
+                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        <div class="flex items-center">
+                            <div class="w-12 h-12 bg-gray-500 rounded-full flex items-center justify-center mr-4">
+                                <i class="fas fa-user-times text-white text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-lg font-semibold text-gray-900"><?php echo $ended_count; ?></h4>
+                                <p class="text-sm text-gray-700">Ended</p>
+                                <p class="text-xs text-gray-600">Consultation hours finished</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Teachers List -->
+                <div class="space-y-4">
+                    <?php 
+                    mysqli_data_seek($available_today_result, 0);
+                    while ($teacher = mysqli_fetch_assoc($available_today_result)): 
+                        // Determine status colors and icons
+                        switch ($teacher['status']) {
+                            case 'active':
+                                $status_color = 'bg-green-100 text-green-800 border-green-200';
+                                $status_icon = 'fas fa-circle text-green-500';
+                                $status_text = 'Available Now';
+                                $card_border = 'border-green-300';
+                                break;
+                            case 'upcoming':
+                                $status_color = 'bg-blue-100 text-blue-800 border-blue-200';
+                                $status_icon = 'fas fa-clock text-blue-500';
+                                $status_text = 'Starts at ' . date('g:i A', strtotime($teacher['earliest_start']));
+                                $card_border = 'border-blue-300';
+                                break;
+                            case 'ended':
+                                $status_color = 'bg-gray-100 text-gray-800 border-gray-200';
+                                $status_icon = 'fas fa-check-circle text-gray-500';
+                                $status_text = 'Ended at ' . date('g:i A', strtotime($teacher['latest_end']));
+                                $card_border = 'border-gray-300';
+                                break;
+                            default:
+                                $status_color = 'bg-gray-100 text-gray-800 border-gray-200';
+                                $status_icon = 'fas fa-question-circle text-gray-500';
+                                $status_text = 'Unknown';
+                                $card_border = 'border-gray-300';
+                        }
+                    ?>
+                    <div class="bg-white border-2 <?php echo $card_border; ?> rounded-lg p-6 hover:shadow-lg transition-all duration-200">
+                        <div class="flex items-start justify-between">
+                            <!-- Teacher Info -->
+                            <div class="flex items-start space-x-4 flex-1">
+                                <div class="w-12 h-12 bg-seait-orange rounded-full flex items-center justify-center flex-shrink-0">
+                                    <i class="fas fa-user-tie text-white text-lg"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex items-center space-x-3 mb-2">
+                                        <h4 class="text-lg font-semibold text-gray-900">
+                                            <?php echo $teacher['first_name'] . ' ' . $teacher['last_name']; ?>
+                                        </h4>
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border <?php echo $status_color; ?>">
+                                            <i class="<?php echo $status_icon; ?> text-xs mr-1"></i>
+                                            <?php echo $status_text; ?>
+                                        </span>
+                                    </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                                        <div class="space-y-1">
+                                            <p><i class="fas fa-envelope mr-2 text-seait-orange"></i><?php echo $teacher['email']; ?></p>
+                                            <p><i class="fas fa-briefcase mr-2 text-seait-orange"></i><?php echo $teacher['position']; ?></p>
+                                        </div>
+                                        <div class="space-y-1">
+                                            <p><i class="fas fa-clock mr-2 text-seait-orange"></i><?php echo $teacher['time_ranges']; ?></p>
+                                            <p><i class="fas fa-door-open mr-2 text-seait-orange"></i><?php echo $teacher['rooms']; ?></p>
+                                        </div>
+                                    </div>
+                                    <?php if (!empty($teacher['all_notes']) && $teacher['all_notes'] !== ''): ?>
+                                    <div class="mt-3 p-3 bg-gray-50 rounded-lg">
+                                        <p class="text-sm text-gray-700">
+                                            <i class="fas fa-sticky-note mr-2 text-seait-orange"></i>
+                                            <strong>Notes:</strong> <?php echo htmlspecialchars($teacher['all_notes']); ?>
+                                        </p>
+                                    </div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            
+                            <!-- Action Buttons -->
+                            <div class="flex flex-col space-y-2 ml-4">
+                                <?php if ($teacher['status'] === 'active'): ?>
+                                <div class="flex items-center text-green-600 text-sm font-medium">
+                                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></div>
+                                    Ready for Students
+                                </div>
+                                <?php elseif ($teacher['status'] === 'upcoming'): ?>
+                                <div class="flex items-center text-blue-600 text-sm font-medium">
+                                    <i class="fas fa-hourglass-half mr-2"></i>
+                                    Starts Soon
+                                </div>
+                                <?php else: ?>
+                                <div class="flex items-center text-gray-600 text-sm font-medium">
+                                    <i class="fas fa-check mr-2"></i>
+                                    Session Ended
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endwhile; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
 </div>
 
 <!-- Add Modal -->
@@ -1901,6 +2144,7 @@ function showListView() {
     document.getElementById('logsView').classList.add('hidden');
     document.getElementById('reportsView').classList.add('hidden');
     document.getElementById('leavesView').classList.add('hidden');
+    document.getElementById('availableTodayView').classList.add('hidden');
     document.getElementById('listViewBtn').classList.remove('bg-gray-300', 'text-gray-700');
     document.getElementById('listViewBtn').classList.add('bg-seait-orange', 'text-white');
     document.getElementById('weekViewBtn').classList.remove('bg-seait-orange', 'text-white');
@@ -1911,6 +2155,8 @@ function showListView() {
     document.getElementById('reportsViewBtn').classList.add('bg-gray-300', 'text-gray-700');
     document.getElementById('leavesViewBtn').classList.remove('bg-seait-orange', 'text-white');
     document.getElementById('leavesViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+    document.getElementById('availableTodayViewBtn').classList.remove('bg-seait-orange', 'text-white');
+    document.getElementById('availableTodayViewBtn').classList.add('bg-gray-300', 'text-gray-700');
 }
 
 function showWeekView() {
@@ -1919,6 +2165,7 @@ function showWeekView() {
     document.getElementById('logsView').classList.add('hidden');
     document.getElementById('reportsView').classList.add('hidden');
     document.getElementById('leavesView').classList.add('hidden');
+    document.getElementById('availableTodayView').classList.add('hidden');
     document.getElementById('weekViewBtn').classList.remove('bg-gray-300', 'text-gray-700');
     document.getElementById('weekViewBtn').classList.add('bg-seait-orange', 'text-white');
     document.getElementById('listViewBtn').classList.remove('bg-seait-orange', 'text-white');
@@ -1929,6 +2176,8 @@ function showWeekView() {
     document.getElementById('reportsViewBtn').classList.add('bg-gray-300', 'text-gray-700');
     document.getElementById('leavesViewBtn').classList.remove('bg-seait-orange', 'text-white');
     document.getElementById('leavesViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+    document.getElementById('availableTodayViewBtn').classList.remove('bg-seait-orange', 'text-white');
+    document.getElementById('availableTodayViewBtn').classList.add('bg-gray-300', 'text-gray-700');
 }
 
 function showLogsView() {
@@ -1937,6 +2186,7 @@ function showLogsView() {
     document.getElementById('weekView').classList.add('hidden');
     document.getElementById('reportsView').classList.add('hidden');
     document.getElementById('leavesView').classList.add('hidden');
+    document.getElementById('availableTodayView').classList.add('hidden');
     document.getElementById('logsViewBtn').classList.remove('bg-gray-300', 'text-gray-700');
     document.getElementById('logsViewBtn').classList.add('bg-seait-orange', 'text-white');
     document.getElementById('listViewBtn').classList.remove('bg-seait-orange', 'text-white');
@@ -1947,6 +2197,8 @@ function showLogsView() {
     document.getElementById('reportsViewBtn').classList.add('bg-gray-300', 'text-gray-700');
     document.getElementById('leavesViewBtn').classList.remove('bg-seait-orange', 'text-white');
     document.getElementById('leavesViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+    document.getElementById('availableTodayViewBtn').classList.remove('bg-seait-orange', 'text-white');
+    document.getElementById('availableTodayViewBtn').classList.add('bg-gray-300', 'text-gray-700');
 }
 
 function showReportsView() {
@@ -1955,6 +2207,7 @@ function showReportsView() {
     document.getElementById('weekView').classList.add('hidden');
     document.getElementById('logsView').classList.add('hidden');
     document.getElementById('leavesView').classList.add('hidden');
+    document.getElementById('availableTodayView').classList.add('hidden');
     document.getElementById('reportsViewBtn').classList.remove('bg-gray-300', 'text-gray-700');
     document.getElementById('reportsViewBtn').classList.add('bg-seait-orange', 'text-white');
     document.getElementById('listViewBtn').classList.remove('bg-seait-orange', 'text-white');
@@ -1965,6 +2218,8 @@ function showReportsView() {
     document.getElementById('logsViewBtn').classList.add('bg-gray-300', 'text-gray-700');
     document.getElementById('leavesViewBtn').classList.remove('bg-seait-orange', 'text-white');
     document.getElementById('leavesViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+    document.getElementById('availableTodayViewBtn').classList.remove('bg-seait-orange', 'text-white');
+    document.getElementById('availableTodayViewBtn').classList.add('bg-gray-300', 'text-gray-700');
 }
 
 function showLeavesView() {
@@ -1973,6 +2228,7 @@ function showLeavesView() {
     document.getElementById('weekView').classList.add('hidden');
     document.getElementById('logsView').classList.add('hidden');
     document.getElementById('reportsView').classList.add('hidden');
+    document.getElementById('availableTodayView').classList.add('hidden');
     document.getElementById('leavesViewBtn').classList.remove('bg-gray-300', 'text-gray-700');
     document.getElementById('leavesViewBtn').classList.add('bg-seait-orange', 'text-white');
     document.getElementById('listViewBtn').classList.remove('bg-seait-orange', 'text-white');
@@ -1983,6 +2239,29 @@ function showLeavesView() {
     document.getElementById('logsViewBtn').classList.add('bg-gray-300', 'text-gray-700');
     document.getElementById('reportsViewBtn').classList.remove('bg-seait-orange', 'text-white');
     document.getElementById('reportsViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+    document.getElementById('availableTodayViewBtn').classList.remove('bg-seait-orange', 'text-white');
+    document.getElementById('availableTodayViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+}
+
+function showAvailableTodayView() {
+    document.getElementById('availableTodayView').classList.remove('hidden');
+    document.getElementById('listView').classList.add('hidden');
+    document.getElementById('weekView').classList.add('hidden');
+    document.getElementById('logsView').classList.add('hidden');
+    document.getElementById('reportsView').classList.add('hidden');
+    document.getElementById('leavesView').classList.add('hidden');
+    document.getElementById('availableTodayViewBtn').classList.remove('bg-gray-300', 'text-gray-700');
+    document.getElementById('availableTodayViewBtn').classList.add('bg-seait-orange', 'text-white');
+    document.getElementById('listViewBtn').classList.remove('bg-seait-orange', 'text-white');
+    document.getElementById('listViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+    document.getElementById('weekViewBtn').classList.remove('bg-seait-orange', 'text-white');
+    document.getElementById('weekViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+    document.getElementById('logsViewBtn').classList.remove('bg-seait-orange', 'text-white');
+    document.getElementById('logsViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+    document.getElementById('reportsViewBtn').classList.remove('bg-seait-orange', 'text-white');
+    document.getElementById('reportsViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+    document.getElementById('leavesViewBtn').classList.remove('bg-seait-orange', 'text-white');
+    document.getElementById('leavesViewBtn').classList.add('bg-gray-300', 'text-gray-700');
 }
 
 function showTeacherDetails(consultationId) {

@@ -466,6 +466,26 @@ window.closeLoginModal = function() {
     }
 };
 
+// Password visibility toggle function
+window.togglePasswordVisibility = function() {
+    const passwordInput = document.getElementById('password');
+    const passwordToggleIcon = document.getElementById('passwordToggleIcon');
+    
+    if (passwordInput && passwordToggleIcon) {
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            passwordToggleIcon.classList.remove('fa-eye');
+            passwordToggleIcon.classList.add('fa-eye-slash');
+            passwordToggleIcon.setAttribute('aria-label', 'Hide password');
+        } else {
+            passwordInput.type = 'password';
+            passwordToggleIcon.classList.remove('fa-eye-slash');
+            passwordToggleIcon.classList.add('fa-eye');
+            passwordToggleIcon.setAttribute('aria-label', 'Show password');
+        }
+    }
+};
+
 // Simple notification function that works without jQuery
 function showNotification(message, type = 'error') {
     // Create notification element

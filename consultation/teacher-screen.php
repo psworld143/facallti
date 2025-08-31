@@ -30,7 +30,7 @@ if ($semester_result && mysqli_num_rows($semester_result) > 0) {
     $active_academic_year = $semester_row['academic_year'];
 }
 
-// Get department information and available teachers (only those with consultation hours today)
+// Get department information and all teachers with consultation hours today (both scanned and not scanned)
 $department_query = "SELECT DISTINCT 
                     f.id,
                     f.first_name,
@@ -44,9 +44,13 @@ $department_query = "SELECT DISTINCT
                     ch.start_time,
                     ch.end_time,
                     ch.room,
-                    ch.notes
+                    ch.notes,
+                    ta.scan_time,
+                    ta.status as availability_status,
+                    ta.last_activity
                    FROM faculty f 
                    INNER JOIN consultation_hours ch ON f.id = ch.teacher_id
+                   LEFT JOIN teacher_availability ta ON f.id = ta.teacher_id AND ta.availability_date = CURDATE()
                    WHERE f.department = ? 
                    AND f.is_active = 1
                    AND ch.day_of_week = ?
@@ -60,8 +64,8 @@ $department_query = "SELECT DISTINCT
                        FROM consultation_leave 
                        WHERE leave_date = CURDATE()
                    )
-                   GROUP BY f.id, f.first_name, f.last_name, f.department, f.position, f.email, f.bio, f.image_url, f.is_active
-                   ORDER BY f.first_name, f.last_name";
+                   GROUP BY f.id, f.first_name, f.last_name, f.department, f.position, f.email, f.bio, f.image_url, f.is_active, ta.scan_time, ta.status, ta.last_activity
+                   ORDER BY ta.status DESC, f.first_name, f.last_name";
 
 $department_stmt = mysqli_prepare($conn, $department_query);
 if ($department_stmt) {
@@ -328,6 +332,24 @@ $office_session_id = uniqid('office_', true);
             border-color: #fb923c;
             box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.1);
             outline: none;
+            background-color: #fffbf5;
+        }
+        
+        /* Enhanced focus indicator */
+        .qr-input.enhanced-focus {
+            border-color: #fb923c !important;
+            box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.1) !important;
+            background-color: #fffbf5 !important;
+            animation: focusPulse 2s infinite;
+        }
+        
+        @keyframes focusPulse {
+            0%, 100% { 
+                box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.1);
+            }
+            50% { 
+                box-shadow: 0 0 0 5px rgba(251, 146, 60, 0.2);
+            }
         }
 
         .teacher-card {
@@ -773,11 +795,64 @@ $office_session_id = uniqid('office_', true);
                 min-height: 24px;
             }
         }
+
+        /* Fullscreen Button Styles */
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 10001;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+            height: 48px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .fullscreen-btn:hover {
+            background: rgba(0, 0, 0, 0.9);
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .fullscreen-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .fullscreen-btn i {
+            font-size: 18px;
+            transition: all 0.3s ease;
+        }
+        
+        .fullscreen-btn.fullscreen i {
+            transform: rotate(180deg);
+        }
+        
+        /* Fullscreen button always visible on teacher screen */
+        .fullscreen-btn {
+            opacity: 1;
+            pointer-events: auto;
+            transform: scale(1);
+        }
     </style>
 </head>
 <body class="office-screen">
     <!-- Canvas Background Animation -->
     <canvas id="canvas"></canvas>
+
+    <!-- Fullscreen Button -->
+    <button id="fullscreenBtn" class="fullscreen-btn" title="Toggle Fullscreen">
+        <i class="fas fa-expand"></i>
+    </button>
 
     <!-- QR Scanner Modal Removed - Using form-only approach -->
 
@@ -843,9 +918,18 @@ $office_session_id = uniqid('office_', true);
                         <?php else: ?>
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mobile-grid">
                             <?php foreach ($department_teachers as $teacher): ?>
-                        <div class="teacher-card">
-                            <div class="flex items-center space-x-2 sm:space-x-3">
-                                <div class="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full flex items-center justify-center flex-shrink-0 border-2 border-gray-400">
+                                <?php
+                                // Determine teacher availability status
+                                $is_available = ($teacher['availability_status'] === 'available' && !empty($teacher['scan_time']));
+                                $card_bg_class = $is_available ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-300' : 'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-300';
+                                $status_text = $is_available ? 'Available' : 'Not Scanned';
+                                $status_color = $is_available ? 'text-green-700' : 'text-gray-600';
+                                $status_icon = $is_available ? 'fas fa-check-circle text-green-500' : 'fas fa-clock text-gray-500';
+                                $avatar_border = $is_available ? 'border-green-500' : 'border-gray-400';
+                                ?>
+                        <div class="teacher-card <?php echo $card_bg_class; ?> border-2">
+                            <div class="flex items-center space-x-2 sm:space-x-3 mb-2">
+                                <div class="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full flex items-center justify-center flex-shrink-0 border-2 <?php echo $avatar_border; ?>">
                     <?php if ($teacher['image_url']): ?>
                                         <img src="../<?php echo htmlspecialchars($teacher['image_url']); ?>" 
                                              alt="Teacher" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover">
@@ -862,6 +946,37 @@ $office_session_id = uniqid('office_', true);
                 </p>
                                 </div>
                             </div>
+                            
+                            <!-- Status Indicator -->
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-2">
+                                    <i class="<?php echo $status_icon; ?> text-xs sm:text-sm"></i>
+                                    <span class="<?php echo $status_color; ?> text-xs sm:text-sm font-medium"><?php echo $status_text; ?></span>
+                                </div>
+                                <?php if ($is_available && $teacher['scan_time']): ?>
+                                    <span class="text-xs text-green-600">
+                                        <?php echo date('g:i A', strtotime($teacher['scan_time'])); ?>
+                                    </span>
+                                <?php endif; ?>
+                            </div>
+                            
+                            <!-- Consultation Hours -->
+                            <?php if (isset($teacher['start_time']) && isset($teacher['end_time'])): ?>
+                            <div class="mt-2 pt-2 border-t border-gray-200">
+                                <div class="flex items-center text-xs text-gray-600">
+                                    <i class="fas fa-clock mr-1"></i>
+                                    <span>
+                                        <?php 
+                                        echo date('g:i A', strtotime($teacher['start_time'])) . ' - ' . 
+                                             date('g:i A', strtotime($teacher['end_time']));
+                                        if (isset($teacher['room']) && !empty($teacher['room'])) {
+                                            echo ' | ' . htmlspecialchars($teacher['room']);
+                                        }
+                                        ?>
+                                    </span>
+                                </div>
+                            </div>
+                            <?php endif; ?>
                         </div>
                         <?php endforeach; ?>
                         </div>
@@ -881,10 +996,25 @@ $office_session_id = uniqid('office_', true);
                             <i class="fas fa-clock mr-1 sm:mr-2"></i>
                             Monitoring Active
                         </span>
+                        <?php
+                        $available_count = 0;
+                        $not_scanned_count = 0;
+                        foreach ($department_teachers as $teacher) {
+                            if ($teacher['availability_status'] === 'available' && !empty($teacher['scan_time'])) {
+                                $available_count++;
+                            } else {
+                                $not_scanned_count++;
+                            }
+                        }
+                        ?>
+                        <span class="flex items-center text-green-600">
+                            <i class="fas fa-check-circle mr-1 sm:mr-2"></i>
+                            <?php echo $available_count; ?> available
+                        </span>
                         <span class="flex items-center text-gray-600">
-                            <i class="fas fa-info-circle mr-1 sm:mr-2"></i>
-                        <?php echo count($department_teachers); ?> teachers available
-                    </span>
+                            <i class="fas fa-clock mr-1 sm:mr-2"></i>
+                            <?php echo $not_scanned_count; ?> not scanned
+                        </span>
                     <span class="flex items-center" style="color: #fb923c;" id="pendingRequestsCount">
                         <i class="fas fa-clock mr-1 sm:mr-2"></i>
                         <span id="pendingCount"> 0 </span> pending requests
@@ -993,7 +1123,7 @@ $office_session_id = uniqid('office_', true);
         // Initialize sound enabled state
         window.soundEnabled = true; // Default to enabled
         
-        // Play notification sound continuously
+        // Play notification sound continuously with enhanced remote access support
         function playNotificationSound() {
             try {
                 // Check if sound is disabled
@@ -1005,57 +1135,240 @@ $office_session_id = uniqid('office_', true);
                 // Stop any existing sound
                 stopNotificationSound();
                 
-                // Check if user has interacted with the page (required for autoplay)
+                // Enhanced user interaction check for remote access
                 if (!userInteracted) {
-                    console.log('User has not interacted with page yet, using fallback notification');
+                    console.log('User has not interacted with page yet, attempting to enable audio...');
+                    // Try to enable audio with user interaction simulation
+                    enableAudioForRemoteAccess();
                     // Use fallback notification method
-                    showEnhancedNotification('🔔 New consultation request received!', 'success');
+                    showEnhancedNotification('🔔 New consultation request received! Click anywhere to enable sound.', 'success');
                     return;
                 }
                 
-                // Create new audio instance
-                notificationAudio = new Audio('notification-sound.mp3');
-                notificationAudio.volume = 0.5; // Set volume to 50% for continuous play
+                // Try multiple audio sources for better compatibility
+                const audioSources = [
+                    'notification-sound.mp3',
+                    'audio/notification-sound.mp3',
+                    './notification-sound.mp3'
+                ];
                 
-                // Add error handling for audio loading
-                notificationAudio.addEventListener('error', (e) => {
-                    console.log('Audio loading error:', e);
-                    // Fallback to simple beep
-                    playFallbackSound();
-                });
+                let audioLoaded = false;
                 
-                // Play sound immediately
-                notificationAudio.play().catch(e => {
-                    console.log('Audio playback failed:', e);
-                    // Fallback to simple beep
-                    playFallbackSound();
-                });
-                
-                // Set up continuous playback every 3 seconds
-                soundInterval = setInterval(() => {
-                    if (notificationAudio) {
-                        notificationAudio.currentTime = 0; // Reset to beginning
-                        notificationAudio.play().catch(e => {
-                            console.log('Continuous audio playback failed:', e);
-                            // Fallback to simple beep
-                            playFallbackSound();
+                for (let source of audioSources) {
+                    try {
+                        // Create new audio instance
+                        notificationAudio = new Audio(source);
+                        notificationAudio.volume = 0.7; // Increased volume for remote access
+                        notificationAudio.crossOrigin = 'anonymous'; // Handle CORS issues
+                        
+                        // Add error handling for audio loading
+                        notificationAudio.addEventListener('error', (e) => {
+                            console.log(`Audio loading error for ${source}:`, e);
                         });
+                        
+                        notificationAudio.addEventListener('canplaythrough', () => {
+                            console.log(`Audio loaded successfully: ${source}`);
+                            audioLoaded = true;
+                        });
+                        
+                        // Try to play sound immediately
+                        const playPromise = notificationAudio.play();
+                        
+                        if (playPromise !== undefined) {
+                            playPromise.then(() => {
+                                console.log(`Audio playback started successfully: ${source}`);
+                                audioLoaded = true;
+                                
+                                // Set up continuous playback every 3 seconds
+                                soundInterval = setInterval(() => {
+                                    if (notificationAudio && window.soundEnabled !== false) {
+                                        notificationAudio.currentTime = 0; // Reset to beginning
+                                        notificationAudio.play().catch(e => {
+                                            console.log('Continuous audio playback failed:', e);
+                                            // Try fallback sound
+                                            playWebAudioFallback();
+                                        });
+                                    }
+                                }, 3000); // Repeat every 3 seconds
+                                
+                                // Set maximum duration (5 minutes) to prevent infinite sound
+                                setTimeout(() => {
+                                    if (soundInterval) {
+                                        console.log('Maximum sound duration reached, stopping automatically');
+                                        stopNotificationSound();
+                                    }
+                                }, 300000); // 5 minutes
+                                
+                            }).catch(e => {
+                                console.log(`Audio playback failed for ${source}:`, e);
+                                if (source === audioSources[audioSources.length - 1]) {
+                                    // Last source failed, use fallback
+                                    playWebAudioFallback();
+                                }
+                            });
+                        }
+                        
+                        // If we successfully created audio, break the loop
+                        if (notificationAudio) {
+                            break;
+                        }
+                        
+                    } catch (e) {
+                        console.log(`Failed to create audio for ${source}:`, e);
+                        continue;
                     }
-                }, 3000); // Repeat every 3 seconds
+                }
                 
-                // Set maximum duration (5 minutes) to prevent infinite sound
-                setTimeout(() => {
-                    if (soundInterval) {
-                        console.log('Maximum sound duration reached, stopping automatically');
-                        stopNotificationSound();
-                    }
-                }, 300000); // 5 minutes
+                // If no audio sources worked, use Web Audio API fallback
+                if (!audioLoaded) {
+                    console.log('All audio sources failed, using Web Audio API fallback');
+                    playWebAudioFallback();
+                }
                 
-                console.log('Continuous notification sound started');
+                console.log('Notification sound system initialized');
             } catch (e) {
                 console.log('Audio notification not supported:', e);
-                // Fallback to simple beep
-                playFallbackSound();
+                // Ultimate fallback
+                playWebAudioFallback();
+            }
+        }
+        
+        // Enhanced Web Audio API fallback for remote access
+        function playWebAudioFallback(type = 'notification') {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Resume audio context if suspended (required for remote access)
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume().then(() => {
+                        console.log('Audio context resumed for remote access');
+                        playWebAudioTone(audioContext, type);
+                    });
+                } else {
+                    playWebAudioTone(audioContext, type);
+                }
+                
+            } catch (e) {
+                console.log('Web Audio fallback not supported:', e);
+                // Ultimate fallback - try to use system notification
+                if ('Notification' in window) {
+                    requestNotificationPermission();
+                }
+            }
+        }
+        
+        // Play Web Audio tone with enhanced patterns for remote access
+        function playWebAudioTone(audioContext, type = 'notification') {
+            try {
+                // Enhanced notification pattern for better attention
+                if (type === 'notification') {
+                    // Play a sequence of tones
+                    const frequencies = [800, 1000, 800, 1000];
+                    const duration = 0.2;
+                    let currentTime = audioContext.currentTime;
+                    
+                    frequencies.forEach((freq, index) => {
+                        const osc = audioContext.createOscillator();
+                        const gain = audioContext.createGain();
+                        
+                        osc.connect(gain);
+                        gain.connect(audioContext.destination);
+                        
+                        osc.frequency.setValueAtTime(freq, currentTime);
+                        gain.gain.setValueAtTime(0.3, currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, currentTime + duration);
+                        
+                        osc.start(currentTime);
+                        osc.stop(currentTime + duration);
+                        
+                        currentTime += duration + 0.1; // Small gap between tones
+                    });
+                    
+                    console.log('Enhanced Web Audio notification played');
+                } else {
+                    // Simple tone
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    const frequency = 800;
+                    const duration = 0.5;
+                    
+                    oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+                    gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+                    
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + duration);
+                    
+                    console.log(`Web Audio tone played: ${frequency}Hz for ${duration}s`);
+                }
+                
+            } catch (e) {
+                console.log('Error playing Web Audio tone:', e);
+            }
+        }
+        
+        // Enable audio for remote access
+        function enableAudioForRemoteAccess() {
+            try {
+                // Try to create and play a silent audio to unlock audio context
+                const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAAAAAAAAAAAAAAAAAAAZGF0YQAAAAA=');
+                silentAudio.volume = 0.01;
+                silentAudio.play().then(() => {
+                    console.log('Silent audio played to unlock audio context');
+                    userInteracted = true;
+                }).catch(e => {
+                    console.log('Silent audio failed:', e);
+                });
+                
+                // Also try Web Audio API
+                if (window.AudioContext || window.webkitAudioContext) {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    if (audioContext.state === 'suspended') {
+                        audioContext.resume().then(() => {
+                            console.log('Audio context unlocked for remote access');
+                        });
+                    }
+                }
+            } catch (e) {
+                console.log('Failed to enable audio for remote access:', e);
+            }
+        }
+        
+        // Request notification permission for ultimate fallback
+        function requestNotificationPermission() {
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        console.log('Notification permission granted');
+                        showSystemNotification('New consultation request received!');
+                    }
+                });
+            } else if (Notification.permission === 'granted') {
+                showSystemNotification('New consultation request received!');
+            }
+        }
+        
+        // Show system notification
+        function showSystemNotification(message) {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                const notification = new Notification('SEAIT Consultation System', {
+                    body: message,
+                    icon: '../assets/images/seait-logo.png',
+                    badge: '../assets/images/seait-logo.png',
+                    requireInteraction: true,
+                    silent: false
+                });
+                
+                // Auto close after 10 seconds
+                setTimeout(() => {
+                    notification.close();
+                }, 10000);
+                
+                console.log('System notification shown');
             }
         }
         
@@ -1096,10 +1409,10 @@ $office_session_id = uniqid('office_', true);
         
         // Add sound toggle button only
         function addTestButton() {
-            // Add sound toggle button
+            // Add sound toggle button - default to ON
             const toggleBtn = document.createElement('button');
-            toggleBtn.textContent = '🔇 Sound Off';
-            toggleBtn.className = 'fixed bottom-4 left-4 bg-gray-500 text-white px-4 py-2 rounded-lg z-50 shadow-lg hover:bg-gray-600 transition-colors';
+            toggleBtn.textContent = '🔊 Sound On';
+            toggleBtn.className = 'fixed bottom-4 left-4 bg-orange-500 text-white px-4 py-2 rounded-lg z-50 shadow-lg hover:bg-orange-600 transition-colors';
             toggleBtn.onclick = toggleSound;
             toggleBtn.id = 'soundToggle';
             toggleBtn.style.position = 'fixed';
@@ -1112,17 +1425,8 @@ $office_session_id = uniqid('office_', true);
         // Toggle sound on/off
         function toggleSound() {
             const toggleBtn = document.getElementById('soundToggle');
-            if (toggleBtn.textContent.includes('Off')) {
-                toggleBtn.textContent = '🔊 Sound On';
-                toggleBtn.className = 'fixed bottom-4 left-4 bg-orange-500 text-white px-4 py-2 rounded-lg z-50 shadow-lg hover:bg-orange-600 transition-colors';
-                // Maintain fixed positioning
-                toggleBtn.style.position = 'fixed';
-                toggleBtn.style.bottom = '1rem';
-                toggleBtn.style.left = '1rem';
-                toggleBtn.style.zIndex = '9999';
-                window.soundEnabled = true;
-                console.log('🔊 Sound enabled');
-            } else {
+            if (toggleBtn.textContent.includes('On')) {
+                // Turn sound OFF
                 toggleBtn.textContent = '🔇 Sound Off';
                 toggleBtn.className = 'fixed bottom-4 left-4 bg-gray-500 text-white px-4 py-2 rounded-lg z-50 shadow-lg hover:bg-gray-600 transition-colors';
                 // Maintain fixed positioning
@@ -1133,6 +1437,17 @@ $office_session_id = uniqid('office_', true);
                 window.soundEnabled = false;
                 stopNotificationSound();
                 console.log('🔇 Sound disabled');
+            } else {
+                // Turn sound ON
+                toggleBtn.textContent = '🔊 Sound On';
+                toggleBtn.className = 'fixed bottom-4 left-4 bg-orange-500 text-white px-4 py-2 rounded-lg z-50 shadow-lg hover:bg-orange-600 transition-colors';
+                // Maintain fixed positioning
+                toggleBtn.style.position = 'fixed';
+                toggleBtn.style.bottom = '1rem';
+                toggleBtn.style.left = '1rem';
+                toggleBtn.style.zIndex = '9999';
+                window.soundEnabled = true;
+                console.log('🔊 Sound enabled');
             }
         }
         
@@ -1774,19 +2089,40 @@ $office_session_id = uniqid('office_', true);
             });
         }
         
-        // Track user interaction to enable audio playback
+        // Enhanced user interaction tracking for remote access
         function enableAudioPlayback() {
             if (!userInteracted) {
                 userInteracted = true;
-                console.log('User interaction detected, audio playback enabled');
+                console.log('User interaction detected, audio playback enabled for remote access');
+                
+                // Try to unlock audio context immediately
+                enableAudioForRemoteAccess();
+                
+                // Show confirmation that audio is now enabled
+                showEnhancedNotification('🔊 Audio notifications enabled for remote access!', 'success');
             }
         }
         
-        // Add event listeners for user interaction
+        // Enhanced event listeners for remote access
         document.addEventListener('click', enableAudioPlayback);
         document.addEventListener('keydown', enableAudioPlayback);
         document.addEventListener('touchstart', enableAudioPlayback);
         document.addEventListener('mousedown', enableAudioPlayback);
+        document.addEventListener('mousemove', enableAudioPlayback);
+        document.addEventListener('scroll', enableAudioPlayback);
+        
+        // Auto-enable audio on page load for remote access
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                if (!userInteracted) {
+                    console.log('Auto-enabling audio for remote access...');
+                    enableAudioForRemoteAccess();
+                    
+                    // Show instruction for remote users
+                    showEnhancedNotification('🖱️ Click anywhere on the page to enable sound notifications for remote access', 'info');
+                }
+            }, 2000);
+        });
         
         // Check for requests every 1 second
         setInterval(checkForConsultationRequests, 1000);
@@ -1882,6 +2218,48 @@ $office_session_id = uniqid('office_', true);
         // QR Scanner variables removed - using form-only approach
         let currentTeacherId = null;
 
+        // Enhanced QR input focus functionality
+        function ensureQRInputFocus() {
+            const qrScannerInput = document.getElementById('qrScannerInput');
+            if (qrScannerInput) {
+                // Multiple focus attempts with different timing
+                qrScannerInput.focus();
+                
+                // Add enhanced focus class for visual feedback
+                qrScannerInput.classList.add('enhanced-focus');
+                
+                // Remove enhanced focus class after a delay
+                setTimeout(() => {
+                    qrScannerInput.classList.remove('enhanced-focus');
+                }, 3000);
+                
+                // Delayed focus attempts
+                setTimeout(() => {
+                    qrScannerInput.focus();
+                    qrScannerInput.click(); // Sometimes click helps with focus
+                }, 100);
+                
+                setTimeout(() => {
+                    qrScannerInput.focus();
+                }, 300);
+                
+                setTimeout(() => {
+                    qrScannerInput.focus();
+                }, 500);
+                
+                // Scroll input into view if needed
+                qrScannerInput.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center' 
+                });
+                
+                console.log('QR input field focused with enhanced method');
+                return true;
+            }
+            console.warn('QR input field not found for focusing');
+            return false;
+        }
+
         // Initialize QR code form functionality
         document.addEventListener('DOMContentLoaded', function() {
             try {
@@ -1903,8 +2281,44 @@ $office_session_id = uniqid('office_', true);
                     }
                 });
                 
-                // Focus on the input field
-                qrScannerInput.focus();
+                // Enhanced focus on the input field
+                ensureQRInputFocus();
+                
+                // Add focus event listeners to maintain focus
+                qrScannerInput.addEventListener('blur', function() {
+                    // Re-focus after a short delay if no other element is being focused
+                    setTimeout(() => {
+                        if (document.activeElement === document.body || document.activeElement === null) {
+                            ensureQRInputFocus();
+                        }
+                    }, 100);
+                });
+                
+                // Ensure focus on window focus
+                window.addEventListener('focus', function() {
+                    setTimeout(() => {
+                        ensureQRInputFocus();
+                    }, 100);
+                });
+                
+                // Add click listener to page to refocus QR input (helpful for touch devices)
+                document.addEventListener('click', function(e) {
+                    // Only refocus if clicking on non-interactive elements
+                    if (!e.target.matches('button, a, input, select, textarea, [tabindex]')) {
+                        setTimeout(() => {
+                            ensureQRInputFocus();
+                        }, 50);
+                    }
+                });
+                
+                // Add keyboard shortcut to focus QR input (F2 key)
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'F2') {
+                        e.preventDefault();
+                        ensureQRInputFocus();
+                    }
+                });
+                
             } else {
                 console.error('QR form or input field not found!');
             }
@@ -1947,12 +2361,24 @@ $office_session_id = uniqid('office_', true);
                         }
                     });
                     
-                    qrScannerInput.focus();
+                    // Use enhanced focus function
+                    ensureQRInputFocus();
                 }
             } else {
                 console.log('Fallback: QR Scanner elements not found');
             }
         }, 1000);
+        
+        // Additional focus attempts at different intervals
+        setTimeout(() => {
+            console.log('=== ADDITIONAL FOCUS ATTEMPT (2s) ===');
+            ensureQRInputFocus();
+        }, 2000);
+        
+        setTimeout(() => {
+            console.log('=== ADDITIONAL FOCUS ATTEMPT (3s) ===');
+            ensureQRInputFocus();
+        }, 3000);
 
         // Test and debug functions removed - simplified form-only approach
 
@@ -2025,7 +2451,7 @@ $office_session_id = uniqid('office_', true);
                     // Clear the input field for next scan
                     if (qrInput) {
                         qrInput.value = '';
-                        qrInput.focus();
+                        ensureQRInputFocus();
                     }
                 }
             })
@@ -2168,7 +2594,7 @@ $office_session_id = uniqid('office_', true);
             const qrInput = document.getElementById('qrScannerInput');
             if (qrInput) {
                 qrInput.value = '';
-                qrInput.focus();
+                ensureQRInputFocus();
             }
         }
 
@@ -2187,7 +2613,7 @@ $office_session_id = uniqid('office_', true);
             const qrInput = document.getElementById('qrScannerInput');
             if (qrInput) {
                 qrInput.value = '';
-                qrInput.focus();
+                ensureQRInputFocus();
             }
         }
 
@@ -2296,6 +2722,92 @@ $office_session_id = uniqid('office_', true);
         window.markTeacherUnavailable = markTeacherUnavailable;
         window.cancelAvailabilityConfirmation = cancelAvailabilityConfirmation;
         window.confirmAvailabilityNow = confirmAvailabilityNow;
+
+        // =====================================================
+        // FULLSCREEN FUNCTIONALITY
+        // =====================================================
+
+        // Fullscreen functionality
+        function enterFullscreen() {
+            const element = document.documentElement;
+            
+            if (element.requestFullscreen) {
+                element.requestFullscreen();
+            } else if (element.webkitRequestFullscreen) { // Safari
+                element.webkitRequestFullscreen();
+            } else if (element.msRequestFullscreen) { // IE/Edge
+                element.msRequestFullscreen();
+            } else if (element.mozRequestFullScreen) { // Firefox
+                element.mozRequestFullScreen();
+            }
+        }
+        
+        function exitFullscreen() {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) { // Safari
+                document.webkitExitFullscreen();
+            } else if (document.msExitFullscreen) { // IE/Edge
+                document.msExitFullscreen();
+            } else if (document.mozCancelFullScreen) { // Firefox
+                document.mozCancelFullScreen();
+            }
+        }
+        
+        function isFullscreen() {
+            return !!(document.fullscreenElement || 
+                     document.webkitFullscreenElement || 
+                     document.msFullscreenElement || 
+                     document.mozFullScreenElement);
+        }
+        
+        // Initialize fullscreen functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const fullscreenBtn = document.getElementById('fullscreenBtn');
+            
+            if (fullscreenBtn) {
+                // Fullscreen button click handler
+                fullscreenBtn.addEventListener('click', function() {
+                    if (isFullscreen()) {
+                        exitFullscreen();
+                    } else {
+                        enterFullscreen();
+                    }
+                });
+                
+                // Update fullscreen button icon and state
+                function updateFullscreenButton() {
+                    const icon = fullscreenBtn.querySelector('i');
+                    if (isFullscreen()) {
+                        fullscreenBtn.classList.add('fullscreen');
+                        icon.className = 'fas fa-compress';
+                        fullscreenBtn.title = 'Exit Fullscreen';
+                    } else {
+                        fullscreenBtn.classList.remove('fullscreen');
+                        icon.className = 'fas fa-expand';
+                        fullscreenBtn.title = 'Enter Fullscreen';
+                    }
+                }
+                
+                // Listen for fullscreen changes
+                document.addEventListener('fullscreenchange', updateFullscreenButton);
+                document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
+                document.addEventListener('msfullscreenchange', updateFullscreenButton);
+                document.addEventListener('mozfullscreenchange', updateFullscreenButton);
+                
+                // Keyboard shortcut for fullscreen (F11)
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'F11') {
+                        e.preventDefault();
+                        if (isFullscreen()) {
+                            exitFullscreen();
+                        } else {
+                            enterFullscreen();
+                        }
+                    }
+                });
+            }
+        });
 
         // =====================================================
         // CANVAS PARTICLE ANIMATION

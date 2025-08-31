@@ -383,6 +383,36 @@ $total_posts = count($posts_array);
         </div>
     </div>
 
+    <!-- Status Confirmation Modal -->
+    <div id="statusModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-question-circle text-blue-600 text-2xl"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Confirm Status Update</h3>
+                <p class="text-gray-600 text-sm" id="statusMessage">Are you sure you want to update this post?</p>
+            </div>
+            
+            <form id="statusForm" method="POST" class="space-y-3">
+                <input type="hidden" name="action" value="update_status">
+                <input type="hidden" name="post_id" id="statusPostId">
+                <input type="hidden" name="status" id="statusValue">
+                
+                <div class="flex justify-center space-x-3">
+                    <button type="button" onclick="closeStatusModal()"
+                            class="px-6 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200">
+                        <i class="fas fa-times mr-2"></i>Cancel
+                    </button>
+                    <button type="submit"
+                            class="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 font-semibold">
+                        <i class="fas fa-check mr-2"></i>Confirm
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         function viewPost(postId) {
             // Fetch post content via AJAX and display in modal
@@ -406,17 +436,10 @@ $total_posts = count($posts_array);
         }
 
         function updateStatus(postId, status) {
-            if (confirm('Are you sure you want to ' + status + ' this post?')) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.innerHTML = `
-                    <input type="hidden" name="action" value="update_status">
-                    <input type="hidden" name="post_id" value="${postId}">
-                    <input type="hidden" name="status" value="${status}">
-                `;
-                document.body.appendChild(form);
-                form.submit();
-            }
+            document.getElementById('statusPostId').value = postId;
+            document.getElementById('statusValue').value = status;
+            document.getElementById('statusMessage').textContent = `Are you sure you want to ${status} this post?`;
+            document.getElementById('statusModal').classList.remove('hidden');
         }
 
         function deletePost(postId) {
@@ -432,12 +455,26 @@ $total_posts = count($posts_array);
             document.getElementById('deleteModal').classList.add('hidden');
         }
 
-        // Close delete modal when clicking outside
+        function closeStatusModal() {
+            document.getElementById('statusModal').classList.add('hidden');
+        }
+
+        // Close modals when clicking outside
         const deleteModal = document.getElementById('deleteModal');
+        const statusModal = document.getElementById('statusModal');
+        
         if (deleteModal) {
             deleteModal.addEventListener('click', function(e) {
                 if (e.target === this) {
                     closeDeleteModal();
+                }
+            });
+        }
+        
+        if (statusModal) {
+            statusModal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeStatusModal();
                 }
             });
         }

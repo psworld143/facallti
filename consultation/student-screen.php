@@ -1348,62 +1348,7 @@ if (empty($teachers) && empty($selected_department)) {
         </div>
         <?php endif; ?>
 
-                <!-- Student ID QR Scanner Section -->
-        <div class="enhanced-card rounded-xl shadow-lg p-3 sm:p-4 mb-3 sm:mb-4 border-l-4 border-green-500">
-            <div class="flex items-center mb-3">
-                <div class="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                    <i class="fas fa-qrcode text-white text-sm"></i>
-                </div>
-                <div class="flex-1">
-                    <h3 class="text-lg sm:text-xl font-bold text-gray-800">🔑 Scan Your Student ID to Start</h3>
-                </div>
-            </div>
-            
-            <!-- QR Scanner Input -->
-            <div class="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-lg p-3">
-                <div class="flex items-center space-x-3">
-                    <div class="flex-1">
-                        <label for="studentIdInput" class="block text-xs font-medium text-gray-700 mb-1">
-                            <i class="fas fa-id-card mr-1 text-green-600"></i>Student ID (Required)
-                        </label>
-                        <div class="relative">
-                            <input type="text" 
-                                   id="studentIdInput" 
-                                   name="student_id" 
-                                   placeholder="🔍 Scan QR code or enter student ID manually" 
-                                   class="w-full px-3 py-2 border border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-base pr-10"
-                                   autofocus
-                                   required>
-                            <div class="absolute inset-y-0 right-0 flex items-center pr-2">
-                                <div class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                            </div>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1">
-                            <i class="fas fa-info-circle mr-1"></i>Student ID will be logged in consultation records
-                        </p>
-                    </div>
-                </div>
-                
-                <!-- Student Info Display -->
-                <div id="studentInfoDisplay" class="mt-3 p-3 bg-white rounded-lg border border-green-200 hidden">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center">
-                            <i class="fas fa-user text-white text-sm"></i>
-                        </div>
-                        <div>
-                            <h4 class="font-semibold text-gray-800 text-sm" id="studentNameDisplay">Student Name</h4>
-                            <p class="text-xs text-gray-600" id="studentIdDisplay">Student ID</p>
-                            <p class="text-xs text-gray-500" id="studentDeptDisplay">Department</p>
-                        </div>
-                        <div class="ml-auto">
-                            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Enhanced Page Header Card -->
+                <!-- Enhanced Page Header Card -->
         <div class="enhanced-card enhanced-header-card rounded-xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6 border-l-4 border-orange-500">
             <div class="enhanced-header-layout">
                 <!-- Left Section: Main Content -->
@@ -1436,6 +1381,69 @@ if (empty($teachers) && empty($selected_department)) {
                                 <div class="w-2 h-2 bg-green-400 rounded-full live-indicator"></div>
                                 <span class="text-xs font-medium text-orange-100">Live Clock</span>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Student ID QR Scanner Section -->
+        <div class="enhanced-card rounded-xl shadow-lg p-3 sm:p-4 mb-3 sm:mb-4 border-l-4 border-green-500">
+            <div class="flex items-center mb-3">
+                <div class="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                    <i class="fas fa-qrcode text-white text-sm"></i>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-lg sm:text-xl font-bold text-gray-800">🔑 Scan Your Student ID to Start</h3>
+                </div>
+                <!-- Real-time Update Indicator -->
+                <div id="realtimeIndicator" class="hidden flex items-center space-x-2 text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full border border-green-200">
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span class="font-medium">Live Updates</span>
+                </div>
+            </div>
+            
+            <!-- QR Scanner Input -->
+            <div class="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-lg p-3">
+                <div class="flex items-center space-x-3">
+                    <div class="flex-1">
+                        <label for="studentIdInput" class="block text-xs font-medium text-gray-700 mb-1">
+                            <i class="fas fa-id-card mr-1 text-green-600"></i>Student ID (Required)
+                        </label>
+                        <div class="relative">
+                            <input type="text" 
+                                   id="studentIdInput" 
+                                   name="student_id" 
+                                   placeholder="🔍 Scan QR code or enter student ID manually" 
+                                   class="w-full px-3 py-2 border border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-base pr-10"
+                                   autocomplete="off"
+                                   inputmode="text"
+                                   pattern="[0-9\-]*"
+                                   autofocus
+                                   required>
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-2">
+                                <div class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">
+                            <i class="fas fa-info-circle mr-1"></i>Student ID will be logged in consultation records
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Student Info Display -->
+                <div id="studentInfoDisplay" class="mt-3 p-3 bg-white rounded-lg border border-green-200 hidden">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center">
+                            <i class="fas fa-user text-white text-sm"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800 text-sm" id="studentNameDisplay">Student Name</h4>
+                            <p class="text-xs text-gray-600" id="studentIdDisplay">Student ID</p>
+                            <p class="text-xs text-gray-500" id="studentDeptDisplay">Department</p>
+                        </div>
+                        <div class="ml-auto">
+                            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                         </div>
                     </div>
                 </div>
@@ -1519,22 +1527,7 @@ if (empty($teachers) && empty($selected_department)) {
             </div>
         </div>
 
-        <!-- Success Message (Hidden by default) -->
-        <div id="successMessage" class="col-span-full bg-green-50 border border-green-200 rounded-lg p-6 text-center mb-6 hidden">
-            <div class="flex items-center justify-center space-x-3 mb-4">
-                <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-check-circle text-green-600 text-xl"></i>
-                </div>
-                <div>
-                    <h3 class="text-lg font-semibold text-green-800">Student ID Verified!</h3>
-                    <p class="text-green-700">Available teachers are now displayed below</p>
-                </div>
-            </div>
-            <div class="flex items-center justify-center space-x-2 text-sm text-green-600">
-                <i class="fas fa-users"></i>
-                <span>You can now request consultations with available teachers</span>
-            </div>
-        </div>
+
 
         <!-- Teachers Section (Hidden until student ID is scanned) -->
         <div id="teachersSection" class="hidden transition-all duration-500 ease-in-out">
@@ -1778,6 +1771,11 @@ if (empty($teachers) && empty($selected_department)) {
             }, 350);
         }
         
+        // Global variables for real-time updates
+        let teacherUpdateInterval;
+        let lastTeacherUpdate = '';
+        let currentTeachers = [];
+        
         // Wait for DOM to be ready
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM Content Loaded');
@@ -1814,21 +1812,31 @@ if (empty($teachers) && empty($selected_department)) {
                     return;
                 }
                 
-                // Clean the student ID
+                // Clean the student ID - preserve original format
                 studentId = studentId.trim();
                 
-                // Store the student ID
+                // Debug logging to track student ID processing
+                console.log('Original student ID input:', studentId);
+                console.log('Student ID type:', typeof studentId);
+                console.log('Student ID length:', studentId.length);
+                
+                // Store the student ID exactly as received
                 currentStudentId = studentId;
+                currentStudentName = 'Student ' + studentId;
+                currentStudentDept = 'General';
                 
                 // Display student info with QR code only
-                displayStudentInfo({ name: 'Student', department: 'General', id: studentId });
+                displayStudentInfo({ name: 'Student ' + studentId, department: 'General', id: studentId });
                 
-                // Store in session storage for use in consultation requests
+                // Store in session storage for use in consultation requests - preserve original format
                 sessionStorage.setItem('currentStudentId', studentId);
-                sessionStorage.setItem('currentStudentName', 'Student');
+                sessionStorage.setItem('currentStudentName', 'Student ' + studentId);
                 sessionStorage.setItem('currentStudentDept', 'General');
                 
-                console.log('Student ID processed:', studentId);
+                console.log('Student ID processed and stored:', studentId);
+                console.log('Student name with ID:', currentStudentName);
+                console.log('Session storage currentStudentId:', sessionStorage.getItem('currentStudentId'));
+                console.log('Session storage currentStudentName:', sessionStorage.getItem('currentStudentName'));
             }
             
 
@@ -2073,7 +2081,6 @@ if (empty($teachers) && empty($selected_department)) {
             function showTeachersSection() {
                 const teachersSection = document.getElementById('teachersSection');
                 const notice = document.getElementById('studentIdRequiredNotice');
-                const successMessage = document.getElementById('successMessage');
                 
                 // Show teachers section
                 if (teachersSection) {
@@ -2086,27 +2093,18 @@ if (empty($teachers) && empty($selected_department)) {
                     notice.style.display = 'none';
                 }
                 
-                // Show success message
-                if (successMessage) {
-                    successMessage.classList.remove('hidden');
-                    successMessage.style.display = 'block';
-                    
-                    // Auto-hide success message after 5 seconds
-                    setTimeout(() => {
-                        successMessage.style.display = 'none';
-                        successMessage.classList.add('hidden');
-                    }, 5000);
-                }
-                
                 // Initialize teacher card event listeners after showing the section
                 setTimeout(() => {
                     initializeTeacherCardListeners();
                     
                     // Check if there are any teachers available after student ID is entered
                     checkTeachersAvailability();
+                    
+                    // Start real-time teacher updates
+                    startTeacherUpdates();
                 }, 100);
                 
-                console.log('Teachers section shown');
+                console.log('Teachers section shown - real-time updates started');
             }
             
             // Check if teachers are available and show modal if not
@@ -2137,6 +2135,21 @@ if (empty($teachers) && empty($selected_department)) {
                         }
                     }, 10);
                 }
+                
+                // Clear the QR input field when no teachers are available
+                const studentIdInput = document.getElementById('studentIdInput');
+                if (studentIdInput) {
+                    studentIdInput.value = '';
+                    // Also clear session storage
+                    sessionStorage.removeItem('currentStudentId');
+                    sessionStorage.removeItem('currentStudentName');
+                    sessionStorage.removeItem('currentStudentDept');
+                    // Hide student info display
+                    const studentInfoDisplay = document.getElementById('studentInfoDisplay');
+                    if (studentInfoDisplay) {
+                        studentInfoDisplay.classList.add('hidden');
+                    }
+                }
             }
             
 
@@ -2144,7 +2157,6 @@ if (empty($teachers) && empty($selected_department)) {
             function hideTeachersSection() {
                 const teachersSection = document.getElementById('teachersSection');
                 const notice = document.getElementById('studentIdRequiredNotice');
-                const successMessage = document.getElementById('successMessage');
                 
                 // Hide teachers section
                 if (teachersSection) {
@@ -2157,13 +2169,10 @@ if (empty($teachers) && empty($selected_department)) {
                     notice.style.display = 'block';
                 }
                 
-                // Hide success message
-                if (successMessage) {
-                    successMessage.style.display = 'none';
-                    successMessage.classList.add('hidden');
-                }
+                // Stop real-time teacher updates
+                stopTeacherUpdates();
                 
-                console.log('Teachers section hidden');
+                console.log('Teachers section hidden - real-time updates stopped');
             }
             
             // Initialize teachers section as hidden
@@ -2174,7 +2183,7 @@ if (empty($teachers) && empty($selected_department)) {
             if (existingStudentId) {
                 // Restore student info from session storage
                 currentStudentId = existingStudentId;
-                currentStudentName = sessionStorage.getItem('currentStudentName') || 'Student';
+                currentStudentName = sessionStorage.getItem('currentStudentName') || ('Student ' + existingStudentId);
                 currentStudentDept = sessionStorage.getItem('currentStudentDept') || 'General';
                 
                 // Update input field
@@ -2229,11 +2238,256 @@ if (empty($teachers) && empty($selected_department)) {
             
             console.log('Live clock initialized');
             
-            // Initialize FAB with selected department
-            window.selectedDepartment = '<?php echo htmlspecialchars($selected_department ?? ""); ?>';
+                    // Initialize FAB with selected department
+        window.selectedDepartment = '<?php echo htmlspecialchars($selected_department ?? ""); ?>';
+        
+        // Make showConfirmationDialog globally available for FAB
+        window.showConfirmationDialog = showConfirmationDialog;
+        
+        // Start real-time teacher updates
+        function startTeacherUpdates() {
+            console.log('Starting real-time teacher updates');
             
-            // Make showConfirmationDialog globally available for FAB
-            window.showConfirmationDialog = showConfirmationDialog;
+            // Show real-time indicator
+            const indicator = document.getElementById('realtimeIndicator');
+            if (indicator) {
+                indicator.classList.remove('hidden');
+            }
+            
+            // Update immediately
+            updateAvailableTeachers();
+            
+            // Then update every 5 seconds
+            teacherUpdateInterval = setInterval(() => {
+                updateAvailableTeachers();
+            }, 5000);
+        }
+        
+        // Stop real-time teacher updates
+        function stopTeacherUpdates() {
+            if (teacherUpdateInterval) {
+                clearInterval(teacherUpdateInterval);
+                teacherUpdateInterval = null;
+                console.log('Stopped real-time teacher updates');
+            }
+            
+            // Hide real-time indicator
+            const indicator = document.getElementById('realtimeIndicator');
+            if (indicator) {
+                indicator.classList.add('hidden');
+            }
+        }
+        
+        // Update available teachers
+        function updateAvailableTeachers() {
+            // Only update if student ID is provided and teachers section is visible
+            const teachersSection = document.getElementById('teachersSection');
+            const studentId = sessionStorage.getItem('currentStudentId');
+            
+            if (!studentId || !teachersSection || teachersSection.classList.contains('hidden')) {
+                return;
+            }
+            
+            const department = window.selectedDepartment || '';
+            const url = `../api/get-available-teachers.php?dept=${encodeURIComponent(department)}&last_update=${encodeURIComponent(lastTeacherUpdate)}&t=${Date.now()}`;
+            
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    updateTeachersDisplay(data.teachers);
+                    lastTeacherUpdate = data.last_update;
+                    console.log(`Updated teachers list: ${data.count} teachers available`);
+                } else {
+                    console.error('Failed to fetch teachers:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching teachers:', error);
+            });
+        }
+        
+        // Update teachers display
+        function updateTeachersDisplay(newTeachers) {
+            const teachersGrid = document.querySelector('#teachersSection .grid');
+            if (!teachersGrid) return;
+            
+            // Check if teachers list has changed
+            const newTeacherIds = newTeachers.map(t => t.id).sort();
+            const currentTeacherIds = currentTeachers.map(t => t.id).sort();
+            
+            if (JSON.stringify(newTeacherIds) === JSON.stringify(currentTeacherIds)) {
+                // No changes in teacher list
+                return;
+            }
+            
+            // Store new teachers list
+            currentTeachers = newTeachers;
+            
+            // Show notification for newly available teachers
+            const newlyAvailable = newTeachers.filter(newTeacher => 
+                !currentTeacherIds.includes(newTeacher.id)
+            );
+            
+            if (newlyAvailable.length > 0 && currentTeacherIds.length > 0) {
+                showNewTeacherNotification(newlyAvailable);
+            }
+            
+            // Clear existing teachers
+            teachersGrid.innerHTML = '';
+            
+            if (newTeachers.length === 0) {
+                // Show no teachers message
+                teachersGrid.innerHTML = `
+                    <div class="col-span-full bg-white rounded-lg shadow-md p-8 text-center">
+                        <i class="fas fa-user-slash text-gray-400 text-4xl mb-4"></i>
+                        <h3 class="text-xl font-semibold text-gray-600 mb-2">No Teachers Available Now</h3>
+                        <p class="text-gray-500 mb-4">
+                            ${window.selectedDepartment ? 
+                                `No teachers from <strong>${window.selectedDepartment}</strong> are currently available for consultation.` :
+                                'No teachers are currently available for consultation.'
+                            }
+                        </p>
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                            <p class="text-yellow-800 text-sm">
+                                <i class="fas fa-info-circle mr-2"></i>
+                                Teachers appear here when they scan their QR code to mark themselves as available.
+                            </p>
+                        </div>
+                        <div class="flex items-center justify-center space-x-2 text-sm text-gray-500">
+                            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                            <span>Checking for updates every 5 seconds...</span>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Add teachers to grid
+            newTeachers.forEach(teacher => {
+                const teacherCard = createTeacherCard(teacher);
+                teachersGrid.appendChild(teacherCard);
+            });
+            
+            // Re-initialize teacher card listeners
+            setTimeout(() => {
+                initializeTeacherCardListeners();
+            }, 100);
+        }
+        
+        // Create teacher card element
+        function createTeacherCard(teacher) {
+            const card = document.createElement('div');
+            card.className = 'teacher-card bg-white rounded-xl shadow-lg hover:shadow-2xl cursor-pointer transform hover:scale-105 transition-all duration-300 border border-gray-200 flex flex-col overflow-hidden';
+            card.setAttribute('data-teacher-id', teacher.id);
+            card.setAttribute('data-teacher-name', `${teacher.first_name} ${teacher.last_name}`);
+            card.setAttribute('data-teacher-dept', teacher.department);
+            
+            // Generate initials if no image
+            const firstInitial = teacher.first_name.charAt(0).toUpperCase();
+            const lastInitial = teacher.last_name.charAt(0).toUpperCase();
+            const initials = firstInitial + lastInitial;
+            
+            card.innerHTML = `
+                <!-- Teacher Avatar at Top -->
+                <div class="p-6 flex justify-center bg-gradient-to-br from-gray-50 to-white border-b border-gray-100">
+                    <div class="teacher-avatar">
+                        ${teacher.image_url ? 
+                            `<img src="../${teacher.image_url}" alt="Teacher" class="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-4 border-orange-500 shadow-lg">` :
+                            `<div class="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center border-4 border-orange-500 shadow-lg">
+                                <span class="text-white text-xl sm:text-2xl font-bold">${initials}</span>
+                            </div>`
+                        }
+                    </div>
+                </div>
+
+                <!-- Teacher Information - Centered -->
+                <div class="p-4 sm:p-6 flex-1 flex flex-col justify-center">
+                    <div class="text-center space-y-3">
+                        <!-- Teacher Name -->
+                        <h3 class="text-lg sm:text-xl font-bold text-gray-800">
+                            ${teacher.first_name} ${teacher.last_name}
+                        </h3>
+                        
+                        <!-- Status -->
+                        <div class="flex items-center justify-center space-x-2">
+                            <div class="status-badge w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-green-500"></div>
+                            <span class="text-xs sm:text-sm text-green-600 font-semibold">Available for Consultation</span>
+                        </div>
+                        
+                        <!-- Consultation Hours -->
+                        ${teacher.start_time && teacher.end_time ? `
+                        <div class="flex items-center justify-center text-gray-600 text-xs sm:text-sm">
+                            <i class="fas fa-clock mr-2 text-green-500"></i>
+                            <span>
+                                ${formatTime(teacher.start_time)} - ${formatTime(teacher.end_time)}
+                                ${teacher.room ? ` | ${teacher.room}` : ''}
+                            </span>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+
+                <!-- Card Footer -->
+                <div class="px-4 sm:px-6 py-4 bg-gradient-to-r from-orange-50 to-orange-100 rounded-b-xl">
+                    <div class="flex items-center justify-center">
+                        <div class="text-center">
+                            <div class="text-xs sm:text-sm text-orange-700 font-medium mb-2">Tap to start consultation</div>
+                            <div class="flex items-center justify-center space-x-1 sm:space-x-2">
+                                <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-orange-500 rounded-full animate-pulse"></div>
+                                <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-orange-500 rounded-full animate-pulse" style="animation-delay: 0.2s;"></div>
+                                <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-orange-500 rounded-full animate-pulse" style="animation-delay: 0.4s;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            return card;
+        }
+        
+        // Format time helper function
+        function formatTime(timeString) {
+            if (!timeString) return '';
+            
+            const time = new Date(`1970-01-01T${timeString}`);
+            return time.toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
+        
+        // Show notification for newly available teachers
+        function showNewTeacherNotification(newTeachers) {
+            const teacherNames = newTeachers.map(t => `${t.first_name} ${t.last_name}`).join(', ');
+            const message = newTeachers.length === 1 ? 
+                `🎉 ${teacherNames} is now available for consultation!` :
+                `🎉 ${newTeachers.length} new teachers are now available: ${teacherNames}`;
+            
+            showNotification(message, 'success');
+            
+            // Play notification sound
+            try {
+                const audio = new Audio('../consultation/notification-sound.mp3');
+                audio.volume = 0.3;
+                audio.play().catch(e => console.log('Notification sound failed:', e));
+            } catch (e) {
+                console.log('Notification sound not supported:', e);
+            }
+        }
             
             // Department filter functionality
             const departmentFilterBtns = document.querySelectorAll('.department-filter-btn');
@@ -2596,6 +2850,21 @@ if (empty($teachers) && empty($selected_department)) {
                 formData.append('student_name', studentName || 'Student');
                 formData.append('student_id', studentId);
                 formData.append('student_dept', studentDept || 'General');
+                
+                // Debug logging for consultation request
+                console.log('=== CONSULTATION REQUEST SUBMISSION DEBUG ===');
+                console.log('Submitting consultation request with data:');
+                console.log('- teacher_id:', teacherId);
+                console.log('- student_name:', studentName || 'Student');
+                console.log('- student_id:', studentId);
+                console.log('- student_id type:', typeof studentId);
+                console.log('- student_id length:', studentId ? studentId.length : 'null');
+                console.log('- student_id raw:', JSON.stringify(studentId));
+                console.log('- student_dept:', studentDept || 'General');
+                console.log('Session storage contents:');
+                console.log('- currentStudentId:', sessionStorage.getItem('currentStudentId'));
+                console.log('- currentStudentName:', sessionStorage.getItem('currentStudentName'));
+                console.log('- currentStudentDept:', sessionStorage.getItem('currentStudentDept'));
                 
                 fetch('submit-consultation-request.php', {
                     method: 'POST',
@@ -3290,7 +3559,20 @@ if (empty($teachers) && empty($selected_department)) {
         document.addEventListener('visibilitychange', function() {
             if (document.visibilityState === 'hidden') {
                 cleanupBlurEffects();
+                stopTeacherUpdates(); // Stop updates when page is hidden
+            } else if (document.visibilityState === 'visible') {
+                // Restart updates when page becomes visible again
+                const teachersSection = document.getElementById('teachersSection');
+                const studentId = sessionStorage.getItem('currentStudentId');
+                if (studentId && teachersSection && !teachersSection.classList.contains('hidden')) {
+                    startTeacherUpdates();
+                }
             }
+        });
+        
+        // Stop updates when page is unloaded
+        window.addEventListener('beforeunload', function() {
+            stopTeacherUpdates();
         });
         
             } catch (error) {

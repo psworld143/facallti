@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../config/database.php';
+require_once '../includes/unified-error-handler.php';
 require_once '../includes/functions.php';
 
 check_admin();
@@ -379,25 +380,114 @@ $settings = [
         </div>
     </div>
 
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-question-circle text-blue-600 text-2xl"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Confirm Action</h3>
+                <p class="text-gray-600 text-sm" id="confirmMessage">Are you sure you want to proceed?</p>
+            </div>
+            
+            <div class="flex justify-center space-x-3">
+                <button onclick="closeConfirmModal()"
+                        class="px-6 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200">
+                    <i class="fas fa-times mr-2"></i>Cancel
+                </button>
+                <button id="confirmActionBtn"
+                        class="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 font-semibold">
+                    <i class="fas fa-check mr-2"></i>Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-check-circle text-green-600 text-2xl"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Success!</h3>
+                <p class="text-gray-600 text-sm" id="successMessage">Operation completed successfully.</p>
+            </div>
+            
+            <div class="flex justify-center">
+                <button onclick="closeSuccessModal()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg font-medium">
+                    OK
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         function clearCache() {
-            if (confirm('Are you sure you want to clear the cache?')) {
+            showConfirmModal('Are you sure you want to clear the cache?', function() {
                 // Implement cache clearing functionality
-                alert('Cache cleared successfully!');
-            }
+                showSuccessModal('Cache cleared successfully!');
+            });
         }
 
         function backupDatabase() {
-            if (confirm('Do you want to create a database backup?')) {
+            showConfirmModal('Do you want to create a database backup?', function() {
                 // Implement database backup functionality
-                alert('Database backup created successfully!');
-            }
+                showSuccessModal('Database backup created successfully!');
+            });
         }
 
         function checkUpdates() {
             // Implement update check functionality
-            alert('No updates available at this time.');
+            showSuccessModal('No updates available at this time.');
         }
+
+        function showConfirmModal(message, onConfirm) {
+            document.getElementById('confirmMessage').textContent = message;
+            document.getElementById('confirmModal').classList.remove('hidden');
+            
+            const confirmBtn = document.getElementById('confirmActionBtn');
+            confirmBtn.onclick = function() {
+                closeConfirmModal();
+                onConfirm();
+            };
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirmModal').classList.add('hidden');
+        }
+
+        function showSuccessModal(message) {
+            document.getElementById('successMessage').textContent = message;
+            document.getElementById('successModal').classList.remove('hidden');
+        }
+
+        function closeSuccessModal() {
+            document.getElementById('successModal').classList.add('hidden');
+        }
+
+        // Close modals when clicking outside
+        document.addEventListener('DOMContentLoaded', function() {
+            const confirmModal = document.getElementById('confirmModal');
+            const successModal = document.getElementById('successModal');
+            
+            if (confirmModal) {
+                confirmModal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        closeConfirmModal();
+                    }
+                });
+            }
+            
+            if (successModal) {
+                successModal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        closeSuccessModal();
+                    }
+                });
+            }
+        });
     </script>
 </body>
 </html>

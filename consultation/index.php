@@ -354,8 +354,10 @@ $available_screens = [
 
                 <!-- Step 1: Department Selection -->
                 <div id="step1Content">
-                    <h4 class="text-lg font-semibold text-seait-dark mb-4">Select Your Department</h4>
-                    <p class="text-gray-600 mb-6">Choose your academic department to access consultation services.</p>
+                    <div class="text-center mb-6">
+                        <h4 class="text-lg font-semibold text-seait-dark mb-4">Select Your Department</h4>
+                        <p class="text-gray-600">Choose your academic department to access consultation services.</p>
+                    </div>
                     
                     <div class="space-y-4 max-h-96 overflow-y-auto">
                         <?php if (empty($all_departments)): ?>
@@ -399,8 +401,10 @@ $available_screens = [
 
                 <!-- Step 2: Screen Selection -->
                 <div id="step2Content" class="hidden">
-                    <h4 class="text-lg font-semibold text-seait-dark mb-4">Select Your Screen</h4>
-                    <p class="text-gray-600 mb-6">Choose the appropriate screen for your role.</p>
+                    <div class="text-center mb-6">
+                        <h4 class="text-lg font-semibold text-seait-dark mb-4">Select Your Screen</h4>
+                        <p class="text-gray-600">Choose the appropriate screen for your role.</p>
+                    </div>
                     
                     <div class="space-y-4 max-h-96 overflow-y-auto">
                         <?php foreach ($available_screens as $screen): ?>
@@ -573,7 +577,7 @@ $available_screens = [
                 nextBtn.innerHTML = 'Proceed<i class="fas fa-arrow-right ml-2"></i>';
                 
                 // Show auto-advance message
-                showAutoAdvanceMessage('Now select your screen');
+                //showAutoAdvanceMessage('Now select your screen');
             }
         }
         
@@ -609,7 +613,7 @@ $available_screens = [
                     selectedDepartment = value;
                     
                     // Show selection feedback
-                    showAutoAdvanceMessage(`Selected: ${selectedDepartment}`);
+                    //showAutoAdvanceMessage(`Selected: ${selectedDepartment}`);
                     
                     // Auto-advance to step 2 after a short delay
                     setTimeout(() => {

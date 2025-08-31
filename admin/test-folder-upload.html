@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Folder Upload Test - SEAIT Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .upload-zone {
+            border: 2px dashed #D1D5DB;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-zone.dragover {
+            border-color: #FF6B35;
+            background-color: #FFF8F0;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 p-8">
+    <div class="max-w-4xl mx-auto">
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <h1 class="text-2xl font-bold text-gray-900 mb-6">📁 Folder Upload Test</h1>
+            <p class="text-gray-600 mb-6">This test demonstrates the folder upload functionality with directory structure preservation.</p>
+            
+            <!-- Upload Zone -->
+            <div class="upload-zone rounded-lg p-8 text-center border-2 border-dashed border-gray-300 mb-6" id="uploadZone">
+                <i class="fas fa-folder-upload text-4xl text-gray-400 mb-4"></i>
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">Upload Folder with Structure</h3>
+                <p class="text-gray-600 mb-4">Select a folder to upload. The directory structure will be preserved on the FTP server.</p>
+                <input type="file" id="folderInput" webkitdirectory directory multiple class="hidden">
+                <button type="button" onclick="document.getElementById('folderInput').click()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-medium">
+                    <i class="fas fa-folder-plus mr-2"></i>Choose Folder
+                </button>
+            </div>
+            
+            <!-- Selected Files -->
+            <div id="selectedFiles" class="hidden mb-6">
+                <h3 class="text-lg font-semibold text-gray-700 mb-3">Selected Files:</h3>
+                <div class="max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <div id="filesList" class="space-y-2"></div>
+                </div>
+            </div>
+            
+            <!-- Folder Structure Preview -->
+            <div id="folderStructure" class="hidden mb-6">
+                <h3 class="text-lg font-semibold text-gray-700 mb-3">📁 Folder Structure Preview:</h3>
+                <div class="border border-gray-200 rounded-lg p-4 bg-blue-50">
+                    <div id="structurePreview" class="text-sm font-mono text-blue-800"></div>
+                </div>
+            </div>
+            
+            <!-- Upload Button -->
+            <div id="uploadSection" class="hidden">
+                <button id="uploadBtn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium">
+                    <i class="fas fa-upload mr-2"></i>Upload Folder Structure
+                </button>
+            </div>
+            
+            <!-- Results -->
+            <div id="results" class="hidden mt-6">
+                <h3 class="text-lg font-semibold text-gray-700 mb-3">Upload Results:</h3>
+                <div id="resultsContent" class="border border-gray-200 rounded-lg p-4 bg-gray-50"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedFiles = [];
+        let currentLocalDirectory = '';
+        
+        document.getElementById('folderInput').addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            if (files.length > 0) {
+                selectedFiles = files;
+                currentLocalDirectory = files[0].webkitRelativePath.split('/')[0];
+                displayFiles(files);
+                displayFolderStructure(files);
+                document.getElementById('selectedFiles').classList.remove('hidden');
+                document.getElementById('folderStructure').classList.remove('hidden');
+                document.getElementById('uploadSection').classList.remove('hidden');
+            }
+        });
+        
+        function displayFiles(files) {
+            const filesList = document.getElementById('filesList');
+            let html = '';
+            
+            files.forEach((file, index) => {
+                const size = formatFileSize(file.size);
+                const relativePath = file.webkitRelativePath || file.name;
+                const icon = getFileIcon(file);
+                
+                html += `
+                    <div class="flex items-center justify-between p-2 bg-white rounded border">
+                        <div class="flex items-center">
+                            <div class="w-6 h-6 rounded flex items-center justify-center mr-3" style="background-color: ${getIconBgColor(icon.class)}; color: ${getIconTextColor(icon.class)};">
+                                <i class="${icon.icon} text-xs"></i>
+                            </div>
+                            <div>
+                                <div class="font-medium text-sm">${file.name}</div>
+                                <div class="text-xs text-gray-500">${size}</div>
+                                <div class="text-xs text-blue-600">${relativePath}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            filesList.innerHTML = html;
+        }
+        
+        function getFileIcon(file) {
+            const ext = file.name.split('.').pop().toLowerCase();
+            
+            // Programming Languages
+            if (ext === 'php') {
+                return { class: 'file-php', icon: 'fab fa-php' };
+            } else if (ext === 'js') {
+                return { class: 'file-js', icon: 'fab fa-js-square' };
+            } else if (ext === 'html' || ext === 'htm') {
+                return { class: 'file-html', icon: 'fab fa-html5' };
+            } else if (ext === 'css') {
+                return { class: 'file-css', icon: 'fab fa-css3-alt' };
+            } else if (ext === 'py') {
+                return { class: 'file-python', icon: 'fab fa-python' };
+            } else if (ext === 'java') {
+                return { class: 'file-java', icon: 'fab fa-java' };
+            } else if (ext === 'sql') {
+                return { class: 'file-sql', icon: 'fas fa-database' };
+            } else if (ext === 'json') {
+                return { class: 'file-json', icon: 'fas fa-brackets-curly' };
+            } else if (ext === 'xml') {
+                return { class: 'file-xml', icon: 'fas fa-file-code' };
+            }
+            
+            // Images
+            if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp'].includes(ext)) {
+                return { class: 'file-image', icon: 'fas fa-image' };
+            }
+            
+            // Documents
+            if (['pdf'].includes(ext)) {
+                return { class: 'file-pdf', icon: 'fas fa-file-pdf' };
+            } else if (['doc', 'docx'].includes(ext)) {
+                return { class: 'file-word', icon: 'fas fa-file-word' };
+            } else if (['txt', 'md'].includes(ext)) {
+                return { class: 'file-text', icon: 'fas fa-file-alt' };
+            }
+            
+            // Archives
+            if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) {
+                return { class: 'file-archive', icon: 'fas fa-file-archive' };
+            }
+            
+            // Default
+            return { class: 'file-default', icon: 'fas fa-file' };
+        }
+        
+        function getIconBgColor(iconClass) {
+            const colors = {
+                'file-php': '#F3E8FF',
+                'file-js': '#FEF3C7',
+                'file-html': '#FEE2E2',
+                'file-css': '#DBEAFE',
+                'file-python': '#F0FDF4',
+                'file-java': '#FEF3C7',
+                'file-sql': '#FCE7F3',
+                'file-json': '#FEF3C7',
+                'file-xml': '#DBEAFE',
+                'file-image': '#DBEAFE',
+                'file-pdf': '#FEE2E2',
+                'file-word': '#DBEAFE',
+                'file-text': '#F3F4F6',
+                'file-archive': '#E0E7FF',
+                'file-default': '#F3F4F6'
+            };
+            return colors[iconClass] || '#F3F4F6';
+        }
+        
+        function getIconTextColor(iconClass) {
+            const colors = {
+                'file-php': '#7C3AED',
+                'file-js': '#D97706',
+                'file-html': '#DC2626',
+                'file-css': '#2563EB',
+                'file-python': '#16A34A',
+                'file-java': '#D97706',
+                'file-sql': '#EC4899',
+                'file-json': '#D97706',
+                'file-xml': '#2563EB',
+                'file-image': '#2563EB',
+                'file-pdf': '#DC2626',
+                'file-word': '#2563EB',
+                'file-text': '#6B7280',
+                'file-archive': '#7C3AED',
+                'file-default': '#6B7280'
+            };
+            return colors[iconClass] || '#6B7280';
+        }
+        
+        function displayFolderStructure(files) {
+            const structurePreview = document.getElementById('structurePreview');
+            const structure = analyzeFolderStructure(files);
+            
+            let html = '';
+            
+            function renderStructure(obj, indent = 0) {
+                const spaces = '  '.repeat(indent);
+                Object.keys(obj).forEach(key => {
+                    html += `${spaces}📁 ${key}/\n`;
+                    if (Object.keys(obj[key]).length > 0) {
+                        renderStructure(obj[key], indent + 1);
+                    }
+                });
+            }
+            
+            renderStructure(structure);
+            
+            if (html === '') {
+                html = 'No folder structure detected';
+            }
+            
+            structurePreview.innerHTML = html;
+        }
+        
+        function analyzeFolderStructure(files) {
+            const structure = {};
+            
+            files.forEach(file => {
+                if (file.webkitRelativePath) {
+                    const pathParts = file.webkitRelativePath.split('/');
+                    let current = structure;
+                    
+                    for (let i = 0; i < pathParts.length - 1; i++) {
+                        const part = pathParts[i];
+                        if (!current[part]) {
+                            current[part] = {};
+                        }
+                        current = current[part];
+                    }
+                }
+            });
+            
+            return structure;
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+        
+        document.getElementById('uploadBtn').addEventListener('click', function() {
+            if (selectedFiles.length === 0) return;
+            
+            const btn = this;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Uploading...';
+            btn.disabled = true;
+            
+            let successCount = 0;
+            let errorCount = 0;
+            const results = [];
+            
+            selectedFiles.forEach((file, index) => {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('directory', '/');
+                formData.append('account', 'sms');
+                
+                if (file.webkitRelativePath) {
+                    formData.append('relative_path', file.webkitRelativePath);
+                }
+                
+                fetch('api/ftp-upload.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        successCount++;
+                        results.push(`✅ ${file.webkitRelativePath || file.name}: Success`);
+                    } else {
+                        errorCount++;
+                        results.push(`❌ ${file.webkitRelativePath || file.name}: ${data.error}`);
+                    }
+                    
+                    if (index === selectedFiles.length - 1) {
+                        // All uploads complete
+                        displayResults(results, successCount, errorCount);
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                    }
+                })
+                .catch(error => {
+                    errorCount++;
+                    results.push(`❌ ${file.webkitRelativePath || file.name}: ${error.message}`);
+                    console.error('Upload failed:', error);
+                    
+                    if (index === selectedFiles.length - 1) {
+                        displayResults(results, successCount, errorCount);
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                    }
+                });
+            });
+        });
+        
+        function displayResults(results, successCount, errorCount) {
+            const resultsDiv = document.getElementById('results');
+            const resultsContent = document.getElementById('resultsContent');
+            
+            let html = `
+                <div class="mb-4">
+                    <div class="text-lg font-semibold mb-2">Upload Summary:</div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-green-100 p-3 rounded-lg">
+                            <div class="text-green-800 font-semibold">✅ Successful: ${successCount}</div>
+                        </div>
+                        <div class="bg-red-100 p-3 rounded-lg">
+                            <div class="text-red-800 font-semibold">❌ Failed: ${errorCount}</div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="text-lg font-semibold mb-2">Detailed Results:</div>
+                    <div class="space-y-1 max-h-64 overflow-y-auto">
+            `;
+            
+            results.forEach(result => {
+                html += `<div class="text-sm">${result}</div>`;
+            });
+            
+            html += '</div></div>';
+            
+            resultsContent.innerHTML = html;
+            resultsDiv.classList.remove('hidden');
+        }
+    </script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</body>
+</html>
