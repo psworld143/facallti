@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Input Field Test - Always Visible</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-md mx-auto bg-white rounded-lg shadow-lg p-6">
+            <div class="text-center">
+                <h1 class="text-2xl font-bold text-gray-800 mb-4">QR Input Field Test</h1>
+                <p class="text-gray-600 mb-6">QR Input Field is always visible for testing</p>
+                
+                <!-- QR Scanner Input Field - Always Visible -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">QR Scanner Input (Always Visible)</label>
+                    <input type="text" id="qrScannerInput" placeholder="Scan QR code here..." 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 text-center text-lg font-mono"
+                           autocomplete="off" autofocus>
+                    <p class="text-xs text-gray-500 mt-1">QR scanner will automatically enter the teacher ID here</p>
+                </div>
+                
+                <!-- Status Display -->
+                <div id="statusDisplay" class="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <p class="text-sm text-gray-600">Status: <span id="statusText">Waiting for QR scan...</span></p>
+                </div>
+                
+                <!-- Test Instructions -->
+                <div class="text-sm text-gray-500 mb-4">
+                    <p>• The QR input field is now visible above</p>
+                    <p>• Use your HID QR scanner to scan a teacher ID</p>
+                    <p>• The scanner should automatically type the ID</p>
+                    <p>• A confirmation dialog should appear</p>
+                </div>
+                
+                <div class="bg-gray-50 rounded p-3">
+                    <p class="text-xs text-gray-600">Test Teacher IDs: 1, 2, 3, etc.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            const qrScannerInput = document.getElementById('qrScannerInput');
+            const statusText = document.getElementById('statusText');
+            
+            // Add event listener for QR scanner input (primary input method)
+            if (qrScannerInput) {
+                qrScannerInput.addEventListener('input', function() {
+                    const teacherId = this.value.trim();
+                    statusText.textContent = `Input detected: ${teacherId}`;
+                    
+                    if (teacherId && /^\d+$/.test(teacherId)) {
+                        // Small delay to ensure the value is fully entered
+                        setTimeout(() => {
+                            if (this.value.trim() === teacherId) {
+                                statusText.textContent = `Valid teacher ID: ${teacherId}`;
+                                showTeacherAvailabilityConfirmation(teacherId);
+                            }
+                        }, 100);
+                    }
+                });
+                
+                // Add event listener for Enter key (common with QR scanners)
+                qrScannerInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const teacherId = this.value.trim();
+                        statusText.textContent = `Enter key pressed with: ${teacherId}`;
+                        
+                        if (teacherId && /^\d+$/.test(teacherId)) {
+                            showTeacherAvailabilityConfirmation(teacherId);
+                        }
+                    }
+                });
+                
+                // Add focus event
+                qrScannerInput.addEventListener('focus', function() {
+                    statusText.textContent = 'Input field focused - ready for QR scan';
+                });
+                
+                // Add blur event
+                qrScannerInput.addEventListener('blur', function() {
+                    statusText.textContent = 'Input field lost focus';
+                });
+            }
+        });
+
+        // Show teacher availability confirmation dialog
+        function showTeacherAvailabilityConfirmation(teacherId) {
+            // Create confirmation dialog
+            const dialog = document.createElement('div');
+            dialog.id = 'availabilityConfirmationDialog';
+            dialog.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50';
+            dialog.innerHTML = `
+                <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                    <div class="mt-3 text-center">
+                        <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-orange-100">
+                            <i class="fas fa-question text-orange-600 text-xl"></i>
+                        </div>
+                        <h3 class="text-lg font-medium text-gray-900 mt-4">Confirm Availability</h3>
+                        <p class="text-sm text-gray-500 mt-2">Teacher ID: <strong>${teacherId}</strong></p>
+                        <p class="text-sm text-gray-600 mt-2">Do you want to mark yourself as available for consultations?</p>
+                        
+                        <div class="flex justify-center space-x-3 mt-6">
+                            <button onclick="cancelAvailabilityConfirmation()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors">
+                                Cancel
+                            </button>
+                            <button onclick="confirmAvailabilityNow('${teacherId}')" class="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors">
+                                Yes, Mark Available
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(dialog);
+        }
+
+        // Cancel availability confirmation
+        function cancelAvailabilityConfirmation() {
+            const dialog = document.getElementById('availabilityConfirmationDialog');
+            if (dialog) {
+                dialog.remove();
+            }
+            
+            // Clear the input field and update status
+            const qrInput = document.getElementById('qrScannerInput');
+            const statusText = document.getElementById('statusText');
+            
+            if (qrInput) {
+                qrInput.value = '';
+                qrInput.focus();
+            }
+            
+            if (statusText) {
+                statusText.textContent = 'Cancelled - ready for next scan';
+            }
+        }
+
+        // Confirm availability immediately
+        function confirmAvailabilityNow(teacherId) {
+            // Remove the confirmation dialog
+            const dialog = document.getElementById('availabilityConfirmationDialog');
+            if (dialog) {
+                dialog.remove();
+            }
+            
+            // Show success message
+            alert(`Teacher ID ${teacherId} marked as available successfully!`);
+            
+            // Clear the input field and update status
+            const qrInput = document.getElementById('qrScannerInput');
+            const statusText = document.getElementById('statusText');
+            
+            if (qrInput) {
+                qrInput.value = '';
+                qrInput.focus();
+            }
+            
+            if (statusText) {
+                statusText.textContent = 'Success! Ready for next scan';
+            }
+        }
+
+        // Make functions globally available
+        window.cancelAvailabilityConfirmation = cancelAvailabilityConfirmation;
+        window.confirmAvailabilityNow = confirmAvailabilityNow;
+    </script>
+</body>
+</html>

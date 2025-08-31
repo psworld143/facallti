@@ -1,1 +1,1 @@
-<?php include 'unified-footer.php'; ?>
+<?php

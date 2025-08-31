@@ -1,26 +1,32 @@
 <?php
 session_start();
+require_once '../includes/error_handler.php';
 require_once '../config/database.php';
 
 // Check if user is logged in and is a department head
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'head') {
-    header('Location: ../login.php');
+    header('Location: ../index.php?login=required&redirect=heads-leave-approvals');
     exit;
 }
 
-$user_id = $_SESSION['user_id'];
+$head_id = $_SESSION['user_id'];
 
 // Get department head details
-$query = "SELECT * FROM department_heads WHERE employee_id = ? AND is_active = 1";
+$query = "SELECT h.*, u.first_name, u.last_name 
+          FROM heads h 
+          JOIN users u ON h.user_id = u.id 
+          WHERE h.user_id = ? AND h.status = 'active'";
 $stmt = mysqli_prepare($conn, $query);
-mysqli_stmt_bind_param($stmt, 'i', $user_id);
+mysqli_stmt_bind_param($stmt, 'i', $head_id);
 mysqli_stmt_execute($stmt);
 $department_head = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
 
 if (!$department_head) {
-    header('Location: ../login.php');
+    header('Location: ../index.php?login=required&redirect=heads-leave-approvals');
     exit;
 }
+
+$head_department = $department_head['department'];
 
 // Get filter parameters
 $status_filter = $_GET['status'] ?? '';
@@ -28,31 +34,31 @@ $year_filter = $_GET['year'] ?? date('Y');
 $leave_type_filter = $_GET['leave_type'] ?? '';
 $search = $_GET['search'] ?? '';
 
-// Build query with filters
-$where_conditions = ["lr.department_head_id = ?"];
-$params = [$user_id];
+// Build query with filters for faculty_leave_requests table
+$where_conditions = ["flr.department_head_id = ?"];
+$params = [$head_id];
 $param_types = 'i';
 
 if ($status_filter) {
-    $where_conditions[] = "lr.status = ?";
+    $where_conditions[] = "flr.status = ?";
     $params[] = $status_filter;
     $param_types .= 's';
 }
 
 if ($year_filter) {
-    $where_conditions[] = "YEAR(lr.start_date) = ?";
+    $where_conditions[] = "YEAR(flr.start_date) = ?";
     $params[] = $year_filter;
     $param_types .= 'i';
 }
 
 if ($leave_type_filter) {
-    $where_conditions[] = "lr.leave_type_id = ?";
+    $where_conditions[] = "flr.leave_type_id = ?";
     $params[] = $leave_type_filter;
     $param_types .= 'i';
 }
 
 if ($search) {
-    $where_conditions[] = "(e.first_name LIKE ? OR e.last_name LIKE ? OR lt.name LIKE ? OR lr.reason LIKE ?)";
+    $where_conditions[] = "(f.first_name LIKE ? OR f.last_name LIKE ? OR lt.name LIKE ? OR flr.reason LIKE ?)";
     $search_param = "%$search%";
     $params[] = $search_param;
     $params[] = $search_param;
@@ -63,16 +69,16 @@ if ($search) {
 
 $where_clause = implode(' AND ', $where_conditions);
 
-// Get leave requests that this head has approved/rejected
-$query = "SELECT lr.*, lt.name as leave_type_name, lt.description,
-          e.first_name, e.last_name, e.email, e.position,
+// Get leave requests that this head has approved/rejected from faculty_leave_requests table
+$query = "SELECT flr.*, lt.name as leave_type_name, lt.description,
+          f.first_name, f.last_name, f.email, f.department,
           hr.first_name as hr_first_name, hr.last_name as hr_last_name
-          FROM leave_requests lr
-          JOIN leave_types lt ON lr.leave_type_id = lt.id
-          JOIN employees e ON lr.employee_id = e.employee_id
-          LEFT JOIN employees hr ON lr.hr_approver_id = hr.employee_id
+          FROM faculty_leave_requests flr
+          JOIN leave_types lt ON flr.leave_type_id = lt.id
+          JOIN faculty f ON flr.faculty_id = f.id
+          LEFT JOIN faculty hr ON flr.hr_approver_id = hr.id
           WHERE $where_clause
-          ORDER BY lr.department_head_approved_at DESC";
+          ORDER BY flr.department_head_approved_at DESC";
 
 $stmt = mysqli_prepare($conn, $query);
 if (!empty($params)) {
@@ -81,20 +87,20 @@ if (!empty($params)) {
 mysqli_stmt_execute($stmt);
 $leave_requests = mysqli_stmt_get_result($stmt);
 
-// Get available years for filter
-$query = "SELECT DISTINCT YEAR(start_date) as year FROM leave_requests WHERE department_head_id = ? ORDER BY year DESC";
+// Get available years for filter from faculty_leave_requests table
+$query = "SELECT DISTINCT YEAR(start_date) as year FROM faculty_leave_requests WHERE department_head_id = ? ORDER BY year DESC";
 $stmt = mysqli_prepare($conn, $query);
-mysqli_stmt_bind_param($stmt, 'i', $user_id);
+mysqli_stmt_bind_param($stmt, 'i', $head_id);
 mysqli_stmt_execute($stmt);
 $available_years = mysqli_stmt_get_result($stmt);
 
-// Get available leave types for filter
+// Get available leave types for filter from faculty_leave_requests table
 $query = "SELECT DISTINCT lt.id, lt.name FROM leave_types lt
-          JOIN leave_requests lr ON lt.id = lr.leave_type_id
-          WHERE lr.department_head_id = ?
+          JOIN faculty_leave_requests flr ON lt.id = flr.leave_type_id
+          WHERE flr.department_head_id = ?
           ORDER BY lt.name";
 $stmt = mysqli_prepare($conn, $query);
-mysqli_stmt_bind_param($stmt, 'i', $user_id);
+mysqli_stmt_bind_param($stmt, 'i', $head_id);
 mysqli_stmt_execute($stmt);
 $available_leave_types = mysqli_stmt_get_result($stmt);
 
@@ -161,74 +167,74 @@ while ($request = mysqli_fetch_assoc($leave_requests)) {
 <body class="bg-gray-50">
     <?php include 'includes/header.php'; ?>
     
-    <div class="flex">
-        <?php include 'includes/sidebar.php'; ?>
-        
-        <div class="flex-1 ml-64 p-8">
-            <!-- Header -->
-            <div class="mb-8">
-                <h1 class="text-3xl font-bold text-gray-900 mb-2">My Approvals</h1>
-                <p class="text-gray-600">View all leave requests you have approved or rejected</p>
+    <div class="space-y-6">
+            <!-- Page Header -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h1 class="text-2xl font-bold text-seait-dark">My Approvals</h1>
+                        <p class="text-gray-600 mt-1">View all faculty leave requests you have approved or rejected</p>
+                    </div>
+                </div>
             </div>
 
             <!-- Statistics Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                <div class="bg-white rounded-lg shadow-md p-6 animate-fadeInUp">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                     <div class="flex items-center">
-                        <div class="p-3 rounded-full bg-blue-100 text-blue-600">
-                            <i class="fas fa-list text-xl"></i>
+                        <div class="p-2 bg-blue-100 rounded-lg">
+                            <i class="fas fa-list text-blue-600"></i>
                         </div>
-                        <div class="ml-4">
+                        <div class="ml-3">
                             <p class="text-sm font-medium text-gray-600">Total Decisions</p>
-                            <p class="text-2xl font-bold text-gray-900"><?php echo $total_approvals; ?></p>
+                            <p class="text-lg font-semibold text-gray-900"><?php echo $total_approvals; ?></p>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-white rounded-lg shadow-md p-6 animate-fadeInUp" style="animation-delay: 0.1s;">
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                     <div class="flex items-center">
-                        <div class="p-3 rounded-full bg-green-100 text-green-600">
-                            <i class="fas fa-check-circle text-xl"></i>
+                        <div class="p-2 bg-green-100 rounded-lg">
+                            <i class="fas fa-check-circle text-green-600"></i>
                         </div>
-                        <div class="ml-4">
+                        <div class="ml-3">
                             <p class="text-sm font-medium text-gray-600">Approved</p>
-                            <p class="text-2xl font-bold text-gray-900"><?php echo $approved_count; ?></p>
+                            <p class="text-lg font-semibold text-gray-900"><?php echo $approved_count; ?></p>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-white rounded-lg shadow-md p-6 animate-fadeInUp" style="animation-delay: 0.2s;">
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                     <div class="flex items-center">
-                        <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
-                            <i class="fas fa-clock text-xl"></i>
+                        <div class="p-2 bg-yellow-100 rounded-lg">
+                            <i class="fas fa-clock text-yellow-600"></i>
                         </div>
-                        <div class="ml-4">
+                        <div class="ml-3">
                             <p class="text-sm font-medium text-gray-600">Pending HR</p>
-                            <p class="text-2xl font-bold text-gray-900"><?php echo $pending_hr_count; ?></p>
+                            <p class="text-lg font-semibold text-gray-900"><?php echo $pending_hr_count; ?></p>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-white rounded-lg shadow-md p-6 animate-fadeInUp" style="animation-delay: 0.3s;">
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                     <div class="flex items-center">
-                        <div class="p-3 rounded-full bg-red-100 text-red-600">
-                            <i class="fas fa-times-circle text-xl"></i>
+                        <div class="p-2 bg-red-100 rounded-lg">
+                            <i class="fas fa-times-circle text-red-600"></i>
                         </div>
-                        <div class="ml-4">
+                        <div class="ml-3">
                             <p class="text-sm font-medium text-gray-600">Rejected</p>
-                            <p class="text-2xl font-bold text-gray-900"><?php echo $rejected_count; ?></p>
+                            <p class="text-lg font-semibold text-gray-900"><?php echo $rejected_count; ?></p>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Filters -->
-            <div class="bg-white rounded-lg shadow-md p-6 mb-8 animate-fadeInUp" style="animation-delay: 0.4s;">
-                <h2 class="text-lg font-semibold text-gray-900 mb-4">Filters</h2>
-                <form method="GET" class="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <form method="GET" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                        <select name="status" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                        <select name="status" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-seait-orange focus:border-transparent">
                             <option value="">All Status</option>
                             <option value="approved_by_head" <?php echo $status_filter === 'approved_by_head' ? 'selected' : ''; ?>>Pending HR</option>
                             <option value="approved_by_hr" <?php echo $status_filter === 'approved_by_hr' ? 'selected' : ''; ?>>Approved by HR</option>
@@ -237,8 +243,8 @@ while ($request = mysqli_fetch_assoc($leave_requests)) {
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Year</label>
-                        <select name="year" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Year</label>
+                        <select name="year" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-seait-orange focus:border-transparent">
                             <?php while ($year = mysqli_fetch_assoc($available_years)): ?>
                                 <option value="<?php echo $year['year']; ?>" <?php echo $year_filter == $year['year'] ? 'selected' : ''; ?>>
                                     <?php echo $year['year']; ?>
@@ -248,8 +254,8 @@ while ($request = mysqli_fetch_assoc($leave_requests)) {
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Leave Type</label>
-                        <select name="leave_type" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Leave Type</label>
+                        <select name="leave_type" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-seait-orange focus:border-transparent">
                             <option value="">All Types</option>
                             <?php while ($type = mysqli_fetch_assoc($available_leave_types)): ?>
                                 <option value="<?php echo $type['id']; ?>" <?php echo $leave_type_filter == $type['id'] ? 'selected' : ''; ?>>
@@ -260,34 +266,29 @@ while ($request = mysqli_fetch_assoc($leave_requests)) {
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Search</label>
-                        <input type="text" name="search" value="<?php echo htmlspecialchars($search); ?>" 
-                               placeholder="Search employee or reason..." 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                        <input type="text" name="search" value="<?php echo htmlspecialchars($search ?? ''); ?>" 
+                               placeholder="Search faculty or reason..." 
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-seait-orange focus:border-transparent">
                     </div>
 
                     <div class="flex items-end">
-                        <button type="submit" class="w-full bg-seait-orange text-white px-4 py-2 rounded-md hover:bg-orange-600 transition-colors duration-200">
-                            <i class="fas fa-search mr-2"></i>Filter
+                        <button type="submit" class="bg-seait-orange text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors duration-200 mr-2">
+                            <i class="fas fa-search mr-1"></i> Filter
                         </button>
-                    </div>
-                </form>
-
-                <?php if ($status_filter || $year_filter || $leave_type_filter || $search): ?>
-                    <div class="mt-4">
-                        <a href="leave-approvals.php" class="text-sm text-seait-orange hover:text-orange-600">
-                            <i class="fas fa-times mr-1"></i>Clear all filters
+                        <a href="leave-approvals.php" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors duration-200">
+                            <i class="fas fa-times mr-1"></i> Clear
                         </a>
                     </div>
-                <?php endif; ?>
+                </form>
             </div>
 
             <!-- Leave Requests Table -->
-            <div class="bg-white rounded-lg shadow-md animate-fadeInUp" style="animation-delay: 0.5s;">
-                <div class="p-6 border-b border-gray-200">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200">
                     <div class="flex items-center justify-between">
                         <div>
-                            <h2 class="text-xl font-semibold text-gray-900">My Approval Decisions</h2>
+                            <h2 class="text-lg font-semibold text-gray-900">My Approval Decisions</h2>
                             <p class="text-sm text-gray-600 mt-1">
                                 Showing <?php echo count($requests_array); ?> decision(s)
                                 <?php if ($total_days_approved > 0): ?>
@@ -303,10 +304,10 @@ while ($request = mysqli_fetch_assoc($leave_requests)) {
 
                 <div class="overflow-x-auto">
                     <?php if (count($requests_array) > 0): ?>
-                        <table class="w-full">
+                        <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Faculty</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leave Type</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Range</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days</th>
@@ -320,12 +321,22 @@ while ($request = mysqli_fetch_assoc($leave_requests)) {
                                 <?php foreach ($requests_array as $request): ?>
                                     <tr class="hover:bg-gray-50">
                                         <td class="px-6 py-4 whitespace-nowrap">
-                                            <div>
-                                                <div class="text-sm font-medium text-gray-900">
-                                                    <?php echo htmlspecialchars($request['first_name'] . ' ' . $request['last_name']); ?>
+                                            <div class="flex items-center">
+                                                <div class="flex-shrink-0 h-10 w-10">
+                                                    <div class="h-10 w-10 rounded-full bg-seait-orange flex items-center justify-center">
+                                                        <span class="text-white font-medium text-sm">
+                                                            <?php echo strtoupper(substr($request['first_name'], 0, 1) . substr($request['last_name'], 0, 1)); ?>
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                                <div class="text-sm text-gray-500"><?php echo htmlspecialchars($request['position']); ?></div>
-                                                <div class="text-sm text-gray-500"><?php echo htmlspecialchars($request['email']); ?></div>
+                                                <div class="ml-4">
+                                                    <div class="text-sm font-medium text-gray-900">
+                                                        <?php echo htmlspecialchars($request['first_name'] . ' ' . $request['last_name']); ?>
+                                                    </div>
+                                                    <div class="text-sm text-gray-500">
+                                                        <?php echo htmlspecialchars($request['email']); ?>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
@@ -358,7 +369,7 @@ while ($request = mysqli_fetch_assoc($leave_requests)) {
                                             ];
                                             $decision = $request['department_head_approval'];
                                             ?>
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?php echo $decision_colors[$decision] ?? 'bg-gray-100 text-gray-800'; ?>">
+                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full <?php echo $decision_colors[$decision] ?? 'bg-gray-100 text-gray-800'; ?>">
                                                 <?php echo $decision_text[$decision] ?? ucfirst($decision); ?>
                                             </span>
                                             <?php if ($request['department_head_comment']): ?>
@@ -380,7 +391,7 @@ while ($request = mysqli_fetch_assoc($leave_requests)) {
                                             ];
                                             $hr_status = $request['status'];
                                             ?>
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?php echo $hr_status_colors[$hr_status] ?? 'bg-gray-100 text-gray-800'; ?>">
+                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full <?php echo $hr_status_colors[$hr_status] ?? 'bg-gray-100 text-gray-800'; ?>">
                                                 <?php echo $hr_status_text[$hr_status] ?? ucfirst($hr_status); ?>
                                             </span>
                                             <?php if ($request['hr_comment']): ?>
@@ -393,7 +404,7 @@ while ($request = mysqli_fetch_assoc($leave_requests)) {
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <button onclick="viewLeaveDetails(<?php echo $request['id']; ?>)" 
                                                     class="text-seait-orange hover:text-orange-600">
-                                                <i class="fas fa-eye"></i> View
+                                                <i class="fas fa-eye"></i>
                                             </button>
                                         </td>
                                     </tr>
@@ -419,20 +430,42 @@ while ($request = mysqli_fetch_assoc($leave_requests)) {
                 </div>
             </div>
         </div>
-    </div>
 
     <!-- Leave Details Modal -->
-    <div id="leaveDetailsModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
-        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
-            <div class="mt-3">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-medium text-gray-900">Leave Request Details</h3>
-                    <button onclick="closeLeaveDetailsModal()" class="text-gray-400 hover:text-gray-600">
+    <div id="leaveDetailsModal" class="fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full hidden z-50 transition-all duration-300 ease-in-out backdrop-blur-sm">
+        <div class="relative top-10 mx-auto p-0 border-0 w-11/12 max-w-4xl shadow-2xl rounded-xl bg-white transform scale-95 opacity-0 transition-all duration-300 ease-out" id="leaveDetailsModalContent">
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-seait-orange to-orange-500 rounded-t-xl p-6 text-white">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center mr-4">
+                            <i class="fas fa-eye text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold">Leave Request Details</h3>
+                            <p class="text-orange-100 text-sm">View detailed information about the leave request</p>
+                        </div>
+                    </div>
+                    <button onclick="closeLeaveDetailsModal()" class="text-white hover:text-orange-200 transition-colors duration-200 p-2 rounded-full hover:bg-white hover:bg-opacity-20">
                         <i class="fas fa-times text-xl"></i>
                     </button>
                 </div>
+            </div>
+            
+            <!-- Content -->
+            <div class="p-6">
                 <div id="leaveDetailsContent">
                     <!-- Content will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="bg-gray-50 rounded-b-xl p-4 border-t border-gray-200">
+                <div class="flex justify-end">
+                    <button onclick="closeLeaveDetailsModal()" class="bg-seait-orange hover:bg-orange-600 text-white px-6 py-2 rounded-lg transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-105">
+                        <i class="fas fa-check mr-2"></i>
+                        Close
+                    </button>
                 </div>
             </div>
         </div>
@@ -440,28 +473,61 @@ while ($request = mysqli_fetch_assoc($leave_requests)) {
 
     <script>
         function viewLeaveDetails(leaveId) {
-            fetch(`get-leave-details.php?leave_id=${leaveId}`)
-                .then(response => response.text())
+            console.log('Opening modal for leave ID:', leaveId);
+            
+            const modal = document.getElementById('leaveDetailsModal');
+            const modalContent = document.getElementById('leaveDetailsModalContent');
+            
+            // Show loading state
+            document.getElementById('leaveDetailsContent').innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-seait-orange"></i><p class="mt-2 text-gray-600">Loading details...</p></div>';
+            
+            // Show modal with animation
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modalContent.classList.remove('scale-95', 'opacity-0');
+                modalContent.classList.add('scale-100', 'opacity-100');
+            }, 10);
+            
+            fetch(`get-leave-details.php?id=${leaveId}&table=faculty`)
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.text();
+                })
                 .then(html => {
+                    console.log('Received HTML length:', html.length);
                     document.getElementById('leaveDetailsContent').innerHTML = html;
-                    document.getElementById('leaveDetailsModal').classList.remove('hidden');
                 })
                 .catch(error => {
-                    console.error('Error:', error);
-                    alert('Error loading leave details');
+                    console.error('Error loading leave details:', error);
+                    document.getElementById('leaveDetailsContent').innerHTML = '<div class="text-center py-8 text-red-600"><i class="fas fa-exclamation-triangle text-2xl"></i><p class="mt-2">Error loading leave details: ' + error.message + '</p></div>';
                 });
         }
 
         function closeLeaveDetailsModal() {
-            document.getElementById('leaveDetailsModal').classList.add('hidden');
+            const modal = document.getElementById('leaveDetailsModal');
+            const modalContent = document.getElementById('leaveDetailsModalContent');
+            
+            // Start closing animation
+            modalContent.classList.remove('scale-100', 'opacity-100');
+            modalContent.classList.add('scale-95', 'opacity-0');
+            
+            // Hide modal after animation completes
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
         }
 
-        // Close modal when clicking outside
-        document.getElementById('leaveDetailsModal').addEventListener('click', function(e) {
-            if (e.target === this) {
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            const leaveDetailsModal = document.getElementById('leaveDetailsModal');
+            
+            if (event.target === leaveDetailsModal) {
                 closeLeaveDetailsModal();
             }
-        });
+        }
     </script>
 </body>
 </html>

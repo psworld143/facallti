@@ -1,66 +1,67 @@
 <?php
 session_start();
+require_once '../includes/error_handler.php';
 require_once '../config/database.php';
 
 // Check if user is logged in and is faculty
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'faculty') {
-    header('Location: ../login.php');
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
+    header('Location: ../index.php?login=required&redirect=faculty-leave-balance');
     exit;
 }
 
-$user_id = $_SESSION['user_id'];
+$faculty_id = $_SESSION['user_id'];
 $current_year = date('Y');
 
-// Get employee details
-$query = "SELECT * FROM employees WHERE employee_id = ?";
+// Get faculty details
+$query = "SELECT * FROM faculty WHERE id = ? AND is_active = 1";
 $stmt = mysqli_prepare($conn, $query);
-mysqli_stmt_bind_param($stmt, 'i', $user_id);
+mysqli_stmt_bind_param($stmt, 'i', $faculty_id);
 mysqli_stmt_execute($stmt);
-$employee = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+$faculty = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
 
-if (!$employee) {
-    header('Location: ../login.php');
+if (!$faculty) {
+    header('Location: ../index.php?login=required&redirect=faculty-leave-balance');
     exit;
 }
 
-// Get leave balances for current year
-$query = "SELECT lb.*, lt.name as leave_type_name, lt.description, lt.default_days_per_year
-          FROM leave_balances lb
-          JOIN leave_types lt ON lb.leave_type_id = lt.id
-          WHERE lb.employee_id = ? AND lb.year = ?
+// Get leave balances for current year from faculty_leave_balances table
+$query = "SELECT flb.*, lt.name as leave_type_name, lt.description, lt.default_days_per_year
+          FROM faculty_leave_balances flb
+          JOIN leave_types lt ON flb.leave_type_id = lt.id
+          WHERE flb.faculty_id = ? AND flb.year = ?
           ORDER BY lt.name";
 $stmt = mysqli_prepare($conn, $query);
-mysqli_stmt_bind_param($stmt, 'ii', $user_id, $current_year);
+mysqli_stmt_bind_param($stmt, 'ii', $faculty_id, $current_year);
 mysqli_stmt_execute($stmt);
 $leave_balances = mysqli_stmt_get_result($stmt);
 
-// Get leave usage statistics
+// Get leave usage statistics from faculty_leave_requests table
 $query = "SELECT 
             lt.name as leave_type_name,
             COUNT(*) as total_requests,
-            SUM(CASE WHEN lr.status = 'approved_by_hr' THEN 1 ELSE 0 END) as approved_requests,
-            SUM(CASE WHEN lr.status = 'rejected' THEN 1 ELSE 0 END) as rejected_requests,
-            SUM(CASE WHEN lr.status = 'pending' OR lr.status = 'approved_by_head' THEN 1 ELSE 0 END) as pending_requests,
-            SUM(CASE WHEN lr.status = 'approved_by_hr' THEN lr.total_days ELSE 0 END) as total_days_used
-          FROM leave_requests lr
-          JOIN leave_types lt ON lr.leave_type_id = lt.id
-          WHERE lr.employee_id = ? AND YEAR(lr.start_date) = ?
+            SUM(CASE WHEN flr.status = 'approved_by_hr' THEN 1 ELSE 0 END) as approved_requests,
+            SUM(CASE WHEN flr.status = 'rejected' THEN 1 ELSE 0 END) as rejected_requests,
+            SUM(CASE WHEN flr.status = 'pending' OR flr.status = 'approved_by_head' THEN 1 ELSE 0 END) as pending_requests,
+            SUM(CASE WHEN flr.status = 'approved_by_hr' THEN flr.total_days ELSE 0 END) as total_days_used
+          FROM faculty_leave_requests flr
+          JOIN leave_types lt ON flr.leave_type_id = lt.id
+          WHERE flr.faculty_id = ? AND YEAR(flr.start_date) = ?
           GROUP BY lt.id, lt.name
           ORDER BY lt.name";
 $stmt = mysqli_prepare($conn, $query);
-mysqli_stmt_bind_param($stmt, 'ii', $user_id, $current_year);
+mysqli_stmt_bind_param($stmt, 'ii', $faculty_id, $current_year);
 mysqli_stmt_execute($stmt);
 $usage_stats = mysqli_stmt_get_result($stmt);
 
-// Get recent leave requests
-$query = "SELECT lr.*, lt.name as leave_type_name
-          FROM leave_requests lr
-          JOIN leave_types lt ON lr.leave_type_id = lt.id
-          WHERE lr.employee_id = ?
-          ORDER BY lr.created_at DESC
+// Get recent leave requests from faculty_leave_requests table
+$query = "SELECT flr.*, lt.name as leave_type_name
+          FROM faculty_leave_requests flr
+          JOIN leave_types lt ON flr.leave_type_id = lt.id
+          WHERE flr.faculty_id = ?
+          ORDER BY flr.created_at DESC
           LIMIT 5";
 $stmt = mysqli_prepare($conn, $query);
-mysqli_stmt_bind_param($stmt, 'i', $user_id);
+mysqli_stmt_bind_param($stmt, 'i', $faculty_id);
 mysqli_stmt_execute($stmt);
 $recent_requests = mysqli_stmt_get_result($stmt);
 
@@ -74,7 +75,7 @@ while ($balance = mysqli_fetch_assoc($leave_balances)) {
     $balances_array[] = $balance;
     $total_leave_days += $balance['total_days'];
     $total_used_days += $balance['used_days'];
-    $total_remaining_days += $balance['remaining_days'];
+    $total_remaining_days += ($balance['total_days'] - $balance['used_days']);
 }
 ?>
 
@@ -101,64 +102,82 @@ while ($balance = mysqli_fetch_assoc($leave_balances)) {
                 transform: translateY(0);
             }
         }
-        .seait-orange {
-            background-color: #FF6B35;
-        }
-        .text-seait-orange {
-            color: #FF6B35;
-        }
-        .border-seait-orange {
-            border-color: #FF6B35;
-        }
     </style>
 </head>
-<body class="bg-gray-50">
-    <?php include 'includes/unified-header.php'; ?>
-    
-    <div class="flex">
-        <?php include 'includes/unified-sidebar.php'; ?>
-        
-        <div class="flex-1 ml-64 p-8">
-            <!-- Header -->
-            <div class="mb-8">
-                <h1 class="text-3xl font-bold text-gray-900 mb-2">Leave Balance</h1>
-                <p class="text-gray-600">View your leave balances and usage statistics for <?php echo $current_year; ?></p>
+<body class="bg-gray-100">
+    <div class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-white shadow-sm border-b border-gray-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-4">
+                    <div class="flex items-center">
+                        <h1 class="text-2xl font-bold text-gray-900">Leave Balance</h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <a href="leave-requests.php" class="bg-seait-orange text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors duration-200">
+                            <i class="fas fa-calendar-plus mr-2"></i>My Leave Requests
+                        </a>
+                        <a href="dashboard.php" class="text-gray-600 hover:text-gray-900">
+                            <i class="fas fa-home mr-2"></i>Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- Faculty Info Card -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8 animate-fadeInUp">
+                <div class="flex items-center">
+                    <div class="h-16 w-16 rounded-full bg-seait-orange flex items-center justify-center">
+                        <span class="text-white font-bold text-xl">
+                            <?php echo strtoupper(substr($faculty['first_name'], 0, 1) . substr($faculty['last_name'], 0, 1)); ?>
+                        </span>
+                    </div>
+                    <div class="ml-6">
+                        <h2 class="text-xl font-semibold text-gray-900">
+                            <?php echo htmlspecialchars($faculty['first_name'] . ' ' . $faculty['last_name']); ?>
+                        </h2>
+                        <p class="text-gray-600"><?php echo htmlspecialchars($faculty['department']); ?> Department</p>
+                        <p class="text-sm text-gray-500">Faculty ID: <?php echo htmlspecialchars($faculty['id']); ?></p>
+                    </div>
+                </div>
             </div>
 
-            <!-- Overall Statistics Cards -->
+            <!-- Overall Statistics -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div class="bg-white rounded-lg shadow-md p-6 animate-fadeInUp">
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 animate-fadeInUp">
                     <div class="flex items-center">
-                        <div class="p-3 rounded-full bg-blue-100 text-blue-600">
-                            <i class="fas fa-calendar-plus text-xl"></i>
+                        <div class="p-3 rounded-full bg-blue-100">
+                            <i class="fas fa-calendar text-blue-600 text-xl"></i>
                         </div>
                         <div class="ml-4">
                             <p class="text-sm font-medium text-gray-600">Total Leave Days</p>
-                            <p class="text-2xl font-bold text-gray-900"><?php echo $total_leave_days; ?></p>
+                            <p class="text-2xl font-semibold text-gray-900"><?php echo $total_leave_days; ?></p>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-white rounded-lg shadow-md p-6 animate-fadeInUp" style="animation-delay: 0.1s;">
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 animate-fadeInUp">
                     <div class="flex items-center">
-                        <div class="p-3 rounded-full bg-green-100 text-green-600">
-                            <i class="fas fa-calendar-check text-xl"></i>
+                        <div class="p-3 rounded-full bg-green-100">
+                            <i class="fas fa-check-circle text-green-600 text-xl"></i>
                         </div>
                         <div class="ml-4">
                             <p class="text-sm font-medium text-gray-600">Used Days</p>
-                            <p class="text-2xl font-bold text-gray-900"><?php echo $total_used_days; ?></p>
+                            <p class="text-2xl font-semibold text-gray-900"><?php echo $total_used_days; ?></p>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-white rounded-lg shadow-md p-6 animate-fadeInUp" style="animation-delay: 0.2s;">
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 animate-fadeInUp">
                     <div class="flex items-center">
-                        <div class="p-3 rounded-full bg-orange-100 text-orange-600">
-                            <i class="fas fa-calendar-minus text-xl"></i>
+                        <div class="p-3 rounded-full bg-orange-100">
+                            <i class="fas fa-clock text-orange-600 text-xl"></i>
                         </div>
                         <div class="ml-4">
                             <p class="text-sm font-medium text-gray-600">Remaining Days</p>
-                            <p class="text-2xl font-bold text-gray-900"><?php echo $total_remaining_days; ?></p>
+                            <p class="text-2xl font-semibold text-gray-900"><?php echo $total_remaining_days; ?></p>
                         </div>
                     </div>
                 </div>
@@ -166,123 +185,135 @@ while ($balance = mysqli_fetch_assoc($leave_balances)) {
 
             <!-- Leave Balance Details -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <!-- Leave Balances Table -->
-                <div class="bg-white rounded-lg shadow-md animate-fadeInUp" style="animation-delay: 0.3s;">
-                    <div class="p-6 border-b border-gray-200">
-                        <h2 class="text-xl font-semibold text-gray-900">Leave Balances</h2>
-                        <p class="text-sm text-gray-600 mt-1">Your current leave balances for <?php echo $current_year; ?></p>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leave Type</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Used</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remaining</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                <?php if (count($balances_array) > 0): ?>
-                                    <?php foreach ($balances_array as $balance): ?>
+                <!-- Leave Balance by Type -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 animate-fadeInUp">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Leave Balance by Type (<?php echo $current_year; ?>)</h3>
+                    <?php if (!empty($balances_array)): ?>
+                        <div class="space-y-4">
+                            <?php foreach ($balances_array as $balance): ?>
+                                <div class="border border-gray-200 rounded-lg p-4">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <h4 class="font-medium text-gray-900"><?php echo htmlspecialchars($balance['leave_type_name']); ?></h4>
+                                        <span class="text-sm text-gray-500"><?php echo ($balance['total_days'] - $balance['used_days']); ?> days remaining</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2">
                                         <?php 
                                         $percentage = $balance['total_days'] > 0 ? ($balance['used_days'] / $balance['total_days']) * 100 : 0;
-                                        $progress_color = $percentage > 80 ? 'bg-red-500' : ($percentage > 60 ? 'bg-yellow-500' : 'bg-green-500');
+                                        $color_class = $percentage > 80 ? 'bg-red-500' : ($percentage > 60 ? 'bg-yellow-500' : 'bg-green-500');
                                         ?>
-                                        <tr class="hover:bg-gray-50">
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <div>
-                                                    <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($balance['leave_type_name']); ?></div>
-                                                    <div class="text-sm text-gray-500"><?php echo htmlspecialchars($balance['description']); ?></div>
-                                                </div>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                <?php echo $balance['total_days']; ?> days
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                <?php echo $balance['used_days']; ?> days
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                <span class="font-medium <?php echo $balance['remaining_days'] < 5 ? 'text-red-600' : 'text-green-600'; ?>">
-                                                    <?php echo $balance['remaining_days']; ?> days
-                                                </span>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <div class="w-full bg-gray-200 rounded-full h-2">
-                                                    <div class="<?php echo $progress_color; ?> h-2 rounded-full" style="width: <?php echo min(100, $percentage); ?>%"></div>
-                                                </div>
-                                                <div class="text-xs text-gray-500 mt-1"><?php echo number_format($percentage, 1); ?>% used</div>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                <?php else: ?>
-                                    <tr>
-                                        <td colspan="5" class="px-6 py-4 text-center text-gray-500">
-                                            No leave balances found for <?php echo $current_year; ?>
-                                        </td>
-                                    </tr>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
+                                        <div class="<?php echo $color_class; ?> h-2 rounded-full" style="width: <?php echo $percentage; ?>%"></div>
+                                    </div>
+                                    <div class="flex justify-between text-sm text-gray-600 mt-2">
+                                        <span>Used: <?php echo $balance['used_days']; ?> days</span>
+                                        <span>Total: <?php echo $balance['total_days']; ?> days</span>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="text-center py-8">
+                            <i class="fas fa-calendar-times text-gray-400 text-4xl mb-4"></i>
+                            <p class="text-gray-500">No leave balance information available for <?php echo $current_year; ?></p>
+                        </div>
+                    <?php endif; ?>
                 </div>
 
-                <!-- Usage Chart -->
-                <div class="bg-white rounded-lg shadow-md animate-fadeInUp" style="animation-delay: 0.4s;">
-                    <div class="p-6 border-b border-gray-200">
-                        <h2 class="text-xl font-semibold text-gray-900">Leave Usage Chart</h2>
-                        <p class="text-sm text-gray-600 mt-1">Visual representation of your leave usage</p>
-                    </div>
-                    <div class="p-6">
-                        <canvas id="leaveChart" width="400" height="200"></canvas>
-                    </div>
+                <!-- Recent Leave Requests -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 animate-fadeInUp">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Recent Leave Requests</h3>
+                    <?php if (mysqli_num_rows($recent_requests) > 0): ?>
+                        <div class="space-y-3">
+                            <?php while ($request = mysqli_fetch_assoc($recent_requests)): ?>
+                                <div class="border border-gray-200 rounded-lg p-3">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <p class="font-medium text-gray-900"><?php echo htmlspecialchars($request['leave_type_name']); ?></p>
+                                            <p class="text-sm text-gray-600">
+                                                <?php echo date('M d, Y', strtotime($request['start_date'])); ?> - 
+                                                <?php echo date('M d, Y', strtotime($request['end_date'])); ?>
+                                            </p>
+                                            <p class="text-sm text-gray-500"><?php echo $request['total_days']; ?> days</p>
+                                        </div>
+                                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full 
+                                            <?php 
+                                            switch($request['status']) {
+                                                case 'pending': echo 'bg-yellow-100 text-yellow-800'; break;
+                                                case 'approved_by_head': echo 'bg-blue-100 text-blue-800'; break;
+                                                case 'approved_by_hr': echo 'bg-green-100 text-green-800'; break;
+                                                case 'rejected': echo 'bg-red-100 text-red-800'; break;
+                                                case 'cancelled': echo 'bg-gray-100 text-gray-800'; break;
+                                                default: echo 'bg-gray-100 text-gray-800';
+                                            }
+                                            ?>">
+                                            <?php 
+                                            switch($request['status']) {
+                                                case 'pending': echo 'Pending'; break;
+                                                case 'approved_by_head': echo 'Approved by Head'; break;
+                                                case 'approved_by_hr': echo 'Approved by HR'; break;
+                                                case 'rejected': echo 'Rejected'; break;
+                                                case 'cancelled': echo 'Cancelled'; break;
+                                                default: echo ucfirst($request['status']);
+                                            }
+                                            ?>
+                                        </span>
+                                    </div>
+                                </div>
+                            <?php endwhile; ?>
+                        </div>
+                        <div class="mt-4 text-center">
+                            <a href="leave-requests.php" class="text-seait-orange hover:text-orange-600 text-sm font-medium">
+                                View All Requests <i class="fas fa-arrow-right ml-1"></i>
+                            </a>
+                        </div>
+                    <?php else: ?>
+                        <div class="text-center py-8">
+                            <i class="fas fa-calendar-plus text-gray-400 text-4xl mb-4"></i>
+                            <p class="text-gray-500">No leave requests found</p>
+                            <a href="leave-requests.php" class="inline-block mt-4 bg-seait-orange text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors duration-200">
+                                Submit Leave Request
+                            </a>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
 
             <!-- Usage Statistics -->
-            <div class="mt-8 bg-white rounded-lg shadow-md animate-fadeInUp" style="animation-delay: 0.5s;">
-                <div class="p-6 border-b border-gray-200">
-                    <h2 class="text-xl font-semibold text-gray-900">Usage Statistics</h2>
-                    <p class="text-sm text-gray-600 mt-1">Detailed breakdown of your leave requests</p>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leave Type</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Requests</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Approved</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pending</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rejected</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days Used</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            <?php 
-                            mysqli_data_seek($usage_stats, 0);
-                            if (mysqli_num_rows($usage_stats) > 0): 
-                            ?>
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-8 animate-fadeInUp">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Leave Usage Statistics (<?php echo $current_year; ?>)</h3>
+                <?php if (mysqli_num_rows($usage_stats) > 0): ?>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leave Type</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Requests</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Approved</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pending</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rejected</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days Used</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
                                 <?php while ($stat = mysqli_fetch_assoc($usage_stats)): ?>
-                                    <tr class="hover:bg-gray-50">
+                                    <tr>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                             <?php echo htmlspecialchars($stat['leave_type_name']); ?>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             <?php echo $stat['total_requests']; ?>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                                                 <?php echo $stat['approved_requests']; ?>
                                             </span>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
                                                 <?php echo $stat['pending_requests']; ?>
                                             </span>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
                                                 <?php echo $stat['rejected_requests']; ?>
                                             </span>
                                         </td>
@@ -291,138 +322,24 @@ while ($balance = mysqli_fetch_assoc($leave_balances)) {
                                         </td>
                                     </tr>
                                 <?php endwhile; ?>
-                            <?php else: ?>
-                                <tr>
-                                    <td colspan="6" class="px-6 py-4 text-center text-gray-500">
-                                        No usage statistics found for <?php echo $current_year; ?>
-                                    </td>
-                                </tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Recent Leave Requests -->
-            <div class="mt-8 bg-white rounded-lg shadow-md animate-fadeInUp" style="animation-delay: 0.6s;">
-                <div class="p-6 border-b border-gray-200">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <h2 class="text-xl font-semibold text-gray-900">Recent Leave Requests</h2>
-                            <p class="text-sm text-gray-600 mt-1">Your latest leave requests</p>
-                        </div>
-                        <a href="leave-requests.php" class="bg-seait-orange text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors duration-200">
-                            View All Requests
-                        </a>
+                            </tbody>
+                        </table>
                     </div>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leave Type</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Range</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            <?php if (mysqli_num_rows($recent_requests) > 0): ?>
-                                <?php while ($request = mysqli_fetch_assoc($recent_requests)): ?>
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                            <?php echo htmlspecialchars($request['leave_type_name']); ?>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            <?php echo date('M d', strtotime($request['start_date'])); ?> - 
-                                            <?php echo date('M d, Y', strtotime($request['end_date'])); ?>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            <?php echo $request['total_days']; ?> days
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <?php
-                                            $status_colors = [
-                                                'pending' => 'bg-yellow-100 text-yellow-800',
-                                                'approved_by_head' => 'bg-blue-100 text-blue-800',
-                                                'approved_by_hr' => 'bg-green-100 text-green-800',
-                                                'rejected' => 'bg-red-100 text-red-800',
-                                                'cancelled' => 'bg-gray-100 text-gray-800'
-                                            ];
-                                            $status_text = [
-                                                'pending' => 'Pending',
-                                                'approved_by_head' => 'Approved by Head',
-                                                'approved_by_hr' => 'Approved',
-                                                'rejected' => 'Rejected',
-                                                'cancelled' => 'Cancelled'
-                                            ];
-                                            ?>
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?php echo $status_colors[$request['status']] ?? 'bg-gray-100 text-gray-800'; ?>">
-                                                <?php echo $status_text[$request['status']] ?? ucfirst($request['status']); ?>
-                                            </span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            <?php echo date('M d, Y', strtotime($request['created_at'])); ?>
-                                        </td>
-                                    </tr>
-                                <?php endwhile; ?>
-                            <?php else: ?>
-                                <tr>
-                                    <td colspan="5" class="px-6 py-4 text-center text-gray-500">
-                                        No recent leave requests found
-                                    </td>
-                                </tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
+                <?php else: ?>
+                    <div class="text-center py-8">
+                        <i class="fas fa-chart-bar text-gray-400 text-4xl mb-4"></i>
+                        <p class="text-gray-500">No leave usage statistics available for <?php echo $current_year; ?></p>
+                    </div>
+                <?php endif; ?>
             </div>
-        </div>
+        </main>
     </div>
 
     <script>
-        // Chart.js configuration
-        const ctx = document.getElementById('leaveChart').getContext('2d');
-        
-        const chartData = {
-            labels: <?php echo json_encode(array_column($balances_array, 'leave_type_name')); ?>,
-            datasets: [{
-                label: 'Used Days',
-                data: <?php echo json_encode(array_column($balances_array, 'used_days')); ?>,
-                backgroundColor: 'rgba(255, 107, 53, 0.8)',
-                borderColor: 'rgba(255, 107, 53, 1)',
-                borderWidth: 1
-            }, {
-                label: 'Remaining Days',
-                data: <?php echo json_encode(array_column($balances_array, 'remaining_days')); ?>,
-                backgroundColor: 'rgba(34, 197, 94, 0.8)',
-                borderColor: 'rgba(34, 197, 94, 1)',
-                borderWidth: 1
-            }]
-        };
-
-        new Chart(ctx, {
-            type: 'bar',
-            data: chartData,
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        stacked: true,
-                    },
-                    y: {
-                        stacked: true,
-                        beginAtZero: true
-                    }
-                },
-                plugins: {
-                    legend: {
-                        position: 'top',
-                    }
-                }
-            }
+        // Add any additional JavaScript functionality here
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize any charts or interactive elements
+            console.log('Leave Balance page loaded successfully');
         });
     </script>
 </body>

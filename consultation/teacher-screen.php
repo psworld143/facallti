@@ -143,24 +143,52 @@ $office_session_id = uniqid('office_', true);
         }
     </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
         .office-screen {
-            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            background: #f8fafc;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             position: relative;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow-x: hidden;
         }
 
-        .office-screen::before {
-            content: '';
-            position: absolute;
+        /* Canvas Background Animation */
+        #canvas {
+            position: fixed;
             top: 0;
             left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #FF6B35, #E55A2B, #FF6B35);
-            z-index: 10;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .main-container {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            position: relative;
+            z-index: 1;
+        }
+
+        .clock {
+            font-size: 4rem;
+            font-weight: 700;
+            color: #374151;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.5rem;
+        }
+
+        .date-display {
+            color: #6b7280;
+            font-weight: 500;
         }
 
         .status-indicator {
@@ -171,28 +199,28 @@ $office_session_id = uniqid('office_', true);
         }
 
         .status-available {
-            background-color: #FF6B35;
+            background-color: #fb923c;
         }
 
         .status-busy {
-            background-color: #FF6B35;
+            background-color: #fb923c;
             opacity: 0.6;
         }
 
         .status-offline {
-            background-color: #FF6B35;
+            background-color: #fb923c;
             opacity: 0.3;
         }
 
         @keyframes pulse {
             0% {
-                box-shadow: 0 0 0 0 rgba(255, 107, 53, 0.7);
+                box-shadow: 0 0 0 0 rgba(251, 146, 60, 0.7);
             }
             70% {
-                box-shadow: 0 0 0 10px rgba(255, 107, 53, 0);
+                box-shadow: 0 0 0 10px rgba(251, 146, 60, 0);
             }
             100% {
-                box-shadow: 0 0 0 0 rgba(255, 107, 53, 0);
+                box-shadow: 0 0 0 0 rgba(251, 146, 60, 0);
             }
         }
 
@@ -243,10 +271,127 @@ $office_session_id = uniqid('office_', true);
         .consultation-request {
             background: white;
             border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 1rem;
+            padding: 2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
             border: 1px solid #e5e7eb;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .consultation-request::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #fb923c;
+        }
+
+        .consultation-request:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+            border-color: #fb923c;
+        }
+
+        .teacher-check-in {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e5e7eb;
+        }
+
+        .teacher-check-in h4 {
+            color: #1f2937;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            font-size: 1.25rem;
+        }
+
+        .qr-input {
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 16px;
+            font-weight: 500;
+            text-align: center;
+            transition: all 0.3s ease;
+            width: 50%;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .qr-input:focus {
+            border-color: #fb923c;
+            box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.1);
+            outline: none;
+        }
+
+        .teacher-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .teacher-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #fb923c;
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .teacher-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .teacher-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            border-color: #fb923c;
+        }
+
+        .department-icon {
+            background: transparent;
+            border-radius: 0;
+            width: auto;
+            height: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            box-shadow: none;
+            border: none;
+        }
+
+        .section-title {
+            color: #1f2937;
+            font-weight: 700;
+            position: relative;
+            display: inline-block;
+        }
+
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 60px;
+            height: 3px;
+            background: #fb923c;
+            border-radius: 2px;
         }
 
         .clock {
@@ -605,12 +750,12 @@ $office_session_id = uniqid('office_', true);
         }
 
         ::-webkit-scrollbar-thumb {
-            background: linear-gradient(135deg, #FF6B35, #E55A2B);
+            background: linear-gradient(135deg, #fb923c, #f97316);
             border-radius: 4px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(135deg, #E55A2B, #FF6B35);
+            background: linear-gradient(135deg, #f97316, #fb923c);
         }
 
         /* Touch Device Optimizations */
@@ -631,48 +776,27 @@ $office_session_id = uniqid('office_', true);
     </style>
 </head>
 <body class="office-screen">
-    <!-- Header -->
-    <header class="bg-white border-b-2 border-gray-200 mobile-header shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex flex-col sm:flex-row justify-between items-center py-3 sm:py-4 space-y-2 sm:space-y-0">
-                <div class="flex items-center">
-                    <img src="../assets/images/seait-logo.png" alt="SEAIT Logo" class="h-10 sm:h-12 w-auto">
-                    <div class="ml-3 sm:ml-4">
-                        <h1 class="text-lg sm:text-xl font-bold text-gray-800 mobile-text-xl">FaCallTI - Department Consultation Monitor</h1>
-                        <p class="text-gray-600 text-xs sm:text-sm">
-                            <?php echo htmlspecialchars($selected_department); ?> - <?php echo count($department_teachers); ?> Active Teachers
-                        </p>
-                    </div>
-                </div>
-                <div class="flex items-center space-x-3 sm:space-x-4 mobile-status-group">
-                    <div class="flex items-center space-x-2">
-                        <div class="status-indicator status-available"></div>
-                        <span class="text-gray-800 font-medium text-sm sm:text-base">Available</span>
-                    </div>
-                    <a href="index.php" class="text-orange-600 hover:text-orange-800 transition-colors text-sm sm:text-base mobile-btn">
-                        <i class="fas fa-home mr-1 sm:mr-2"></i>Back to Home
-                    </a>
-                </div>
-            </div>
-        </div>
-    </header>
+    <!-- Canvas Background Animation -->
+    <canvas id="canvas"></canvas>
+
+    <!-- QR Scanner Modal Removed - Using form-only approach -->
 
     <!-- Main Content -->
     <main class="flex-1 flex items-center justify-center p-4 sm:p-8 mobile-main">
-        <div class="text-center text-gray-800 w-full max-w-4xl">
+        <div class="main-container text-center text-gray-800 w-full max-w-6xl p-8">
             <!-- Clock and Date -->
             <div class="mb-6 sm:mb-8 mobile-mb-8">
-                <div class="clock mb-2 text-orange-600" id="clock"><?php echo date('H:i:s'); ?></div>
-                <div class="text-lg sm:text-xl text-gray-600" id="date"><?php echo date('l, F j, Y'); ?></div>
+                <div class="clock mb-2" id="clock"><?php echo date('H:i:s'); ?></div>
+                <div class="date-display text-lg sm:text-xl" id="date"><?php echo date('l, F j, Y'); ?></div>
             </div>
 
             <!-- Department Monitor Screen -->
             <div class="mb-6 sm:mb-8 mobile-mb-8" id="standbyScreen">
-                <div class="w-24 h-24 sm:w-32 sm:h-32 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 border-4 border-orange-400 shadow-xl transform hover:scale-105 transition-all duration-300">
-                    <i class="fas fa-university text-white text-2xl sm:text-4xl mobile-icon-4xl drop-shadow-lg"></i>
+                <div class="department-icon">
+                    <img src="../assets/images/seait-logo.png" alt="SEAIT Logo" class="w-12 h-12 sm:w-16 sm:h-16 object-contain drop-shadow-lg">
                 </div>
                 <h2 class="text-2xl sm:text-3xl font-bold mb-2 mobile-text-3xl text-gray-800"><?php echo htmlspecialchars($selected_department); ?></h2>
-                <p class="text-lg sm:text-xl text-orange-600 mb-1 mobile-text-xl">Department Consultation Monitor</p>
+                <p class="text-lg sm:text-xl mb-1 mobile-text-xl text-gray-700">Department Consultation Monitor</p>
                 <p class="text-base sm:text-lg text-gray-600">
                     <?php echo count($department_teachers); ?> Active Teachers
                 </p>
@@ -681,7 +805,31 @@ $office_session_id = uniqid('office_', true);
             <!-- Available Teachers List -->
             <div class="mb-6 sm:mb-8 mobile-mb-8">
                 <div class="consultation-request">
-                    <h3 class="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 mobile-text-2xl text-gray-800">Available Teachers</h3>
+                    <h3 class="section-title text-xl sm:text-2xl font-bold mb-3 sm:mb-4 mobile-text-2xl">Available Teachers</h3>
+                    
+                    <!-- Teacher QR Code Input -->
+                    <div class="teacher-check-in">
+                        <h4>Teacher Check-In</h4>
+                        
+                        <form id="qrScannerForm" class="mb-3">
+                            <div class="mb-3">
+                                <input type="text" id="qrScannerInput" name="qrCode" placeholder="Type or scan QR code here..." 
+                                       class="qr-input"
+                                       autocomplete="off" autofocus required>
+
+                            </div>
+                            
+                            <!-- Hidden submit button for form submission -->
+                            <button type="submit" class="hidden">Submit</button>
+                        </form>
+                        
+                        <div id="teacherAvailabilityStatus" class="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200 hidden">
+                            <div class="flex items-center justify-center space-x-2">
+                                <div id="availabilityIndicator" class="w-3 h-3 rounded-full"></div>
+                                <span id="availabilityText" class="text-sm font-medium"></span>
+                            </div>
+                        </div>
+                    </div>
                         
                         <?php if (empty($department_teachers)): ?>
                             <div class="text-center py-8">
@@ -695,7 +843,7 @@ $office_session_id = uniqid('office_', true);
                         <?php else: ?>
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mobile-grid">
                             <?php foreach ($department_teachers as $teacher): ?>
-                        <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-3 sm:p-4 border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:scale-105">
+                        <div class="teacher-card">
                             <div class="flex items-center space-x-2 sm:space-x-3">
                                 <div class="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full flex items-center justify-center flex-shrink-0 border-2 border-gray-400">
                     <?php if ($teacher['image_url']): ?>
@@ -721,13 +869,15 @@ $office_session_id = uniqid('office_', true);
                 </div>
             </div>
 
+
+
             <!-- Status Message -->
             <div class="mb-6 sm:mb-8 mobile-mb-8">
                 <div class="consultation-request">
                     <h3 class="text-xl sm:text-2xl font-bold mb-2 mobile-text-2xl text-gray-800">Monitor Status</h3>
                     <p class="text-base sm:text-lg text-gray-600 mb-3 sm:mb-4 mobile-text-xl">Department Monitor - Waiting for student consultation requests in <?php echo htmlspecialchars($selected_department); ?></p>
                     <div class="flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-4 text-xs sm:text-sm mobile-status-group">
-                        <span class="flex items-center text-orange-600">
+                        <span class="flex items-center" style="color: #fb923c;">
                             <i class="fas fa-clock mr-1 sm:mr-2"></i>
                             Monitoring Active
                         </span>
@@ -735,7 +885,7 @@ $office_session_id = uniqid('office_', true);
                             <i class="fas fa-info-circle mr-1 sm:mr-2"></i>
                         <?php echo count($department_teachers); ?> teachers available
                     </span>
-                    <span class="flex items-center text-orange-600" id="pendingRequestsCount">
+                    <span class="flex items-center" style="color: #fb923c;" id="pendingRequestsCount">
                         <i class="fas fa-clock mr-1 sm:mr-2"></i>
                         <span id="pendingCount"> 0 </span> pending requests
                         </span>
@@ -743,9 +893,11 @@ $office_session_id = uniqid('office_', true);
                 </div>
             </div>
 
+
+
             <!-- Office Controls -->
             <div class="flex flex-col sm:flex-row justify-center space-y-3 sm:space-y-0 sm:space-x-4 mobile-btn-group">
-                <button id="toggleStatusBtn" class="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg transition-all duration-300 mobile-btn shadow-lg hover:shadow-xl transform hover:scale-105">
+                <button id="toggleStatusBtn" class="bg-orange-500 hover:bg-orange-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg transition-all duration-300 mobile-btn shadow-lg hover:shadow-xl transform hover:scale-105">
                     <i class="fas fa-toggle-on mr-1 sm:mr-2"></i>
                     Toggle Status
                 </button>
@@ -997,7 +1149,7 @@ $office_session_id = uniqid('office_', true);
                 soundInterval = null;
             }
             
-            console.log('Notification sound stopped');
+
         }
         
         // Enhanced notification function - DISABLED (upper right notifications removed)
@@ -1060,13 +1212,12 @@ $office_session_id = uniqid('office_', true);
         function checkForConsultationRequests() {
             const department = '<?php echo htmlspecialchars($selected_department); ?>';
             
-            console.log('Checking for consultation requests...');
-            console.log('Department:', department);
+
             
             fetch(`check-consultation-requests.php?dept=${encodeURIComponent(department)}`)
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Consultation check response:', data);
+
                     
                     if (data.has_request) {
                         console.log(`Found ${data.total_requests} consultation request(s)`);
@@ -1200,6 +1351,16 @@ $office_session_id = uniqid('office_', true);
                                 </div>
 
                                 <div class="flex justify-between items-center bg-white bg-opacity-50 rounded-lg p-3 sm:p-4">
+                                    <span class="text-orange-700 font-medium text-base sm:text-lg">🆔 Student ID:</span>
+                                    <span class="font-bold text-orange-900 text-base sm:text-lg">${request.student_id || 'Not provided'}</span>
+                                </div>
+
+                                <div class="flex justify-between items-center bg-white bg-opacity-50 rounded-lg p-3 sm:p-4">
+                                    <span class="text-orange-700 font-medium text-base sm:text-lg">🏫 Department:</span>
+                                    <span class="font-bold text-orange-900 text-base sm:text-lg">${request.student_dept || 'Not specified'}</span>
+                                </div>
+
+                                <div class="flex justify-between items-center bg-white bg-opacity-50 rounded-lg p-3 sm:p-4">
                                     <span class="text-orange-700 font-medium text-base sm:text-lg">👨‍🏫 Requested:</span>
                                     <span class="font-bold text-orange-900 text-base sm:text-lg">${request.teacher_name}</span>
                                 </div>
@@ -1259,8 +1420,8 @@ $office_session_id = uniqid('office_', true);
 
                     <!-- Enhanced action buttons with better focus -->
                     <div id="actionButtons" class="flex flex-col lg:flex-row space-y-4 sm:space-y-0 lg:space-x-6 mb-6 sm:mb-8">
-                        <button onclick="acceptRequest('${request.request_id}', '${request.teacher_id}', '${request.student_name}')" 
-                                class="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-6 sm:px-8 py-4 sm:py-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-xl font-bold text-lg sm:text-xl border-2 border-green-400 hover:border-green-300 mobile-btn">
+                                                    <button onclick="acceptRequest('${request.request_id}', '${request.teacher_id}', '${request.student_name}')" 
+                                    class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-6 sm:px-8 py-4 sm:py-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-xl font-bold text-lg sm:text-xl border-2 border-orange-400 hover:border-orange-300 mobile-btn">
                             <i class="fas fa-check mr-3 sm:mr-4 text-xl sm:text-2xl"></i> Accept Request
                         </button>
                         <button onclick="showDeclineReason()" 
@@ -1713,6 +1874,602 @@ $office_session_id = uniqid('office_', true);
                 }
             }
         });
+
+        // =====================================================
+        // TEACHER QR CODE SCANNER FUNCTIONALITY
+        // =====================================================
+
+        // QR Scanner variables removed - using form-only approach
+        let currentTeacherId = null;
+
+        // Initialize QR code form functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                const qrScannerForm = document.getElementById('qrScannerForm');
+                const qrScannerInput = document.getElementById('qrScannerInput');
+            
+            if (qrScannerForm && qrScannerInput) {
+                
+                // Handle form submission
+                qrScannerForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    const inputValue = qrScannerInput.value.trim();
+                    
+                    if (inputValue) {
+                        verifyTeacherInDatabase(inputValue);
+                    } else {
+                        showEnhancedNotification('❌ Please enter a QR code.', 'error');
+                    }
+                });
+                
+                // Focus on the input field
+                qrScannerInput.focus();
+            } else {
+                console.error('QR form or input field not found!');
+            }
+            } catch (error) {
+                console.error('Error in QR Scanner initialization:', error);
+            }
+        });
+
+        // Fallback initialization in case DOMContentLoaded doesn't work
+        setTimeout(function() {
+            console.log('=== FALLBACK QR SCANNER INITIALIZATION ===');
+            const qrScannerForm = document.getElementById('qrScannerForm');
+            const qrScannerInput = document.getElementById('qrScannerInput');
+            
+            if (qrScannerForm && qrScannerInput) {
+                console.log('Fallback: QR Scanner elements found');
+                // Re-initialize if not already done
+                if (!qrScannerInput.hasAttribute('data-initialized')) {
+                    console.log('Fallback: Initializing QR Scanner');
+                    qrScannerInput.setAttribute('data-initialized', 'true');
+                    
+                    // Add event listeners
+                    qrScannerForm.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        console.log('Fallback: Form submitted');
+                        const inputValue = qrScannerInput.value.trim();
+                        if (inputValue) {
+                            verifyTeacherInDatabase(inputValue);
+                        }
+                    });
+                    
+                    qrScannerInput.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            console.log('Fallback: Enter pressed');
+                            const inputValue = this.value.trim();
+                            if (inputValue) {
+                                verifyTeacherInDatabase(inputValue);
+                            }
+                        }
+                    });
+                    
+                    qrScannerInput.focus();
+                }
+            } else {
+                console.log('Fallback: QR Scanner elements not found');
+            }
+        }, 1000);
+
+        // Test and debug functions removed - simplified form-only approach
+
+        // Verify teacher exists in database before showing confirmation
+        // Global flag to prevent multiple simultaneous verifications
+        let isVerifying = false;
+        
+        function verifyTeacherInDatabase(inputValue) {
+            // Prevent multiple simultaneous calls
+            if (isVerifying) {
+                console.log('Verification already in progress, skipping...');
+                return;
+            }
+            
+            isVerifying = true;
+            console.log('Verifying teacher in database:', inputValue);
+            
+            // Show loading indicator
+            const qrInput = document.getElementById('qrScannerInput');
+            if (qrInput) {
+                qrInput.disabled = true;
+                qrInput.placeholder = 'Verifying QR code...';
+            }
+            
+            // Show loading notification
+            showEnhancedNotification('🔍 Verifying QR code...', 'info');
+            
+            // Determine if input is numeric (teacher ID) or alphanumeric (QR code)
+            const isNumeric = /^\d+$/.test(inputValue);
+            const apiUrl = isNumeric 
+                ? '../api/teacher-availability-handler.php?action=verify_teacher&teacher_id=' + inputValue
+                : '../api/teacher-availability-handler.php?action=verify_teacher&qr_code=' + encodeURIComponent(inputValue);
+            
+            console.log('API URL:', apiUrl);
+            
+            // Make AJAX call to verify teacher
+            fetch(apiUrl, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                cache: 'no-cache'
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Verification response:', data);
+                
+                // Re-enable input field and reset verification flag
+                if (qrInput) {
+                    qrInput.disabled = false;
+                    qrInput.placeholder = 'Scan QR code here...';
+                }
+                isVerifying = false;
+                
+                if (data.success) {
+                    console.log('Teacher verified successfully:', data.teacher.name);
+                    showEnhancedNotification('✅ Teacher verified: ' + data.teacher.name, 'success');
+                    showTeacherAvailabilityConfirmation(data.teacher.id, data.teacher);
+                } else {
+                    console.log('Teacher verification failed:', data.error);
+                    showEnhancedNotification('❌ ' + (data.error || 'Teacher not found in database'), 'error');
+                    
+                    // Clear the input field for next scan
+                    if (qrInput) {
+                        qrInput.value = '';
+                        qrInput.focus();
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error verifying teacher:', error);
+                
+                // Re-enable input field and reset verification flag
+                if (qrInput) {
+                    qrInput.disabled = false;
+                    qrInput.placeholder = 'Scan QR code here...';
+                }
+                isVerifying = false;
+                
+                showEnhancedNotification('❌ Network error. Please try again.', 'error');
+                
+                // Clear the input field for next scan
+                if (qrInput) {
+                    qrInput.value = '';
+                    qrInput.focus();
+                }
+            });
+        }
+
+        // Show teacher availability confirmation dialog
+        function showTeacherAvailabilityConfirmation(teacherId, teacherData = null) {
+            console.log('Showing confirmation dialog for teacher:', teacherId);
+            
+            // Remove any existing dialog first
+            const existingDialog = document.getElementById('availabilityConfirmationDialog');
+            if (existingDialog) {
+                existingDialog.remove();
+            }
+            
+            // Create confirmation dialog with enhanced styling
+            const dialog = document.createElement('div');
+            dialog.id = 'availabilityConfirmationDialog';
+            dialog.className = 'fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4';
+            dialog.innerHTML = `
+                <div class="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl border-4 border-orange-400 p-8 max-w-2xl w-full transform scale-95 opacity-0 transition-all duration-500 ease-out">
+                    
+                    <!-- Header with animated icon -->
+                    <div class="text-center mb-8">
+                        <div class="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 shadow-lg mb-6 animate-pulse">
+                            <i class="fas fa-user-check text-white text-3xl"></i>
+                        </div>
+                        <h3 class="text-3xl font-bold text-gray-800 mb-2 bg-gradient-to-r from-orange-600 to-orange-700 bg-clip-text text-transparent">
+                            Confirm Availability
+                        </h3>
+                        <div class="w-24 h-1 bg-gradient-to-r from-orange-500 to-orange-600 rounded-full mx-auto"></div>
+                    </div>
+                    
+                    <!-- Teacher Information Card -->
+                    ${teacherData ? `
+                    <div class="bg-gradient-to-r from-orange-50 to-yellow-50 rounded-2xl p-6 mb-8 border-l-4 border-orange-500 shadow-lg">
+                        <div class="flex items-center mb-4">
+                            <i class="fas fa-user-graduate text-orange-600 mr-3 text-2xl"></i>
+                            <span class="text-xl font-bold text-orange-800">Teacher Information</span>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-white bg-opacity-70 rounded-xl p-4 border border-orange-200">
+                                <span class="text-orange-700 font-medium text-lg">👤 Name:</span>
+                                <span class="font-bold text-orange-900 text-xl block mt-1">${teacherData.name || 'N/A'}</span>
+                            </div>
+                            <div class="bg-white bg-opacity-70 rounded-xl p-4 border border-orange-200">
+                                <span class="text-orange-700 font-medium text-lg">🏫 Department:</span>
+                                <span class="font-bold text-orange-900 text-xl block mt-1">${teacherData.department || 'N/A'}</span>
+                            </div>
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    <!-- Confirmation Message -->
+                    <div class="text-center mb-8">
+                        <p class="text-xl text-gray-700 leading-relaxed">
+                            Are you ready to mark yourself as <span class="font-bold text-orange-600">available</span> for student consultations?
+                        </p>
+                        <p class="text-lg text-gray-600 mt-3">
+                            Students will be able to see you as an available teacher for consultation requests.
+                        </p>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-6">
+                        <button onclick="cancelAvailabilityConfirmation()" 
+                                class="flex-1 bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white px-8 py-4 rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl font-bold text-lg border-2 border-gray-300 hover:border-gray-400">
+                            <i class="fas fa-times mr-3 text-xl"></i>
+                            Cancel
+                        </button>
+                        <button onclick="confirmAvailabilityNow('${teacherId}')" 
+                                class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-8 py-4 rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl font-bold text-lg border-2 border-orange-400 hover:border-orange-300">
+                            <i class="fas fa-check mr-3 text-xl"></i>
+                            Yes, Mark Available
+                        </button>
+                    </div>
+                    
+                    <!-- Footer Note -->
+                    <div class="text-center mt-6">
+                        <p class="text-sm text-gray-500">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            You can change your availability status anytime
+                        </p>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(dialog);
+            
+            // Add popup animation
+            setTimeout(() => {
+                const dialogContent = dialog.querySelector('.bg-gradient-to-br');
+                if (dialogContent) {
+                    dialogContent.classList.remove('scale-95', 'opacity-0');
+                    dialogContent.classList.add('scale-100', 'opacity-100');
+                }
+            }, 100);
+            
+            console.log('Enhanced confirmation dialog created and displayed');
+        }
+
+        // Cancel availability confirmation
+        function cancelAvailabilityConfirmation() {
+            const dialog = document.getElementById('availabilityConfirmationDialog');
+            if (dialog) {
+                const dialogContent = dialog.querySelector('.bg-gradient-to-br');
+                if (dialogContent) {
+                    // Add closing animation
+                    dialogContent.classList.remove('scale-100', 'opacity-100');
+                    dialogContent.classList.add('scale-95', 'opacity-0');
+                    
+                    // Remove dialog after animation
+                    setTimeout(() => {
+                        dialog.remove();
+                    }, 300);
+                } else {
+                    dialog.remove();
+                }
+            }
+            
+            // Clear the QR scanner input field and refocus
+            const qrInput = document.getElementById('qrScannerInput');
+            if (qrInput) {
+                qrInput.value = '';
+                qrInput.focus();
+            }
+        }
+
+        // Confirm availability immediately
+        function confirmAvailabilityNow(teacherId) {
+            // Remove the confirmation dialog
+            const dialog = document.getElementById('availabilityConfirmationDialog');
+            if (dialog) {
+                dialog.remove();
+            }
+            
+            // Mark teacher as available
+            markTeacherAvailable(teacherId);
+            
+            // Clear the input field and refocus for next scan
+            const qrInput = document.getElementById('qrScannerInput');
+            if (qrInput) {
+                qrInput.value = '';
+                qrInput.focus();
+            }
+        }
+
+        // Camera-based QR scanner functions removed - using form-only approach
+
+        // Mark teacher as available
+        function markTeacherAvailable(teacherId) {
+            const formData = new FormData();
+            formData.append('teacher_id', teacherId);
+            formData.append('notes', 'QR code scan confirmation');
+            
+            fetch('../api/teacher-availability-handler.php?action=mark_available', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    currentTeacherId = teacherId;
+                    showEnhancedNotification('✅ Teacher availability confirmed successfully!', 'success');
+                    updateTeacherAvailabilityStatus(true, data.teacher);
+                } else {
+                    showEnhancedNotification(data.error || 'Failed to confirm availability', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error marking teacher available:', error);
+                showEnhancedNotification('Network error. Please try again.', 'error');
+            });
+        }
+
+        // Mark teacher as unavailable
+        function markTeacherUnavailable() {
+            if (!currentTeacherId) {
+                showEnhancedNotification('No teacher ID found. Please scan your ID first.', 'error');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('teacher_id', currentTeacherId);
+            formData.append('notes', 'Manually marked unavailable');
+            
+            fetch('../api/teacher-availability-handler.php?action=mark_unavailable', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showEnhancedNotification('❌ Teacher marked as unavailable', 'info');
+                    updateTeacherAvailabilityStatus(false);
+                    currentTeacherId = null;
+                } else {
+                    showEnhancedNotification(data.error || 'Failed to mark as unavailable', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error marking teacher unavailable:', error);
+                showEnhancedNotification('Network error. Please try again.', 'error');
+            });
+        }
+
+        // Update teacher availability status display
+        function updateTeacherAvailabilityStatus(isAvailable, teacherData = null) {
+            const statusDiv = document.getElementById('teacherAvailabilityStatus');
+            const indicator = document.getElementById('availabilityIndicator');
+            const text = document.getElementById('availabilityText');
+            
+            if (statusDiv && indicator && text) {
+                statusDiv.classList.remove('hidden');
+                
+                if (isAvailable && teacherData) {
+                    indicator.className = 'w-3 h-3 rounded-full bg-orange-500';
+                    text.textContent = `Available: ${teacherData.first_name} ${teacherData.last_name} (${teacherData.department})`;
+                    text.className = 'text-sm font-medium text-orange-700';
+                } else {
+                    indicator.className = 'w-3 h-3 rounded-full bg-red-500';
+                    text.textContent = 'Not Available';
+                    text.className = 'text-sm font-medium text-red-700';
+                }
+            }
+        }
+
+        // Check teacher availability status on page load
+        function checkTeacherAvailabilityStatus() {
+            if (currentTeacherId) {
+                fetch(`../api/teacher-availability-handler.php?action=get_status&teacher_id=${currentTeacherId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.availability) {
+                        updateTeacherAvailabilityStatus(true, {
+                            first_name: data.availability.first_name,
+                            last_name: data.availability.last_name,
+                            department: data.availability.department
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking teacher availability status:', error);
+                });
+            }
+        }
+
+        // Make functions globally available
+        // Camera-based QR scanner window functions removed
+        window.markTeacherUnavailable = markTeacherUnavailable;
+        window.cancelAvailabilityConfirmation = cancelAvailabilityConfirmation;
+        window.confirmAvailabilityNow = confirmAvailabilityNow;
+
+        // =====================================================
+        // CANVAS PARTICLE ANIMATION
+        // =====================================================
+
+        // Wait for DOM to be ready
+        document.addEventListener('DOMContentLoaded', function() {
+            initCanvasAnimation();
+        });
+
+        function initCanvasAnimation() {
+            var canvas = document.getElementById('canvas');
+            if (!canvas) {
+                console.error('Canvas element not found!');
+                return;
+            }
+
+            var context = canvas.getContext('2d');
+            if (!context) {
+                console.error('Canvas context not available!');
+                return;
+            }
+
+            // Set canvas size
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+
+            // Initial resize
+            resizeCanvas();
+
+            // Resize on window resize
+            window.addEventListener('resize', resizeCanvas);
+
+            window.requestAnimFrame = function()
+            {
+                return (
+                    window.requestAnimationFrame       || 
+                    window.webkitRequestAnimationFrame || 
+                    window.mozRequestAnimationFrame    || 
+                    window.oRequestAnimationFrame      || 
+                    window.msRequestAnimationFrame     || 
+                    function(/* function */ callback){
+                        window.setTimeout(callback, 1000 / 60);
+                    }
+                );
+            }();
+
+            //get DPI
+            let dpi = window.devicePixelRatio || 1;
+            context.scale(dpi, dpi);
+            console.log('Canvas DPI:', dpi);
+
+            function fix_dpi() {
+                //get CSS height
+                //the + prefix casts it to an integer
+                //the slice method gets rid of "px"
+                let style_height = +getComputedStyle(canvas).getPropertyValue("height").slice(0, -2);
+                let style_width = +getComputedStyle(canvas).getPropertyValue("width").slice(0, -2);
+
+                //scale the canvas
+                canvas.setAttribute('height', style_height * dpi);
+                canvas.setAttribute('width', style_width * dpi);
+            }
+
+            var particle_count = 70,
+                particles = [],
+                couleurs   = ["#3a0088", "#930077", "#e61c5d","#ffbd39"];
+            
+            function Particle()
+            {
+                this.radius = Math.round((Math.random()*2)+2);
+                this.x = Math.floor((Math.random() * (canvas.width - this.radius * 2) + this.radius));
+                this.y = Math.floor((Math.random() * (canvas.height - this.radius * 2) + this.radius));
+                this.color = couleurs[Math.floor(Math.random()*couleurs.length)];
+                this.speedx = Math.round((Math.random()*201)+0)/100;
+                this.speedy = Math.round((Math.random()*201)+0)/100;
+
+                switch (Math.round(Math.random()*couleurs.length))
+                {
+                    case 1:
+                    this.speedx *= 1;
+                    this.speedy *= 1;
+                    break;
+                    case 2:
+                    this.speedx *= -1;
+                    this.speedy *= 1;
+                    break;
+                    case 3:
+                    this.speedx *= 1;
+                    this.speedy *= -1;
+                    break;
+                    case 4:
+                    this.speedx *= -1;
+                    this.speedy *= -1;
+                    break;
+                }
+                    
+                this.move = function()
+                {
+                    context.beginPath();
+                    context.globalCompositeOperation = 'source-over';
+                    context.fillStyle   = this.color;
+                    context.globalAlpha = 1;
+                    context.arc(this.x, this.y, this.radius, 0, Math.PI*2, false);
+                    context.fill();
+                    context.closePath();
+
+                    this.x = this.x + this.speedx;
+                    this.y = this.y + this.speedy;
+                    
+                    if(this.x <= 0+this.radius)
+                    {
+                        this.speedx *= -1;
+                    }
+                    if(this.x >= canvas.width-this.radius)
+                    {
+                        this.speedx *= -1;
+                    }
+                    if(this.y <= 0+this.radius)
+                    {
+                        this.speedy *= -1;
+                    }
+                    if(this.y >= canvas.height-this.radius)
+                    {
+                        this.speedy *= -1;
+                    }
+
+                    for (var j = 0; j < particle_count; j++)
+                    {
+                        var particleActuelle = particles[j],
+                            yd = particleActuelle.y - this.y,
+                            xd = particleActuelle.x - this.x,
+                            d  = Math.sqrt(xd * xd + yd * yd);
+
+                        if ( d < 200 )
+                        {
+                            context.beginPath();
+                            context.globalAlpha = (200 - d) / (200 - 0);
+                            context.globalCompositeOperation = 'destination-over';
+                            context.lineWidth = 1;
+                            context.moveTo(this.x, this.y);
+                            context.lineTo(particleActuelle.x, particleActuelle.y);
+                            context.strokeStyle = this.color;
+                            context.lineCap = "round";
+                            context.stroke();
+                            context.closePath();
+                        }
+                    }
+                };
+            };
+            
+            // Create particles
+            for (var i = 0; i < particle_count; i++)
+            {
+                var particle = new Particle();
+                particles.push(particle);
+            }
+
+            function animate()
+            {
+                context.clearRect(0, 0, canvas.width, canvas.height);
+                for (var i = 0; i < particle_count; i++)
+                {
+                    particles[i].move();
+                }
+                requestAnimFrame(animate);
+            }
+            
+            // Start animation
+            animate();
+            console.log('Canvas animation started with', particle_count, 'particles');
+        } 
     </script>
 </body>
 </html>

@@ -1724,6 +1724,60 @@ include 'includes/header.php';
     </div>
 </div>
 
+<!-- Delete Consultation Leave Modal -->
+<div id="deleteLeaveModal" class="fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full hidden z-50 transition-all duration-300 ease-in-out backdrop-blur-sm">
+    <div class="relative top-20 mx-auto p-0 border-0 w-full max-w-md shadow-2xl rounded-xl bg-white transform scale-95 opacity-0 transition-all duration-300 ease-out" id="deleteLeaveModalContent">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-red-500 to-red-600 rounded-t-xl p-6 text-white">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <div class="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center mr-4">
+                        <i class="fas fa-exclamation-triangle text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold">Delete Consultation Leave</h3>
+                        <p class="text-red-100 text-sm">This action cannot be undone</p>
+                    </div>
+                </div>
+                <button onclick="closeDeleteLeaveModal()" class="text-white hover:text-red-200 transition-colors duration-200 p-2 rounded-full hover:bg-white hover:bg-opacity-20">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Content -->
+        <div class="p-6">
+            <div class="flex items-start">
+                <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-4 mt-1">
+                    <i class="fas fa-calendar-times text-red-600"></i>
+                </div>
+                <div class="flex-1">
+                    <h4 class="text-lg font-semibold text-gray-900 mb-2">Remove Consultation Leave</h4>
+                    <p class="text-gray-600 leading-relaxed">Are you sure you want to delete this consultation leave record? This action will permanently remove the scheduled consultation leave and cannot be undone.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="bg-gray-50 rounded-b-xl p-4 border-t border-gray-200">
+            <form method="POST">
+                <input type="hidden" name="action" value="delete_leave">
+                <input type="hidden" name="leave_id" id="deleteLeaveId" value="">
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeDeleteLeaveModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-105">
+                        <i class="fas fa-times mr-2"></i>
+                        Cancel
+                    </button>
+                    <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-105">
+                        <i class="fas fa-trash mr-2"></i>
+                        Delete Leave
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
 function openAddModal() {
     const modal = document.getElementById('consultationModal');
@@ -1781,6 +1835,20 @@ function closeLeaveModal() {
     }, 300);
 }
 
+function closeDeleteLeaveModal() {
+    const modal = document.getElementById('deleteLeaveModal');
+    const modalContent = document.getElementById('deleteLeaveModalContent');
+    
+    // Start closing animation
+    modalContent.classList.remove('scale-100', 'opacity-100');
+    modalContent.classList.add('scale-95', 'opacity-0');
+    
+    // Hide modal after animation completes
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
+}
+
 function deleteConsultation(id) {
     const modal = document.getElementById('deleteModal');
     const modalContent = document.getElementById('deleteModalContent');
@@ -1812,16 +1880,19 @@ function closeDeleteModal() {
 }
 
 function deleteLeave(leaveId) {
-    if (confirm('Are you sure you want to delete this consultation leave?')) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.innerHTML = `
-            <input type="hidden" name="action" value="delete_leave">
-            <input type="hidden" name="leave_id" value="${leaveId}">
-        `;
-        document.body.appendChild(form);
-        form.submit();
-    }
+    const modal = document.getElementById('deleteLeaveModal');
+    const modalContent = document.getElementById('deleteLeaveModalContent');
+    
+    document.getElementById('deleteLeaveId').value = leaveId;
+    
+    // Show modal
+    modal.classList.remove('hidden');
+    
+    // Trigger animation after a small delay
+    setTimeout(() => {
+        modalContent.classList.remove('scale-95', 'opacity-0');
+        modalContent.classList.add('scale-100', 'opacity-100');
+    }, 10);
 }
 
 function showListView() {
@@ -1983,6 +2054,7 @@ window.onclick = function(event) {
     const logDetailsModal = document.getElementById('logDetailsModal');
     const declineReasonModal = document.getElementById('declineReasonModal');
     const leaveModal = document.getElementById('leaveModal');
+    const deleteLeaveModal = document.getElementById('deleteLeaveModal');
     
     if (event.target === consultationModal) {
         closeModal();
@@ -2001,6 +2073,9 @@ window.onclick = function(event) {
     }
     if (event.target === leaveModal) {
         closeLeaveModal();
+    }
+    if (event.target === deleteLeaveModal) {
+        closeDeleteLeaveModal();
     }
 }
 

@@ -16,7 +16,8 @@
                     colors: {
                         'seait-orange': '#FF6B35',
                         'seait-dark': '#2C3E50',
-                        'seait-light': '#FFF8F0'
+                        'seait-light': '#FFF8F0',
+                        'hr-secondary': '#374151'
                     }
                 }
             }
@@ -353,12 +354,21 @@
                     <div class="animate-fadeInUp" style="animation-delay: 0.2s;">
                         <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Employee Management</h3>
                         <div class="space-y-1">
-                            <a href="manage-faculty.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'manage-faculty.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
-                                <i class="fas fa-chalkboard-teacher mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Faculty Management
-                            </a>
+                            
 
                             <a href="manage-colleges.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'manage-colleges.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
                                 <i class="fas fa-university mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>College Management
+                            </a>
+
+                            <a href="manage-departments.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'manage-departments.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                                <i class="fas fa-building mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Department Management
+                            </a>
+
+                            <a href="admin-employee.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'admin-employee.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                                <i class="fas fa-user-plus mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Admin Employee
+                            </a>
+                            <a href="manage-faculty.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'manage-faculty.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                                <i class="fas fa-chalkboard-teacher mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Faculty Management
                             </a>
                         </div>
                     </div>

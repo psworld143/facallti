@@ -1,6 +1,7 @@
 <?php
 // Admin index.php - Redirect to dashboard
 session_start();
+require_once '../includes/error_handler.php';
 require_once '../config/database.php';
 require_once '../includes/functions.php';
 

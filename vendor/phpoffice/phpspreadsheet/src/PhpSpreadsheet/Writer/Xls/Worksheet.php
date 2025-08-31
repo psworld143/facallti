@@ -884,7 +884,6 @@ class Worksheet extends BIFFwriter
         if ($formula[0] == '=') {
             $formula = substr($formula, 1);
         } else {
-            // Error handling
             $this->writeString($row, $col, 'Unrecognised character for formula', 0);
 
             return self::WRITE_FORMULA_ERRORS;

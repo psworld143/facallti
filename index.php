@@ -1673,6 +1673,19 @@ $courses_result = mysqli_query($conn, $courses_query);
                 setTimeout(() => loader.style.display = 'none', 500);
             }
         });
+
+        // Auto-open login modal if login is required
+        window.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('login') === 'required') {
+                // Wait a bit for the page to fully load, then open login modal
+                setTimeout(function() {
+                    if (typeof openLoginModal === 'function') {
+                        openLoginModal();
+                    }
+                }, 1000);
+            }
+        });
     </script>
 </body>
 </html>

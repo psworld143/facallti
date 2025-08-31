@@ -1,25 +1,24 @@
 <?php
 session_start();
+require_once '../includes/error_handler.php';
 require_once '../config/database.php';
 
 // Check if user is logged in and is faculty
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'faculty') {
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
     http_response_code(403);
     exit('Unauthorized');
 }
 
-if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
+if (!isset($_GET['leave_id']) || !is_numeric($_GET['leave_id'])) {
     http_response_code(400);
     exit('Invalid request');
 }
 
-$leave_id = (int)$_GET['id'];
+$leave_id = (int)$_GET['leave_id'];
 $faculty_id = $_SESSION['user_id'];
 
 // Get faculty information
-$faculty_query = "SELECT e.id as employee_id FROM faculty f 
-                  LEFT JOIN employees e ON f.email = e.email 
-                  WHERE f.id = ?";
+$faculty_query = "SELECT id, first_name, last_name, email, department FROM faculty WHERE id = ? AND is_active = 1";
 $faculty_stmt = mysqli_prepare($conn, $faculty_query);
 mysqli_stmt_bind_param($faculty_stmt, 'i', $faculty_id);
 mysqli_stmt_execute($faculty_stmt);
@@ -32,21 +31,21 @@ if (mysqli_num_rows($faculty_result) === 0) {
 
 $faculty_info = mysqli_fetch_assoc($faculty_result);
 
-// Get leave request details (only for the faculty's own requests)
-$query = "SELECT lr.*, 
-          e.first_name, e.last_name, e.employee_id, e.department, e.email, e.phone,
+// Get leave request details from faculty_leave_requests table (only for the faculty's own requests)
+$query = "SELECT flr.*, 
+          f.first_name, f.last_name, f.id as faculty_id, f.department, f.email,
           lt.name as leave_type_name, lt.description as leave_type_description,
           dh.first_name as head_first_name, dh.last_name as head_last_name,
           hr.first_name as hr_first_name, hr.last_name as hr_last_name
-          FROM leave_requests lr
-          JOIN employees e ON lr.employee_id = e.id
-          JOIN leave_types lt ON lr.leave_type_id = lt.id
-          LEFT JOIN employees dh ON lr.department_head_id = dh.id
-          LEFT JOIN employees hr ON lr.hr_approver_id = hr.id
-          WHERE lr.id = ? AND lr.employee_id = ?";
+          FROM faculty_leave_requests flr
+          JOIN faculty f ON flr.faculty_id = f.id
+          JOIN leave_types lt ON flr.leave_type_id = lt.id
+          LEFT JOIN faculty dh ON flr.department_head_id = dh.id
+          LEFT JOIN faculty hr ON flr.hr_approver_id = hr.id
+          WHERE flr.id = ? AND flr.faculty_id = ?";
 
 $stmt = mysqli_prepare($conn, $query);
-mysqli_stmt_bind_param($stmt, 'ii', $leave_id, $faculty_info['employee_id']);
+mysqli_stmt_bind_param($stmt, 'ii', $leave_id, $faculty_id);
 mysqli_stmt_execute($stmt);
 $result = mysqli_stmt_get_result($stmt);
 
@@ -89,8 +88,8 @@ $working_days = calculateWorkingDays($leave['start_date'], $leave['end_date']);
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                 <p class="text-sm font-medium text-gray-600">Leave Type</p>
-                <p class="text-sm text-gray-900"><?php echo htmlspecialchars($leave['leave_type_name']); ?></p>
-                <p class="text-xs text-gray-500 mt-1"><?php echo htmlspecialchars($leave['leave_type_description']); ?></p>
+                <p class="text-sm text-gray-900"><?php echo htmlspecialchars($leave['leave_type_name'] ?? ''); ?></p>
+                <p class="text-xs text-gray-500 mt-1"><?php echo htmlspecialchars($leave['leave_type_description'] ?? ''); ?></p>
             </div>
             <div>
                 <p class="text-sm font-medium text-gray-600">Status</p>
@@ -110,8 +109,8 @@ $working_days = calculateWorkingDays($leave['start_date'], $leave['end_date']);
                     'cancelled' => 'Cancelled'
                 ];
                 ?>
-                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full <?php echo $status_colors[$leave['status']]; ?>">
-                    <?php echo $status_text[$leave['status']]; ?>
+                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full <?php echo $status_colors[$leave['status']] ?? 'bg-gray-100 text-gray-800'; ?>">
+                    <?php echo $status_text[$leave['status']] ?? ucfirst($leave['status']); ?>
                 </span>
             </div>
             <div>
@@ -133,7 +132,7 @@ $working_days = calculateWorkingDays($leave['start_date'], $leave['end_date']);
         </div>
         <div class="mt-4">
             <p class="text-sm font-medium text-gray-600">Reason</p>
-            <p class="text-sm text-gray-900 mt-1"><?php echo nl2br(htmlspecialchars($leave['reason'])); ?></p>
+            <p class="text-sm text-gray-900 mt-1"><?php echo nl2br(htmlspecialchars($leave['reason'] ?? '')); ?></p>
         </div>
     </div>
 
@@ -164,8 +163,8 @@ $working_days = calculateWorkingDays($leave['start_date'], $leave['end_date']);
                             'rejected' => 'Rejected'
                         ];
                         ?>
-                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full <?php echo $head_status_colors[$leave['department_head_approval']]; ?>">
-                            <?php echo $head_status_text[$leave['department_head_approval']]; ?>
+                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full <?php echo $head_status_colors[$leave['department_head_approval']] ?? 'bg-gray-100 text-gray-800'; ?>">
+                            <?php echo $head_status_text[$leave['department_head_approval']] ?? ucfirst($leave['department_head_approval']); ?>
                         </span>
                     </div>
                     <?php if ($leave['department_head_comment']): ?>
@@ -209,8 +208,8 @@ $working_days = calculateWorkingDays($leave['start_date'], $leave['end_date']);
                             'rejected' => 'Rejected'
                         ];
                         ?>
-                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full <?php echo $hr_status_colors[$leave['hr_approval']]; ?>">
-                            <?php echo $hr_status_text[$leave['hr_approval']]; ?>
+                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full <?php echo $hr_status_colors[$leave['hr_approval']] ?? 'bg-gray-100 text-gray-800'; ?>">
+                            <?php echo $hr_status_text[$leave['hr_approval']] ?? ucfirst($leave['hr_approval']); ?>
                         </span>
                     </div>
                     <?php if ($leave['hr_comment']): ?>

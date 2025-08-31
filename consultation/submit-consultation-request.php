@@ -61,6 +61,19 @@ if (!$teacher_id) {
     exit;
 }
 
+// Validate student ID is provided
+if (empty($student_id) || $student_id === 'null' || $student_id === '') {
+    echo json_encode(['error' => 'Student ID is required. Please scan your student ID first.']);
+    exit;
+}
+
+// Clean and validate student ID format
+$student_id = trim($student_id);
+if (strlen($student_id) < 3) {
+    echo json_encode(['error' => 'Invalid student ID format. Please scan a valid student ID.']);
+    exit;
+}
+
 try {
     // Generate unique session ID for this consultation
     $session_id = uniqid('consultation_', true);
@@ -73,10 +86,7 @@ try {
         throw new Exception('Failed to prepare statement: ' . mysqli_error($conn));
     }
     
-    // Handle null student_id properly
-    if (empty($student_id) || $student_id === 'null') {
-        $student_id = null;
-    }
+    // Student ID is already validated above, no need to handle null
     
     mysqli_stmt_bind_param($stmt, "issis", $teacher_id, $student_name, $student_dept, $student_id, $session_id);
     $result = mysqli_stmt_execute($stmt);
@@ -95,6 +105,7 @@ try {
         'teacher_id' => $teacher_id,
         'student_name' => $student_name,
         'student_dept' => $student_dept,
+        'student_id' => $student_id,
         'timestamp' => date('Y-m-d H:i:s')
     ];
     

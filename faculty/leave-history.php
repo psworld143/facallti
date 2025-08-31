@@ -1,24 +1,25 @@
 <?php
 session_start();
+require_once '../includes/error_handler.php';
 require_once '../config/database.php';
 
 // Check if user is logged in and is faculty
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'faculty') {
-    header('Location: ../login.php');
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
+    header('Location: ../index.php?login=required&redirect=faculty-leave-history');
     exit;
 }
 
-$user_id = $_SESSION['user_id'];
+$faculty_id = $_SESSION['user_id'];
 
-// Get employee details
-$query = "SELECT * FROM employees WHERE employee_id = ?";
+// Get faculty details
+$query = "SELECT * FROM faculty WHERE id = ? AND is_active = 1";
 $stmt = mysqli_prepare($conn, $query);
-mysqli_stmt_bind_param($stmt, 'i', $user_id);
+mysqli_stmt_bind_param($stmt, 'i', $faculty_id);
 mysqli_stmt_execute($stmt);
-$employee = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+$faculty = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
 
-if (!$employee) {
-    header('Location: ../login.php');
+if (!$faculty) {
+    header('Location: ../index.php?login=required&redirect=faculty-leave-history');
     exit;
 }
 
@@ -29,30 +30,30 @@ $leave_type_filter = $_GET['leave_type'] ?? '';
 $search = $_GET['search'] ?? '';
 
 // Build query with filters
-$where_conditions = ["lr.employee_id = ?"];
-$params = [$user_id];
+$where_conditions = ["flr.faculty_id = ?"];
+$params = [$faculty_id];
 $param_types = 'i';
 
 if ($status_filter) {
-    $where_conditions[] = "lr.status = ?";
+    $where_conditions[] = "flr.status = ?";
     $params[] = $status_filter;
     $param_types .= 's';
 }
 
 if ($year_filter) {
-    $where_conditions[] = "YEAR(lr.start_date) = ?";
+    $where_conditions[] = "YEAR(flr.start_date) = ?";
     $params[] = $year_filter;
     $param_types .= 'i';
 }
 
 if ($leave_type_filter) {
-    $where_conditions[] = "lr.leave_type_id = ?";
+    $where_conditions[] = "flr.leave_type_id = ?";
     $params[] = $leave_type_filter;
     $param_types .= 'i';
 }
 
 if ($search) {
-    $where_conditions[] = "(lt.name LIKE ? OR lr.reason LIKE ?)";
+    $where_conditions[] = "(lt.name LIKE ? OR flr.reason LIKE ?)";
     $search_param = "%$search%";
     $params[] = $search_param;
     $params[] = $search_param;
@@ -61,16 +62,16 @@ if ($search) {
 
 $where_clause = implode(' AND ', $where_conditions);
 
-// Get leave requests with filters
-$query = "SELECT lr.*, lt.name as leave_type_name, lt.description,
+// Get leave requests with filters from faculty_leave_requests table
+$query = "SELECT flr.*, lt.name as leave_type_name, lt.description,
           dh.first_name as dh_first_name, dh.last_name as dh_last_name,
           hr.first_name as hr_first_name, hr.last_name as hr_last_name
-          FROM leave_requests lr
-          JOIN leave_types lt ON lr.leave_type_id = lt.id
-          LEFT JOIN employees dh ON lr.department_head_id = dh.employee_id
-          LEFT JOIN employees hr ON lr.hr_approver_id = hr.employee_id
+          FROM faculty_leave_requests flr
+          JOIN leave_types lt ON flr.leave_type_id = lt.id
+          LEFT JOIN faculty dh ON flr.department_head_id = dh.id
+          LEFT JOIN faculty hr ON flr.hr_approver_id = hr.id
           WHERE $where_clause
-          ORDER BY lr.created_at DESC";
+          ORDER BY flr.created_at DESC";
 
 $stmt = mysqli_prepare($conn, $query);
 if (!empty($params)) {
@@ -79,20 +80,20 @@ if (!empty($params)) {
 mysqli_stmt_execute($stmt);
 $leave_requests = mysqli_stmt_get_result($stmt);
 
-// Get available years for filter
-$query = "SELECT DISTINCT YEAR(start_date) as year FROM leave_requests WHERE employee_id = ? ORDER BY year DESC";
+// Get available years for filter from faculty_leave_requests table
+$query = "SELECT DISTINCT YEAR(start_date) as year FROM faculty_leave_requests WHERE faculty_id = ? ORDER BY year DESC";
 $stmt = mysqli_prepare($conn, $query);
-mysqli_stmt_bind_param($stmt, 'i', $user_id);
+mysqli_stmt_bind_param($stmt, 'i', $faculty_id);
 mysqli_stmt_execute($stmt);
 $available_years = mysqli_stmt_get_result($stmt);
 
-// Get available leave types for filter
+// Get available leave types for filter from faculty_leave_requests table
 $query = "SELECT DISTINCT lt.id, lt.name FROM leave_types lt
-          JOIN leave_requests lr ON lt.id = lr.leave_type_id
-          WHERE lr.employee_id = ?
+          JOIN faculty_leave_requests flr ON lt.id = flr.leave_type_id
+          WHERE flr.faculty_id = ?
           ORDER BY lt.name";
 $stmt = mysqli_prepare($conn, $query);
-mysqli_stmt_bind_param($stmt, 'i', $user_id);
+mysqli_stmt_bind_param($stmt, 'i', $faculty_id);
 mysqli_stmt_execute($stmt);
 $available_leave_types = mysqli_stmt_get_result($stmt);
 
@@ -161,7 +162,7 @@ while ($request = mysqli_fetch_assoc($leave_requests)) {
     <?php include 'includes/unified-header.php'; ?>
     
     <div class="flex">
-        <?php include 'includes/unified-sidebar.php'; ?>
+        <?php //include 'includes/unified-sidebar.php'; ?>
         
         <div class="flex-1 ml-64 p-8">
             <!-- Header -->
@@ -425,7 +426,7 @@ while ($request = mysqli_fetch_assoc($leave_requests)) {
 
     <script>
         function viewLeaveDetails(leaveId) {
-            fetch(`get-leave-details.php?leave_id=${leaveId}`)
+            fetch(`get-leave-details.php?leave_id=${leaveId}&table=faculty`)
                 .then(response => response.text())
                 .then(html => {
                     document.getElementById('leaveDetailsContent').innerHTML = html;
@@ -449,7 +450,8 @@ while ($request = mysqli_fetch_assoc($leave_requests)) {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        leave_id: leaveId
+                        leave_id: leaveId,
+                        table: 'faculty'
                     })
                 })
                 .then(response => response.json())

@@ -14,7 +14,7 @@ if (!$department) {
 
 try {
     // Check for all pending consultation requests for this department in the last 10 minutes
-    $query = "SELECT cr.id, cr.teacher_id, cr.student_name, cr.student_dept, cr.session_id, cr.request_time,
+    $query = "SELECT cr.id, cr.teacher_id, cr.student_name, cr.student_dept, cr.student_id, cr.session_id, cr.request_time,
                      f.first_name, f.last_name, f.department,
                      TIMESTAMPDIFF(MINUTE, cr.request_time, NOW()) as minutes_ago
               FROM consultation_requests cr
@@ -42,6 +42,7 @@ try {
             'session_id' => $request['session_id'],
             'student_name' => $request['student_name'],
             'student_dept' => $request['student_dept'],
+            'student_id' => $request['student_id'],
             'teacher_name' => $request['first_name'] . ' ' . $request['last_name'],
             'teacher_id' => $request['teacher_id'],
             'request_time' => $request['request_time'],

@@ -106,7 +106,7 @@ if ($semester_result && mysqli_num_rows($semester_result) > 0) {
 }
 
 // Get teachers available for consultation in the selected department who have scheduled hours today
-// and are not on consultation leave (grouped to avoid duplicates)
+// and are not on consultation leave, AND have scanned their QR code to confirm availability
 $teachers_query = "SELECT 
                     f.id,
                     f.first_name,
@@ -120,9 +120,12 @@ $teachers_query = "SELECT
                     MIN(ch.start_time) as start_time,
                     MAX(ch.end_time) as end_time,
                     GROUP_CONCAT(DISTINCT ch.room ORDER BY ch.room SEPARATOR ', ') as room,
-                    GROUP_CONCAT(DISTINCT ch.notes ORDER BY ch.notes SEPARATOR '; ') as notes
+                    GROUP_CONCAT(DISTINCT ch.notes ORDER BY ch.notes SEPARATOR '; ') as notes,
+                    ta.scan_time,
+                    ta.last_activity
                    FROM faculty f 
                    INNER JOIN consultation_hours ch ON f.id = ch.teacher_id
+                   INNER JOIN teacher_availability ta ON f.id = ta.teacher_id
                    WHERE f.is_active = 1 
                    AND f.department = ?
                    AND ch.day_of_week = ?
@@ -136,8 +139,10 @@ $teachers_query = "SELECT
                        FROM consultation_leave 
                        WHERE leave_date = CURDATE()
                    )
-                   GROUP BY f.id, f.first_name, f.last_name, f.department, f.position, f.email, f.bio, f.image_url, f.is_active
-                   ORDER BY f.first_name, f.last_name";
+                   AND ta.availability_date = CURDATE()
+                   AND ta.status = 'available'
+                   GROUP BY f.id, f.first_name, f.last_name, f.department, f.position, f.email, f.bio, f.image_url, f.is_active, ta.scan_time, ta.last_activity
+                   ORDER BY ta.scan_time DESC, f.first_name, f.last_name";
 
 $teachers_stmt = mysqli_prepare($conn, $teachers_query);
 if ($teachers_stmt) {
@@ -172,7 +177,7 @@ if ($teachers_stmt) {
 if (empty($teachers)) {
     
     // Try partial matching for teachers with scheduled hours today
-    // and are not on consultation leave (grouped to avoid duplicates)
+    // and are not on consultation leave, AND have scanned their QR code to confirm availability
     $partial_query = "SELECT 
                         f.id,
                         f.first_name,
@@ -186,9 +191,12 @@ if (empty($teachers)) {
                         MIN(ch.start_time) as start_time,
                         MAX(ch.end_time) as end_time,
                         GROUP_CONCAT(DISTINCT ch.room ORDER BY ch.room SEPARATOR ', ') as room,
-                        GROUP_CONCAT(DISTINCT ch.notes ORDER BY ch.notes SEPARATOR '; ') as notes
+                        GROUP_CONCAT(DISTINCT ch.notes ORDER BY ch.notes SEPARATOR '; ') as notes,
+                        ta.scan_time,
+                        ta.last_activity
                        FROM faculty f 
                        INNER JOIN consultation_hours ch ON f.id = ch.teacher_id
+                       INNER JOIN teacher_availability ta ON f.id = ta.teacher_id
                        WHERE f.is_active = 1 
                        AND f.department LIKE ?
                        AND ch.day_of_week = ?
@@ -202,8 +210,10 @@ if (empty($teachers)) {
                            FROM consultation_leave 
                            WHERE leave_date = CURDATE()
                        )
-                       GROUP BY f.id, f.first_name, f.last_name, f.department, f.position, f.email, f.bio, f.image_url, f.is_active
-                       ORDER BY f.first_name, f.last_name";
+                       AND ta.availability_date = CURDATE()
+                       AND ta.status = 'available'
+                       GROUP BY f.id, f.first_name, f.last_name, f.department, f.position, f.email, f.bio, f.image_url, f.is_active, ta.scan_time, ta.last_activity
+                       ORDER BY ta.scan_time DESC, f.first_name, f.last_name";
     
     $partial_stmt = mysqli_prepare($conn, $partial_query);
     if ($partial_stmt) {
@@ -248,9 +258,12 @@ if (empty($teachers) && empty($selected_department)) {
                         MIN(ch.start_time) as start_time,
                         MAX(ch.end_time) as end_time,
                         GROUP_CONCAT(DISTINCT ch.room ORDER BY ch.room SEPARATOR ', ') as room,
-                        GROUP_CONCAT(DISTINCT ch.notes ORDER BY ch.notes SEPARATOR '; ') as notes
+                        GROUP_CONCAT(DISTINCT ch.notes ORDER BY ch.notes SEPARATOR '; ') as notes,
+                        ta.scan_time,
+                        ta.last_activity
                        FROM faculty f 
                        INNER JOIN consultation_hours ch ON f.id = ch.teacher_id
+                       INNER JOIN teacher_availability ta ON f.id = ta.teacher_id
                        WHERE f.is_active = 1 
                        AND ch.day_of_week = ?
                        AND ch.is_active = 1
@@ -263,8 +276,10 @@ if (empty($teachers) && empty($selected_department)) {
                            FROM consultation_leave 
                            WHERE leave_date = CURDATE()
                        )
-                       GROUP BY f.id, f.first_name, f.last_name, f.department, f.position, f.email, f.bio, f.image_url, f.is_active
-                       ORDER BY f.department, f.first_name, f.last_name";
+                       AND ta.availability_date = CURDATE()
+                       AND ta.status = 'available'
+                       GROUP BY f.id, f.first_name, f.last_name, f.department, f.position, f.email, f.bio, f.image_url, f.is_active, ta.scan_time, ta.last_activity
+                       ORDER BY ta.scan_time DESC, f.department, f.first_name, f.last_name";
     
     $fallback_stmt = mysqli_prepare($conn, $fallback_query);
     if ($fallback_stmt) {
@@ -315,7 +330,19 @@ if (empty($teachers) && empty($selected_department)) {
     </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="fab-styles.css">
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
+        /* Canvas Background Animation */
+        #canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            pointer-events: none;
+        }
+
         /* Standby Mode Background Video Styles */
         .standby-video-container {
             position: fixed;
@@ -466,6 +493,8 @@ if (empty($teachers) && empty($selected_department)) {
             background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
             border: 1px solid #e2e8f0;
         }
+        
+
 
         .teacher-card::before {
             content: '';
@@ -477,6 +506,33 @@ if (empty($teachers) && empty($selected_department)) {
             background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
             transition: left 0.5s;
         }
+        
+        /* Enhanced focus styles for student ID input */
+        #studentIdInput:focus {
+            outline: none;
+            border-color: #10B981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1), 0 0 0 1px rgba(16, 185, 129, 0.2);
+            transform: scale(1.02);
+            transition: all 0.2s ease;
+        }
+        
+        #studentIdInput {
+            transition: all 0.2s ease;
+        }
+        
+        /* Pulsing animation for focused input */
+        #studentIdInput:focus {
+            animation: inputPulse 2s infinite;
+        }
+        
+        @keyframes inputPulse {
+            0%, 100% {
+                box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1), 0 0 0 1px rgba(16, 185, 129, 0.2);
+            }
+            50% {
+                box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2), 0 0 0 1px rgba(16, 185, 129, 0.4);
+            }
+        }
 
         .teacher-card:hover::before {
             left: 100%;
@@ -486,6 +542,22 @@ if (empty($teachers) && empty($selected_department)) {
             transform: translateY(-8px) scale(1.02);
             box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.15), 0 8px 16px -4px rgba(0, 0, 0, 0.1);
             border-color: #FF6B35;
+        }
+        
+        /* Clickable state for teacher cards */
+        .teacher-card.clickable {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .teacher-card.clickable:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.15), 0 8px 16px -4px rgba(0, 0, 0, 0.1);
+            border-color: #FF6B35;
+        }
+        
+        .teacher-card.clickable:active {
+            transform: translateY(-4px) scale(1.01);
         }
 
         .teacher-card:active {
@@ -1194,6 +1266,8 @@ if (empty($teachers) && empty($selected_department)) {
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col">
+    <!-- Canvas Background Animation -->
+    <canvas id="canvas"></canvas>
     <!-- Standby Mode Background Video -->
     <div id="standbyVideoContainer" class="standby-video-container">
         <video id="standbyVideo" class="standby-video" autoplay muted loop>
@@ -1212,38 +1286,54 @@ if (empty($teachers) && empty($selected_department)) {
         <i class="fas fa-clock mr-1"></i>Standby in <span id="countdownTimer">10</span>s
     </div>
     
+    <!-- No Teachers Available Modal -->
+    <div id="noTeachersModal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-3xl shadow-2xl border-4 border-orange-500 p-8 max-w-md w-full transform scale-95 opacity-0 transition-all duration-300">
+                <!-- Modal Header -->
+                <div class="text-center mb-6">
+                    <div class="w-20 h-20 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 shadow-lg mb-4 mx-auto flex items-center justify-center">
+                        <i class="fas fa-user-slash text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-2">No Teachers Available</h3>
+                    <div class="w-24 h-1 bg-gradient-to-r from-orange-500 to-orange-600 rounded-full mx-auto"></div>
+                </div>
+                
+                <!-- Modal Content -->
+                <div class="text-center mb-8">
+                    <p class="text-gray-700 mb-4">
+                        <i class="fas fa-info-circle text-orange-500 mr-2"></i>
+                        No teachers are currently available for consultation at this time.
+                    </p>
+                    <div class="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-4">
+                        <p class="text-orange-800 text-sm">
+                            <i class="fas fa-clock mr-2"></i>
+                            Teachers only appear when they have scheduled consultation hours for the current day and time.
+                        </p>
+                    </div>
+                    <p class="text-sm text-gray-600">
+                        Please try again later or check with your department for available consultation schedules.
+                    </p>
+                </div>
+                
+                <!-- Modal Buttons -->
+                <div class="flex space-x-3">
+                    <button onclick="closeNoTeachersModal()" class="flex-1 bg-gradient-to-r from-gray-400 to-gray-500 text-white px-6 py-3 rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl font-bold text-lg border-2 border-gray-300 hover:border-gray-400">
+                        <i class="fas fa-times mr-2"></i>Close
+                    </button>
+                    <button onclick="refreshTeachersList()" class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-3 rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl font-bold text-lg border-2 border-orange-400 hover:border-orange-500">
+                        <i class="fas fa-sync-alt mr-2"></i>Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <!-- Fullscreen Button -->
     <button id="fullscreenBtn" class="fullscreen-btn" title="Toggle Fullscreen">
         <i class="fas fa-expand"></i>
     </button>
-    <!-- Header -->
-    <header class="header-gradient shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex flex-col sm:flex-row justify-between items-center py-4 sm:py-6">
-                <div class="flex items-center mb-4 sm:mb-0">
-                    <div class="relative">
-                        <img src="../assets/images/seait-logo.png" alt="SEAIT Logo" class="h-10 sm:h-14 w-auto float-animation">
-                        <div class="absolute -top-1 -right-1 w-3 sm:w-4 h-3 sm:h-4 bg-yellow-400 rounded-full glow-animation"></div>
-                    </div>
-                    <div class="ml-4 sm:ml-6">
-                        <h1 class="text-lg sm:text-2xl font-bold text-white mb-1">FaCallTI</h1>
-                        <p class="text-xs sm:text-sm text-orange-100">
-                            <?php if ($selected_department): ?>
-                                <i class="fas fa-building mr-1 sm:mr-2"></i><?php echo htmlspecialchars($selected_department); ?>
-                            <?php else: ?>
-                                <i class="fas fa-users mr-1 sm:mr-2"></i>Scheduled Teachers Today
-                            <?php endif; ?>
-                        </p>
-                    </div>
-                </div>
-                <div class="flex items-center space-x-4 mobile-nav">
-                    <a href="index.php" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-3 sm:px-4 py-2 rounded-lg transition-all duration-300 hover:scale-105 mobile-back-btn text-sm sm:text-base">
-                        <i class="fas fa-arrow-left mr-1 sm:mr-2"></i>Back
-                    </a>
-                </div>
-            </div>
-        </div>
-    </header>
+
 
     <!-- Main Content -->
     <main class="flex-1 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 main-content">
@@ -1257,6 +1347,61 @@ if (empty($teachers) && empty($selected_department)) {
             <p class="mt-1">The teacher has not accepted your consultation request yet. Please wait for their response or try selecting another teacher.</p>
         </div>
         <?php endif; ?>
+
+                <!-- Student ID QR Scanner Section -->
+        <div class="enhanced-card rounded-xl shadow-lg p-3 sm:p-4 mb-3 sm:mb-4 border-l-4 border-green-500">
+            <div class="flex items-center mb-3">
+                <div class="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                    <i class="fas fa-qrcode text-white text-sm"></i>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-lg sm:text-xl font-bold text-gray-800">🔑 Scan Your Student ID to Start</h3>
+                </div>
+            </div>
+            
+            <!-- QR Scanner Input -->
+            <div class="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-lg p-3">
+                <div class="flex items-center space-x-3">
+                    <div class="flex-1">
+                        <label for="studentIdInput" class="block text-xs font-medium text-gray-700 mb-1">
+                            <i class="fas fa-id-card mr-1 text-green-600"></i>Student ID (Required)
+                        </label>
+                        <div class="relative">
+                            <input type="text" 
+                                   id="studentIdInput" 
+                                   name="student_id" 
+                                   placeholder="🔍 Scan QR code or enter student ID manually" 
+                                   class="w-full px-3 py-2 border border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-base pr-10"
+                                   autofocus
+                                   required>
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-2">
+                                <div class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">
+                            <i class="fas fa-info-circle mr-1"></i>Student ID will be logged in consultation records
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Student Info Display -->
+                <div id="studentInfoDisplay" class="mt-3 p-3 bg-white rounded-lg border border-green-200 hidden">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center">
+                            <i class="fas fa-user text-white text-sm"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800 text-sm" id="studentNameDisplay">Student Name</h4>
+                            <p class="text-xs text-gray-600" id="studentIdDisplay">Student ID</p>
+                            <p class="text-xs text-gray-500" id="studentDeptDisplay">Department</p>
+                        </div>
+                        <div class="ml-auto">
+                            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- Enhanced Page Header Card -->
         <div class="enhanced-card enhanced-header-card rounded-xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6 border-l-4 border-orange-500">
@@ -1357,50 +1502,84 @@ if (empty($teachers) && empty($selected_department)) {
         </div>
         <?php endif; ?>
 
-        <!-- Teachers Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            <?php if (empty($teachers)): ?>
-                <div class="col-span-full bg-white rounded-lg shadow-md p-8 text-center">
-                    <i class="fas fa-user-slash text-gray-400 text-4xl mb-4"></i>
-                    <h3 class="text-xl font-semibold text-gray-600 mb-2">No Teachers Available Today</h3>
-                    <p class="text-gray-500 mb-4">
-                        <?php if (!empty($selected_department)): ?>
-                            No teachers from <strong><?php echo htmlspecialchars($selected_department); ?></strong> have scheduled consultation hours for today (<?php echo getCorrectDateTime('l, F j, Y'); ?>).
-                        <?php else: ?>
-                            No teachers have scheduled consultation hours for today (<?php echo getCorrectDateTime('l, F j, Y'); ?>).
-                        <?php endif; ?>
-                    </p>
-                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                        <p class="text-yellow-800 text-sm">
-                            <i class="fas fa-info-circle mr-2"></i>
-                            Teachers only appear when they have scheduled consultation hours for the current day and time.
-                        </p>
-                    </div>
-                    <?php if (empty($selected_department)): ?>
-                        <a href="index.php" class="bg-seait-orange text-white px-6 py-2 rounded-lg hover:bg-seait-dark transition-colors">
-                            Try Different Department
-                        </a>
-                    <?php else: ?>
-                        <a href="student-screen.php" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors">
-                            <i class="fas fa-arrow-left mr-2"></i>Back to All Departments
-                        </a>
-                    <?php endif; ?>
+        <!-- Student ID Required Notice -->
+        <div id="studentIdRequiredNotice" class="col-span-full bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center mb-6">
+            <div class="flex items-center justify-center space-x-3 mb-4">
+                <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-exclamation-triangle text-yellow-600 text-xl"></i>
                 </div>
-            <?php else: ?>
-                <?php foreach ($teachers as $teacher): ?>
-                    <div class="teacher-card bg-white rounded-xl shadow-lg hover:shadow-2xl cursor-pointer transform hover:scale-105 transition-all duration-300 border border-gray-200 flex flex-col overflow-hidden" 
-                         data-teacher-id="<?php echo htmlspecialchars($teacher['id']); ?>"
-                         data-teacher-name="<?php echo htmlspecialchars($teacher['first_name'] . ' ' . $teacher['last_name']); ?>"
-                         data-teacher-dept="<?php echo htmlspecialchars($teacher['department']); ?>">
-                        
-                        <!-- Enhanced Card Header with Avatar -->
-                        <div class="p-4 sm:p-8 border-b border-gray-100 flex-shrink-0 bg-gradient-to-br from-gray-50 to-white">
-                            <div class="flex items-center space-x-4 sm:space-x-6">
-                                <!-- Enhanced Teacher Avatar -->
-                                <div class="flex-shrink-0 teacher-avatar">
+                <div>
+                    <h3 class="text-lg font-semibold text-yellow-800">Student ID Required</h3>
+                    <p class="text-yellow-700">Please scan your student ID above to access consultation requests</p>
+                </div>
+            </div>
+            <div class="flex items-center justify-center space-x-2 text-sm text-yellow-600">
+                <i class="fas fa-qrcode"></i>
+                <span>Scan QR code or enter student ID manually</span>
+            </div>
+        </div>
+
+        <!-- Success Message (Hidden by default) -->
+        <div id="successMessage" class="col-span-full bg-green-50 border border-green-200 rounded-lg p-6 text-center mb-6 hidden">
+            <div class="flex items-center justify-center space-x-3 mb-4">
+                <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-green-800">Student ID Verified!</h3>
+                    <p class="text-green-700">Available teachers are now displayed below</p>
+                </div>
+            </div>
+            <div class="flex items-center justify-center space-x-2 text-sm text-green-600">
+                <i class="fas fa-users"></i>
+                <span>You can now request consultations with available teachers</span>
+            </div>
+        </div>
+
+        <!-- Teachers Section (Hidden until student ID is scanned) -->
+        <div id="teachersSection" class="hidden transition-all duration-500 ease-in-out">
+            <!-- Teachers Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                <?php if (empty($teachers)): ?>
+                    <div class="col-span-full bg-white rounded-lg shadow-md p-8 text-center">
+                        <i class="fas fa-user-slash text-gray-400 text-4xl mb-4"></i>
+                        <h3 class="text-xl font-semibold text-gray-600 mb-2">No Teachers Available Today</h3>
+                        <p class="text-gray-500 mb-4">
+                            <?php if (!empty($selected_department)): ?>
+                                No teachers from <strong><?php echo htmlspecialchars($selected_department); ?></strong> have scheduled consultation hours for today (<?php echo getCorrectDateTime('l, F j, Y'); ?>).
+                            <?php else: ?>
+                                No teachers have scheduled consultation hours for today (<?php echo getCorrectDateTime('l, F j, Y'); ?>).
+                            <?php endif; ?>
+                        </p>
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                            <p class="text-yellow-800 text-sm">
+                                <i class="fas fa-info-circle mr-2"></i>
+                                Teachers only appear when they have scheduled consultation hours for the current day and time.
+                            </p>
+                        </div>
+                        <?php if (empty($selected_department)): ?>
+                            <a href="index.php" class="bg-seait-orange text-white px-6 py-2 rounded-lg hover:bg-seait-dark transition-colors">
+                                Try Different Department
+                            </a>
+                        <?php else: ?>
+                            <a href="student-screen.php" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors">
+                                <i class="fas fa-arrow-left mr-2"></i>Back to All Departments
+                            </a>
+                        <?php endif; ?>
+                    </div>
+                <?php else: ?>
+                    <?php foreach ($teachers as $teacher): ?>
+                        <div class="teacher-card bg-white rounded-xl shadow-lg hover:shadow-2xl cursor-pointer transform hover:scale-105 transition-all duration-300 border border-gray-200 flex flex-col overflow-hidden" 
+                             data-teacher-id="<?php echo htmlspecialchars($teacher['id']); ?>"
+                             data-teacher-name="<?php echo htmlspecialchars($teacher['first_name'] . ' ' . $teacher['last_name']); ?>"
+                             data-teacher-dept="<?php echo htmlspecialchars($teacher['department']); ?>">
+                            
+                            <!-- Teacher Avatar at Top -->
+                            <div class="p-6 flex justify-center bg-gradient-to-br from-gray-50 to-white border-b border-gray-100">
+                                <div class="teacher-avatar">
                                     <?php if ($teacher['image_url']): ?>
                                         <img src="../<?php echo htmlspecialchars($teacher['image_url']); ?>" 
-                                             alt="Teacher" class="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-4 border-orange-500 shadow-lg">
+                                             alt="Teacher" class="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-4 border-orange-500 shadow-lg">
                                     <?php else: ?>
                                         <?php
                                         // Generate initials from first and last name
@@ -1408,29 +1587,32 @@ if (empty($teachers) && empty($selected_department)) {
                                         $last_initial = strtoupper(substr($teacher['last_name'], 0, 1));
                                         $initials = $first_initial . $last_initial;
                                         ?>
-                                        <div class="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center border-4 border-orange-500 shadow-lg">
-                                            <span class="text-white text-lg sm:text-2xl font-bold"><?php echo htmlspecialchars($initials); ?></span>
+                                        <div class="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center border-4 border-orange-500 shadow-lg">
+                                            <span class="text-white text-xl sm:text-2xl font-bold"><?php echo htmlspecialchars($initials); ?></span>
                                         </div>
                                     <?php endif; ?>
                                 </div>
+                            </div>
 
-                                <!-- Enhanced Teacher Name and Status -->
-                                <div class="flex-1 min-w-0">
-                                    <h3 class="text-lg sm:text-xl font-bold text-gray-800 mb-2 truncate">
+                            <!-- Teacher Information - Centered -->
+                            <div class="p-4 sm:p-6 flex-1 flex flex-col justify-center">
+                                <div class="text-center space-y-3">
+                                    <!-- Teacher Name -->
+                                    <h3 class="text-lg sm:text-xl font-bold text-gray-800">
                                         <?php echo htmlspecialchars($teacher['first_name'] . ' ' . $teacher['last_name']); ?>
                                     </h3>
-                                    <div class="flex items-center space-x-2 sm:space-x-3 mb-2 sm:mb-3">
+                                    
+                                    <!-- Status -->
+                                    <div class="flex items-center justify-center space-x-2">
                                         <div class="status-badge w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-green-500"></div>
                                         <span class="text-xs sm:text-sm text-green-600 font-semibold">Available for Consultation</span>
                                     </div>
-                                    <div class="flex items-center text-gray-600 text-xs sm:text-sm">
-                                        <i class="fas fa-graduation-cap mr-1 sm:mr-2 text-orange-500"></i>
-                                        <span class="truncate"><?php echo htmlspecialchars($teacher['department']); ?></span>
-                                    </div>
+                                    
+                                    <!-- Consultation Hours -->
                                     <?php if (isset($teacher['start_time']) && isset($teacher['end_time'])): ?>
-                                    <div class="flex items-center text-gray-600 text-xs sm:text-sm mt-1">
-                                        <i class="fas fa-clock mr-1 sm:mr-2 text-green-500"></i>
-                                        <span class="truncate">
+                                    <div class="flex items-center justify-center text-gray-600 text-xs sm:text-sm">
+                                        <i class="fas fa-clock mr-2 text-green-500"></i>
+                                        <span>
                                             <?php 
                                             echo date('g:i A', strtotime($teacher['start_time'])) . ' - ' . 
                                                  date('g:i A', strtotime($teacher['end_time']));
@@ -1443,38 +1625,58 @@ if (empty($teachers) && empty($selected_department)) {
                                     <?php endif; ?>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Enhanced Card Footer -->
-                        <div class="px-4 sm:px-8 py-4 sm:py-6 bg-gradient-to-r from-orange-50 to-orange-100 rounded-b-xl flex-shrink-0">
-                            <div class="flex items-center justify-between">
-                                <div class="text-center flex-1">
-                                    <div class="text-xs sm:text-sm text-orange-700 font-medium mb-2">Tap to start consultation</div>
-                                    <div class="flex items-center justify-center space-x-1 sm:space-x-2">
-                                        <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-orange-500 rounded-full animate-pulse"></div>
-                                        <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-orange-500 rounded-full animate-pulse" style="animation-delay: 0.2s;"></div>
-                                        <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-orange-500 rounded-full animate-pulse" style="animation-delay: 0.4s;"></div>
+                            <!-- Card Footer -->
+                            <div class="px-4 sm:px-6 py-4 bg-gradient-to-r from-orange-50 to-orange-100 rounded-b-xl">
+                                <div class="flex items-center justify-center">
+                                    <div class="text-center">
+                                        <div class="text-xs sm:text-sm text-orange-700 font-medium mb-2">Tap to start consultation</div>
+                                        <div class="flex items-center justify-center space-x-1 sm:space-x-2">
+                                            <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-orange-500 rounded-full animate-pulse"></div>
+                                            <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-orange-500 rounded-full animate-pulse" style="animation-delay: 0.2s;"></div>
+                                            <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-orange-500 rounded-full animate-pulse" style="animation-delay: 0.4s;"></div>
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="text-orange-600 text-lg sm:text-xl">
-                                    <i class="fas fa-arrow-right transform hover:translate-x-1 transition-transform"></i>
                                 </div>
                             </div>
                         </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+        </div>
+
+            <!-- QR Scanner Modal -->
+    <div id="qrScannerModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+        <div class="relative top-10 mx-auto p-5 border w-11/12 max-w-2xl shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium text-gray-900">QR Code Scanner</h3>
+                    <button onclick="closeQRScannerModal()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div id="qrScannerContainer" class="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <div class="text-center">
+                        <i class="fas fa-camera text-4xl text-gray-400 mb-4"></i>
+                        <p class="text-gray-600">Camera access required for QR scanning</p>
                     </div>
-                <?php endforeach; ?>
-            <?php endif; ?>
+                </div>
+                <div class="mt-4 text-center">
+                    <p class="text-sm text-gray-500">Position the QR code within the camera view</p>
+                </div>
+            </div>
         </div>
+    </div>
 
-        <!-- Floating Action Button -->
-        <div id="floatingActionButton" class="fixed bottom-6 right-6 z-40">
-            <button id="fabButton" class="fab-button">
-                <i class="fas fa-users"></i>
-            </button>
-        </div>
+    <!-- Floating Action Button -->
+    <div id="floatingActionButton" class="fixed bottom-6 right-6 z-40">
+        <button id="fabButton" class="fab-button">
+            <i class="fas fa-users"></i>
+        </button>
+    </div>
 
-        <!-- Floating Action Modal -->
-        <div id="fabModal" class="fab-modal">
+    <!-- Floating Action Modal -->
+    <div id="fabModal" class="fab-modal">
             <div class="fab-modal-overlay" id="fabModalOverlay"></div>
             <div class="fab-modal-content">
                 <div class="fab-modal-header">
@@ -1549,11 +1751,452 @@ if (empty($teachers) && empty($selected_department)) {
 
     <script src="fab-script.js"></script>
     <script>
+        // Global functions for modal handling
+        function closeNoTeachersModal() {
+            const modal = document.getElementById('noTeachersModal');
+            if (modal) {
+                const modalContent = modal.querySelector('.bg-white');
+                if (modalContent) {
+                    modalContent.classList.remove('scale-100', 'opacity-100');
+                    modalContent.classList.add('scale-95', 'opacity-0');
+                }
+                
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    modal.style.display = 'none';
+                }, 300);
+            }
+        }
+        
+        function refreshTeachersList() {
+            // Close the modal first
+            closeNoTeachersModal();
+            
+            // Reload the page to refresh the teachers list
+            setTimeout(() => {
+                window.location.reload();
+            }, 350);
+        }
+        
         // Wait for DOM to be ready
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM Content Loaded');
             
             try {
+            
+            // QR Scanner and Student ID functionality
+            const studentIdInput = document.getElementById('studentIdInput');
+            const scanQRBtn = document.getElementById('scanQRBtn');
+            const clearStudentIdBtn = document.getElementById('clearStudentIdBtn');
+            const studentInfoDisplay = document.getElementById('studentInfoDisplay');
+            const studentNameDisplay = document.getElementById('studentNameDisplay');
+            const studentIdDisplay = document.getElementById('studentIdDisplay');
+            const studentDeptDisplay = document.getElementById('studentDeptDisplay');
+            
+            let currentStudentId = '';
+            let currentStudentName = '';
+            let currentStudentDept = '';
+            
+            // Initialize QR Scanner
+            function initializeQRScanner() {
+                // Check if browser supports camera access
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    console.log('QR Scanner initialized - camera access available');
+                } else {
+                    console.log('QR Scanner initialized - camera access not available, manual input only');
+                }
+            }
+            
+            // Handle student ID input (from QR scan or manual entry)
+            function handleStudentIdInput(studentId) {
+                if (!studentId || studentId.trim() === '') {
+                    hideStudentInfo();
+                    return;
+                }
+                
+                // Clean the student ID
+                studentId = studentId.trim();
+                
+                // Store the student ID
+                currentStudentId = studentId;
+                
+                // Display student info with QR code only
+                displayStudentInfo({ name: 'Student', department: 'General', id: studentId });
+                
+                // Store in session storage for use in consultation requests
+                sessionStorage.setItem('currentStudentId', studentId);
+                sessionStorage.setItem('currentStudentName', 'Student');
+                sessionStorage.setItem('currentStudentDept', 'General');
+                
+                console.log('Student ID processed:', studentId);
+            }
+            
+
+            
+            // Display student information
+            function displayStudentInfo(studentData) {
+                studentNameDisplay.textContent = studentData.name;
+                studentIdDisplay.textContent = studentData.id || currentStudentId;
+                studentDeptDisplay.textContent = studentData.department;
+                studentInfoDisplay.classList.remove('hidden');
+                
+                // Add success animation
+                studentInfoDisplay.classList.add('animate-pulse');
+                setTimeout(() => {
+                    studentInfoDisplay.classList.remove('animate-pulse');
+                }, 1000);
+                
+                // Show teachers section
+                showTeachersSection();
+            }
+            
+                    // Hide student information
+        function hideStudentInfo() {
+            studentInfoDisplay.classList.add('hidden');
+            currentStudentId = '';
+            currentStudentName = '';
+            currentStudentDept = '';
+            
+            // Clear session storage
+            sessionStorage.removeItem('currentStudentId');
+            sessionStorage.removeItem('currentStudentName');
+            sessionStorage.removeItem('currentStudentDept');
+            
+            // Hide teachers section
+            hideTeachersSection();
+        }
+        
+        // Clear student ID field and reset everything
+        function clearStudentIdField() {
+            console.log('Clearing student ID field and resetting student info');
+            
+            // Clear the input field
+            if (studentIdInput) {
+                studentIdInput.value = '';
+            }
+            
+            // Hide student info display
+            hideStudentInfo();
+            
+            // Focus back to the input field for next scan
+            setTimeout(() => {
+                if (studentIdInput) {
+                    studentIdInput.focus();
+                    console.log('Student ID field cleared and focused for next scan');
+                }
+            }, 100);
+        }
+            
+            // Event listeners for student ID input
+            if (studentIdInput) {
+                // Handle manual input
+                studentIdInput.addEventListener('input', function(e) {
+                    const value = e.target.value;
+                    if (value.length >= 8) { // Minimum length for student ID
+                        handleStudentIdInput(value);
+                    } else {
+                        hideStudentInfo();
+                    }
+                });
+                
+                // Handle Enter key
+                studentIdInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        handleStudentIdInput(this.value);
+                    }
+                });
+                
+                // Prevent losing focus
+                studentIdInput.addEventListener('blur', function(e) {
+                    // Only allow blur if clicking on QR scan button or clear button
+                    const relatedTarget = e.relatedTarget;
+                    if (!relatedTarget || 
+                        (!relatedTarget.id.includes('scanQR') && 
+                         !relatedTarget.id.includes('clearStudentId') &&
+                         !relatedTarget.closest('#qrScannerModal'))) {
+                        // Refocus after a short delay
+                        setTimeout(() => {
+                            if (this.offsetParent !== null) { // Only if still visible
+                                this.focus();
+                            }
+                        }, 100);
+                    }
+                });
+                
+                // Auto-focus on page load
+                setTimeout(() => {
+                    studentIdInput.focus();
+                }, 500);
+                
+                // Focus on any click on the page (except on modals)
+                document.addEventListener('click', function(e) {
+                    // Don't refocus if clicking on modals, buttons, or other interactive elements
+                    if (!e.target.closest('.modal') && 
+                        !e.target.closest('button') && 
+                        !e.target.closest('a') &&
+                        !e.target.closest('#qrScannerModal') &&
+                        !e.target.closest('#fabModal')) {
+                        setTimeout(() => {
+                            if (studentIdInput && studentIdInput.offsetParent !== null) {
+                                studentIdInput.focus();
+                            }
+                        }, 100);
+                    }
+                });
+            }
+            
+            // QR Scan button functionality
+            if (scanQRBtn) {
+                scanQRBtn.addEventListener('click', function() {
+                    openQRScanner();
+                });
+            }
+            
+            // QR Scanner functionality
+            let html5QrcodeScanner = null;
+            
+            function openQRScanner() {
+                const modal = document.getElementById('qrScannerModal');
+                const container = document.getElementById('qrScannerContainer');
+                
+                if (modal && container) {
+                    modal.classList.remove('hidden');
+                    
+                    // Initialize QR scanner
+                    if (!html5QrcodeScanner) {
+                        html5QrcodeScanner = new Html5QrcodeScanner(
+                            "qrScannerContainer",
+                            { 
+                                fps: 10, 
+                                qrbox: { width: 250, height: 250 },
+                                aspectRatio: 1.0
+                            },
+                            false
+                        );
+                        
+                        html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+                    }
+                }
+            }
+            
+            function closeQRScannerModal() {
+                const modal = document.getElementById('qrScannerModal');
+                if (modal) {
+                    modal.classList.add('hidden');
+                    
+                    // Stop scanner if active
+                    if (html5QrcodeScanner) {
+                        html5QrcodeScanner.clear();
+                        html5QrcodeScanner = null;
+                    }
+                }
+            }
+            
+            function onScanSuccess(decodedText, decodedResult) {
+                console.log('QR Code scanned:', decodedText);
+                
+                // Close scanner
+                closeQRScannerModal();
+                
+                // Set the scanned value to input
+                if (studentIdInput) {
+                    studentIdInput.value = decodedText;
+                    handleStudentIdInput(decodedText);
+                }
+                
+                // Show success notification
+                showNotification('QR Code scanned successfully!', 'success');
+            }
+            
+            function onScanFailure(error) {
+                // Handle scan failure silently
+                console.log('QR scan failed:', error);
+            }
+            
+            // Make functions globally accessible
+            window.openQRScanner = openQRScanner;
+            window.closeQRScannerModal = closeQRScannerModal;
+            
+            // Simple notification function
+            function showNotification(message, type = 'info') {
+                // Create notification element
+                const notification = document.createElement('div');
+                notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm transform transition-all duration-300 translate-x-full`;
+                
+                // Set colors based on type
+                if (type === 'success') {
+                    notification.className += ' bg-green-500 text-white';
+                } else if (type === 'error') {
+                    notification.className += ' bg-red-500 text-white';
+                } else {
+                    notification.className += ' bg-blue-500 text-white';
+                }
+                
+                notification.innerHTML = `
+                    <div class="flex items-center">
+                        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'} mr-2"></i>
+                        <span>${message}</span>
+                    </div>
+                `;
+                
+                document.body.appendChild(notification);
+                
+                // Animate in
+                setTimeout(() => {
+                    notification.classList.remove('translate-x-full');
+                }, 100);
+                
+                // Auto remove after 3 seconds
+                setTimeout(() => {
+                    notification.classList.add('translate-x-full');
+                    setTimeout(() => {
+                        if (notification.parentNode) {
+                            notification.parentNode.removeChild(notification);
+                        }
+                    }, 300);
+                }, 3000);
+            }
+            
+            // Clear button functionality
+            if (clearStudentIdBtn) {
+                clearStudentIdBtn.addEventListener('click', function() {
+                    studentIdInput.value = '';
+                    hideStudentInfo();
+                    studentIdInput.focus();
+                });
+            }
+            
+            // Initialize QR scanner
+            initializeQRScanner();
+            
+            // Show/hide teachers section functions
+            function showTeachersSection() {
+                const teachersSection = document.getElementById('teachersSection');
+                const notice = document.getElementById('studentIdRequiredNotice');
+                const successMessage = document.getElementById('successMessage');
+                
+                // Show teachers section
+                if (teachersSection) {
+                    teachersSection.classList.remove('hidden');
+                    teachersSection.style.display = 'block';
+                }
+                
+                // Hide the notice
+                if (notice) {
+                    notice.style.display = 'none';
+                }
+                
+                // Show success message
+                if (successMessage) {
+                    successMessage.classList.remove('hidden');
+                    successMessage.style.display = 'block';
+                    
+                    // Auto-hide success message after 5 seconds
+                    setTimeout(() => {
+                        successMessage.style.display = 'none';
+                        successMessage.classList.add('hidden');
+                    }, 5000);
+                }
+                
+                // Initialize teacher card event listeners after showing the section
+                setTimeout(() => {
+                    initializeTeacherCardListeners();
+                    
+                    // Check if there are any teachers available after student ID is entered
+                    checkTeachersAvailability();
+                }, 100);
+                
+                console.log('Teachers section shown');
+            }
+            
+            // Check if teachers are available and show modal if not
+            function checkTeachersAvailability() {
+                const teachersSection = document.getElementById('teachersSection');
+                if (teachersSection) {
+                    const teacherCards = teachersSection.querySelectorAll('.teacher-card');
+                    if (teacherCards.length === 0) {
+                        // No teachers available, show modal
+                        showNoTeachersModal();
+                    }
+                }
+            }
+            
+            // Show no teachers available modal
+            function showNoTeachersModal() {
+                const modal = document.getElementById('noTeachersModal');
+                if (modal) {
+                    modal.classList.remove('hidden');
+                    modal.style.display = 'block';
+                    
+                    // Add animation
+                    setTimeout(() => {
+                        const modalContent = modal.querySelector('.bg-white');
+                        if (modalContent) {
+                            modalContent.classList.remove('scale-95', 'opacity-0');
+                            modalContent.classList.add('scale-100', 'opacity-100');
+                        }
+                    }, 10);
+                }
+            }
+            
+
+            
+            function hideTeachersSection() {
+                const teachersSection = document.getElementById('teachersSection');
+                const notice = document.getElementById('studentIdRequiredNotice');
+                const successMessage = document.getElementById('successMessage');
+                
+                // Hide teachers section
+                if (teachersSection) {
+                    teachersSection.classList.add('hidden');
+                    teachersSection.style.display = 'none';
+                }
+                
+                // Show the notice
+                if (notice) {
+                    notice.style.display = 'block';
+                }
+                
+                // Hide success message
+                if (successMessage) {
+                    successMessage.style.display = 'none';
+                    successMessage.classList.add('hidden');
+                }
+                
+                console.log('Teachers section hidden');
+            }
+            
+            // Initialize teachers section as hidden
+            hideTeachersSection();
+            
+            // Check if student ID already exists in session storage
+            const existingStudentId = sessionStorage.getItem('currentStudentId');
+            if (existingStudentId) {
+                // Restore student info from session storage
+                currentStudentId = existingStudentId;
+                currentStudentName = sessionStorage.getItem('currentStudentName') || 'Student';
+                currentStudentDept = sessionStorage.getItem('currentStudentDept') || 'General';
+                
+                // Update input field
+                if (studentIdInput) {
+                    studentIdInput.value = existingStudentId;
+                }
+                
+                // Display student info
+                displayStudentInfo({
+                    name: currentStudentName,
+                    department: currentStudentDept
+                });
+                
+                // Initialize teacher card listeners since teachers section will be shown
+                setTimeout(() => {
+                    initializeTeacherCardListeners();
+                }, 200);
+                
+                console.log('Restored student ID from session:', existingStudentId);
+            }
+            
+
             
             // Live Clock Functionality
             function updateLiveTime() {
@@ -1611,38 +2254,74 @@ if (empty($teachers) && empty($selected_department)) {
                 });
             });
 
-        // Auto-notify teacher when student taps teacher card
-        const teacherCards = document.querySelectorAll('.teacher-card');
-        const loadingState = document.getElementById('loadingState');
-        const notification = document.getElementById('notification');
-        const notificationText = document.getElementById('notificationText');
-        
-        console.log('Found teacher cards:', teacherCards.length);
-        console.log('Loading state element:', loadingState);
-        console.log('Notification element:', notification);
-        console.log('Notification text element:', notificationText);
+        // Initialize teacher card event listeners
+        function initializeTeacherCardListeners() {
+            const teacherCards = document.querySelectorAll('.teacher-card');
+            const loadingState = document.getElementById('loadingState');
+            const notification = document.getElementById('notification');
+            const notificationText = document.getElementById('notificationText');
+            
+            console.log('Initializing teacher card listeners. Found cards:', teacherCards.length);
+            console.log('Loading state element:', loadingState);
+            console.log('Notification element:', notification);
+            console.log('Notification text element:', notificationText);
 
-        teacherCards.forEach((card, index) => {
-            console.log(`Setting up click listener for card ${index + 1}:`, card);
-            card.addEventListener('click', function(e) {
-                console.log('Teacher card clicked!');
+            if (teacherCards.length === 0) {
+                console.warn('No teacher cards found to initialize listeners');
+                return;
+            }
+
+            teacherCards.forEach((card, index) => {
+                console.log(`Setting up click listener for card ${index + 1}:`, card);
                 
-                // Prevent multiple requests - check if already waiting for response
-                if (isStatusChecking) {
-                    console.log('Already waiting for teacher response, ignoring click');
-                    return;
-                }
+                // Remove any existing click listeners to prevent duplicates
+                card.removeEventListener('click', handleTeacherCardClick);
                 
-                const teacherId = this.getAttribute('data-teacher-id');
-                const teacherName = this.getAttribute('data-teacher-name');
-                const teacherDept = this.getAttribute('data-teacher-dept');
+                // Add new click listener
+                card.addEventListener('click', handleTeacherCardClick);
                 
-                console.log('Teacher data:', { teacherId, teacherName, teacherDept });
+                // Add visual feedback for clickable state
+                card.style.cursor = 'pointer';
+                card.classList.add('clickable');
                 
-                // Show confirmation dialog first
-                showConfirmationDialog(teacherName, teacherId, teacherDept);
+                console.log(`Click listener added to card ${index + 1}`);
             });
-        });
+            
+            console.log(`Successfully initialized ${teacherCards.length} teacher card listeners`);
+            
+            // Test click functionality
+            setTimeout(() => {
+                console.log('Testing teacher card click functionality...');
+                const testCard = document.querySelector('.teacher-card');
+                if (testCard) {
+                    console.log('Test card found, click listeners should be working');
+                    // Add a temporary test click to verify
+                    testCard.addEventListener('click', function() {
+                        console.log('Test click detected - teacher card listeners are working!');
+                    }, { once: true });
+                }
+            }, 500);
+        }
+        
+        // Teacher card click handler
+        function handleTeacherCardClick(e) {
+            console.log('Teacher card clicked!');
+            
+            // Prevent multiple requests - check if already waiting for response
+            if (isStatusChecking) {
+                console.log('Already waiting for teacher response, ignoring click');
+                return;
+            }
+            
+            const teacherId = this.getAttribute('data-teacher-id');
+            const teacherName = this.getAttribute('data-teacher-name');
+            const teacherDept = this.getAttribute('data-teacher-dept');
+            
+            console.log('Teacher data:', { teacherId, teacherName, teacherDept });
+            
+            // Show confirmation dialog first
+            showConfirmationDialog(teacherName, teacherId, teacherDept);
+        }
 
 
 
@@ -1881,6 +2560,21 @@ if (empty($teachers) && empty($selected_department)) {
         function confirmConsultationRequest(teacherId, teacherName, teacherDept) {
             console.log('Confirming consultation request for:', teacherName);
             
+            // Check if student ID is provided
+            const studentId = sessionStorage.getItem('currentStudentId');
+            const studentName = sessionStorage.getItem('currentStudentName');
+            const studentDept = sessionStorage.getItem('currentStudentDept');
+            
+            if (!studentId) {
+                alert('Please scan your student ID first before requesting consultation.');
+                // Focus back to student ID input
+                const studentIdInput = document.getElementById('studentIdInput');
+                if (studentIdInput) {
+                    studentIdInput.focus();
+                }
+                return;
+            }
+            
             // Close confirmation modal
             closeConfirmationModal();
                 
@@ -1899,13 +2593,9 @@ if (empty($teachers) && empty($selected_department)) {
                 // Submit consultation request via AJAX
                 const formData = new FormData();
                 formData.append('teacher_id', teacherId);
-                formData.append('student_name', 'Student');
-                
-                // Use selected department from URL or teacher's department as fallback
-                const selectedDept = '<?php echo htmlspecialchars($selected_department); ?>';
-                const studentDept = selectedDept || teacherDept || 'General';
-                formData.append('student_dept', studentDept);
-                formData.append('student_id', '');
+                formData.append('student_name', studentName || 'Student');
+                formData.append('student_id', studentId);
+                formData.append('student_dept', studentDept || 'General');
                 
                 fetch('submit-consultation-request.php', {
                     method: 'POST',
@@ -1932,6 +2622,9 @@ if (empty($teachers) && empty($selected_department)) {
                         
                         // Show pending request indicator
                         showPendingRequest(teacherName);
+                        
+                        // Clear the student ID input field and reset student info
+                        clearStudentIdField();
                         
                         console.log('Consultation request sent successfully');
                     } else {
@@ -2378,6 +3071,11 @@ if (empty($teachers) && empty($selected_department)) {
                 console.log('Modal element not found');
             }
             
+            // Clear student ID field after consultation response
+            setTimeout(() => {
+                clearStudentIdField();
+            }, 200);
+            
             // Reset flag after a short delay
             setTimeout(() => {
                 window.isClosingModal = false;
@@ -2401,6 +3099,8 @@ if (empty($teachers) && empty($selected_department)) {
             closeConsultationModal();
             // Remove any remaining blur effects
             cleanupBlurEffects();
+            // Clear student ID field for fresh start
+            clearStudentIdField();
             // Refresh the page to show available teachers
             window.location.reload();
         }
@@ -2515,6 +3215,15 @@ if (empty($teachers) && empty($selected_department)) {
                 console.log('Notification hidden');
             }
             
+            // Initialize teacher card listeners if teachers section is visible
+            const teachersSection = document.getElementById('teachersSection');
+            if (teachersSection && !teachersSection.classList.contains('hidden')) {
+                console.log('Teachers section is visible, initializing listeners');
+                setTimeout(() => {
+                    initializeTeacherCardListeners();
+                }, 100);
+            }
+            
             // Test if click events are working
             const testCard = document.querySelector('.teacher-card');
             if (testCard) {
@@ -2599,6 +3308,7 @@ if (empty($teachers) && empty($selected_department)) {
             const standbyCountdown = document.getElementById('standbyCountdown');
             const countdownTimer = document.getElementById('countdownTimer');
             const fullscreenBtn = document.getElementById('fullscreenBtn');
+            const studentIdInput = document.getElementById('studentIdInput');
             
             let standbyTimeout;
             let countdownInterval;
@@ -2626,6 +3336,15 @@ if (empty($teachers) && empty($selected_department)) {
                         console.log('Video autoplay failed:', e);
                     });
                 }
+                
+                // Ensure student ID input maintains focus even in standby
+                if (studentIdInput) {
+                    // Set focus after a short delay to ensure it works
+                    setTimeout(() => {
+                        studentIdInput.focus();
+                        console.log('Maintained focus on student ID input during standby');
+                    }, 100);
+                }
             }
             
             // Function to stop standby mode
@@ -2642,6 +3361,14 @@ if (empty($teachers) && empty($selected_department)) {
                 // Pause video
                 if (standbyVideo) {
                     standbyVideo.pause();
+                }
+                
+                // Ensure student ID input regains focus after standby
+                if (studentIdInput) {
+                    setTimeout(() => {
+                        studentIdInput.focus();
+                        console.log('Regained focus on student ID input after standby');
+                    }, 100);
                 }
             }
             
@@ -2663,6 +3390,13 @@ if (empty($teachers) && empty($selected_department)) {
                 // Stop standby mode if active
                 if (isStandbyActive) {
                     stopStandbyMode();
+                }
+                
+                // Ensure student ID input has focus when activity is detected
+                if (studentIdInput) {
+                    setTimeout(() => {
+                        studentIdInput.focus();
+                    }, 50);
                 }
                 
                 // Set new timeout
@@ -2718,6 +3452,38 @@ if (empty($teachers) && empty($selected_department)) {
             
             // Start activity timer
             resetActivityTimer();
+            
+            // Continuous focus maintenance for student ID input
+            function maintainFocus() {
+                if (studentIdInput && document.activeElement !== studentIdInput) {
+                    // Only refocus if the input is not already focused and is visible
+                    if (studentIdInput.offsetParent !== null) { // Check if element is visible
+                        studentIdInput.focus();
+                        console.log('Maintained focus on student ID input');
+                    }
+                }
+            }
+            
+            // Set up continuous focus checking
+            setInterval(maintainFocus, 2000); // Check every 2 seconds
+            
+            // Additional focus events
+            document.addEventListener('visibilitychange', function() {
+                if (!document.hidden && studentIdInput) {
+                    setTimeout(() => {
+                        studentIdInput.focus();
+                    }, 100);
+                }
+            });
+            
+            // Focus on window focus
+            window.addEventListener('focus', function() {
+                if (studentIdInput) {
+                    setTimeout(() => {
+                        studentIdInput.focus();
+                    }, 100);
+                }
+            });
             
             // Handle video click to exit standby
             standbyVideoContainer.addEventListener('click', function(e) {
@@ -2832,6 +3598,180 @@ if (empty($teachers) && empty($selected_department)) {
         window.addEventListener('error', function(e) {
             console.error('JavaScript error:', e.message, 'at', e.filename, 'line', e.lineno);
         });
+
+        // =====================================================
+        // CANVAS PARTICLE ANIMATION
+        // =====================================================
+
+        // Wait for DOM to be ready
+        document.addEventListener('DOMContentLoaded', function() {
+            initCanvasAnimation();
+        });
+
+        function initCanvasAnimation() {
+            var canvas = document.getElementById('canvas');
+            if (!canvas) {
+                console.error('Canvas element not found!');
+                return;
+            }
+
+            var context = canvas.getContext('2d');
+            if (!context) {
+                console.error('Canvas context not available!');
+                return;
+            }
+
+            // Set canvas size
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+
+            // Initial resize
+            resizeCanvas();
+
+            // Resize on window resize
+            window.addEventListener('resize', resizeCanvas);
+
+            window.requestAnimFrame = function()
+            {
+                return (
+                    window.requestAnimationFrame       || 
+                    window.webkitRequestAnimationFrame || 
+                    window.mozRequestAnimationFrame    || 
+                    window.oRequestAnimationFrame      || 
+                    window.msRequestAnimationFrame     || 
+                    function(/* function */ callback){
+                        window.setTimeout(callback, 1000 / 60);
+                    }
+                );
+            }();
+
+            //get DPI
+            let dpi = window.devicePixelRatio || 1;
+            context.scale(dpi, dpi);
+            console.log('Canvas DPI:', dpi);
+
+            function fix_dpi() {
+                //get CSS height
+                //the + prefix casts it to an integer
+                //the slice method gets rid of "px"
+                let style_height = +getComputedStyle(canvas).getPropertyValue("height").slice(0, -2);
+                let style_width = +getComputedStyle(canvas).getPropertyValue("width").slice(0, -2);
+
+                //scale the canvas
+                canvas.setAttribute('height', style_height * dpi);
+                canvas.setAttribute('width', style_width * dpi);
+            }
+
+            var particle_count = 70,
+                particles = [],
+                couleurs   = ["#3a0088", "#930077", "#e61c5d","#ffbd39"];
+            
+            function Particle()
+            {
+                this.radius = Math.round((Math.random()*2)+2);
+                this.x = Math.floor((Math.random() * (canvas.width - this.radius * 2) + this.radius));
+                this.y = Math.floor((Math.random() * (canvas.height - this.radius * 2) + this.radius));
+                this.color = couleurs[Math.floor(Math.random()*couleurs.length)];
+                this.speedx = Math.round((Math.random()*201)+0)/100;
+                this.speedy = Math.round((Math.random()*201)+0)/100;
+
+                switch (Math.round(Math.random()*couleurs.length))
+                {
+                    case 1:
+                    this.speedx *= 1;
+                    this.speedy *= 1;
+                    break;
+                    case 2:
+                    this.speedx *= -1;
+                    this.speedy *= 1;
+                    break;
+                    case 3:
+                    this.speedx *= 1;
+                    this.speedy *= -1;
+                    break;
+                    case 4:
+                    this.speedx *= -1;
+                    this.speedy *= -1;
+                    break;
+                }
+                    
+                this.move = function()
+                {
+                    context.beginPath();
+                    context.globalCompositeOperation = 'source-over';
+                    context.fillStyle   = this.color;
+                    context.globalAlpha = 1;
+                    context.arc(this.x, this.y, this.radius, 0, Math.PI*2, false);
+                    context.fill();
+                    context.closePath();
+
+                    this.x = this.x + this.speedx;
+                    this.y = this.y + this.speedy;
+                    
+                    if(this.x <= 0+this.radius)
+                    {
+                        this.speedx *= -1;
+                    }
+                    if(this.x >= canvas.width-this.radius)
+                    {
+                        this.speedx *= -1;
+                    }
+                    if(this.y <= 0+this.radius)
+                    {
+                        this.speedy *= -1;
+                    }
+                    if(this.y >= canvas.height-this.radius)
+                    {
+                        this.speedy *= -1;
+                    }
+
+                    for (var j = 0; j < particle_count; j++)
+                    {
+                        var particleActuelle = particles[j],
+                            yd = particleActuelle.y - this.y,
+                            xd = particleActuelle.x - this.x,
+                            d  = Math.sqrt(xd * xd + yd * yd);
+
+                        if ( d < 200 )
+                        {
+                            context.beginPath();
+                            context.globalAlpha = (200 - d) / (200 - 0);
+                            context.globalCompositeOperation = 'destination-over';
+                            context.lineWidth = 1;
+                            context.moveTo(this.x, this.y);
+                            context.lineTo(particleActuelle.x, particleActuelle.y);
+                            context.strokeStyle = this.color;
+                            context.lineCap = "round";
+                            context.stroke();
+                            context.closePath();
+                        }
+                    }
+                };
+            };
+            
+            // Create particles
+            for (var i = 0; i < particle_count; i++)
+            {
+                var particle = new Particle();
+                particles.push(particle);
+            }
+
+            function animate()
+            {
+                context.clearRect(0, 0, canvas.width, canvas.height);
+                for (var i = 0; i < particle_count; i++)
+                {
+                    particles[i].move();
+                }
+                requestAnimFrame(animate);
+            }
+            
+            // Start animation
+            animate();
+            console.log('Canvas animation started with', particle_count, 'particles');
+        }
     </script>
 </body>
 </html>
