@@ -41,7 +41,7 @@ $query = "SELECT
     fd.emergency_contact_name,
     fd.emergency_contact_number,
     fd.address,
-    fd.employee_id,
+            f.qrcode as employee_id,
     fd.date_of_hire,
     fd.employment_type,
     fd.basic_salary,

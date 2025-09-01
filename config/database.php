@@ -1,12 +1,12 @@
 <?php
-// Database configuration
+// Database configuration for online server
 $host = 'localhost';
 $dbname = 'seait_website';
 $username = 'root';
 $password = '';
 
 // Create connection
-$conn = mysqli_connect($host, $username, $password, $dbname, 3306, '/Applications/XAMPP/xamppfiles/var/mysql/mysql.sock');
+$conn = mysqli_connect($host, $username, $password, $dbname);
 
 // Check connection
 if (!$conn) {

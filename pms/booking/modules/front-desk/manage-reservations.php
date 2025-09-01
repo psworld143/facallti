@@ -17,6 +17,9 @@ $user_name = $_SESSION['user_name'];
 $page_title = 'Manage Reservations';
 $page_subtitle = 'View and manage guest reservations';
 
+// Include JavaScript for manage reservations functionality
+$additional_js = '<script src="../../assets/js/manage-reservations.js"></script>';
+
 // Include unified navigation (automatically selects based on user role)
 include '../../includes/header-unified.php';
 include '../../includes/sidebar-unified.php';

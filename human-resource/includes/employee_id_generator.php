@@ -9,9 +9,9 @@ function generateEmployeeID($conn) {
     $current_year = date('Y');
     
     // Get the highest series number for the current year
-    $query = "SELECT employee_id FROM faculty_details 
-              WHERE employee_id LIKE ? 
-              ORDER BY CAST(SUBSTRING_INDEX(employee_id, '-', -1) AS UNSIGNED) DESC 
+    $query = "SELECT qrcode FROM faculty 
+              WHERE qrcode LIKE ? 
+              ORDER BY CAST(SUBSTRING_INDEX(qrcode, '-', -1) AS UNSIGNED) DESC 
               LIMIT 1";
     
     $year_pattern = $current_year . '-%';
@@ -22,7 +22,7 @@ function generateEmployeeID($conn) {
     
     if (mysqli_num_rows($result) > 0) {
         $row = mysqli_fetch_assoc($result);
-        $last_employee_id = $row['employee_id'];
+        $last_employee_id = $row['qrcode'];
         
         // Extract the series number and increment it
         $parts = explode('-', $last_employee_id);
@@ -68,12 +68,12 @@ function validateEmployeeID($employee_id) {
 }
 
 function isEmployeeIDUnique($conn, $employee_id, $exclude_faculty_id = null) {
-    $query = "SELECT COUNT(*) as count FROM faculty_details WHERE employee_id = ?";
+    $query = "SELECT COUNT(*) as count FROM faculty WHERE qrcode = ?";
     $params = [$employee_id];
     $param_types = "s";
     
     if ($exclude_faculty_id) {
-        $query .= " AND faculty_id != ?";
+        $query .= " AND id != ?";
         $params[] = $exclude_faculty_id;
         $param_types .= "i";
     }

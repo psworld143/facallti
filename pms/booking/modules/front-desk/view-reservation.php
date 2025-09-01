@@ -91,7 +91,7 @@ include '../../includes/sidebar-unified.php';
                             <i class="fas fa-dollar-sign text-white text-xl"></i>
                         </div>
                         <div>
-                            <h4 class="text-lg font-bold text-gray-800">$<?php echo number_format($reservation['total_amount'], 2); ?></h4>
+                            <h4 class="text-lg font-bold text-gray-800">₱<?php echo number_format($reservation['total_amount'], 2); ?></h4>
                             <p class="text-gray-600">Total Amount</p>
                         </div>
                     </div>
@@ -143,7 +143,7 @@ include '../../includes/sidebar-unified.php';
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Room Rate</label>
-                        <p class="text-gray-900">$<?php echo number_format(getRoomTypes()[$reservation['room_type'] ?? 'standard']['rate'], 2); ?> per night</p>
+                        <p class="text-gray-900">₱<?php echo number_format(getRoomTypes()[$reservation['room_type'] ?? 'standard']['rate'], 2); ?> per night</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Check-in Date</label>
@@ -166,19 +166,19 @@ include '../../includes/sidebar-unified.php';
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Room Charges</label>
-                        <p class="text-gray-900 font-medium">$<?php echo number_format(getRoomTypes()[$reservation['room_type'] ?? 'standard']['rate'] * $nights, 2); ?></p>
+                        <p class="text-gray-900 font-medium">₱<?php echo number_format(getRoomTypes()[$reservation['room_type'] ?? 'standard']['rate'] * $nights, 2); ?></p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Additional Services</label>
-                        <p class="text-gray-900">$<?php echo number_format($billing_details['services_total'] ?? 0, 2); ?></p>
+                        <p class="text-gray-900">₱<?php echo number_format($billing_details['services_total'] ?? 0, 2); ?></p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Taxes & Fees</label>
-                        <p class="text-gray-900">$<?php echo number_format($billing_details['taxes'] ?? 0, 2); ?></p>
+                        <p class="text-gray-900">₱<?php echo number_format($billing_details['taxes'] ?? 0, 2); ?></p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Total Amount</label>
-                        <p class="text-gray-900 font-bold text-lg">$<?php echo number_format($reservation['total_amount'], 2); ?></p>
+                        <p class="text-gray-900 font-bold text-lg">₱<?php echo number_format($reservation['total_amount'], 2); ?></p>
                     </div>
                 </div>
                 
@@ -190,7 +190,7 @@ include '../../includes/sidebar-unified.php';
                             <?php foreach ($additional_services as $service): ?>
                             <div class="flex justify-between items-center">
                                 <span class="text-gray-700"><?php echo htmlspecialchars($service['service_name']); ?></span>
-                                <span class="font-medium">$<?php echo number_format($service['amount'], 2); ?></span>
+                                <span class="font-medium">₱<?php echo number_format($service['amount'], 2); ?></span>
                             </div>
                             <?php endforeach; ?>
                         </div>

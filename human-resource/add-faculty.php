@@ -72,7 +72,7 @@ $employment_type = isset($_POST['employment_type']) ? trim($_POST['employment_ty
 $basic_salary = isset($_POST['basic_salary']) ? (float)$_POST['basic_salary'] : 0;
 $salary_grade = isset($_POST['salary_grade']) ? sanitize_input($_POST['salary_grade']) : '';
 $allowances = isset($_POST['allowances']) ? (float)$_POST['allowances'] : 0;
-$pay_schedule = isset($_POST['pay_schedule']) ? trim($_POST['pay_schedule']) : '';
+$pay_schedule = isset($_POST['pay_schedule']) && !empty($_POST['pay_schedule']) ? trim($_POST['pay_schedule']) : null;
 $highest_education = isset($_POST['highest_education']) ? trim($_POST['highest_education']) : '';
 $field_of_study = isset($_POST['field_of_study']) ? sanitize_input($_POST['field_of_study']) : '';
 $school_university = isset($_POST['school_university']) ? sanitize_input($_POST['school_university']) : '';
@@ -136,7 +136,7 @@ if (!empty($employment_type) && !in_array($employment_type, $valid_employment_ty
     exit();
 }
 
-if (!empty($pay_schedule) && !in_array($pay_schedule, $valid_pay_schedules)) {
+if ($pay_schedule !== null && !in_array($pay_schedule, $valid_pay_schedules)) {
     header('Content-Type: application/json');
     echo json_encode(['success' => false, 'message' => 'Invalid pay schedule value']);
     exit();
@@ -165,18 +165,22 @@ if (mysqli_num_rows($check_result) > 0) {
 mysqli_begin_transaction($conn);
 
 try {
+    // Set default password for new faculty member
+    $default_password = "Seait123";
+    $hashed_password = password_hash($default_password, PASSWORD_DEFAULT);
+    
     // Insert into main faculty table
     $insert_faculty_query = "INSERT INTO faculty (
-        first_name, last_name, email, position, department, is_active, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, NOW())";
+        first_name, last_name, email, password, position, department, is_active, qrcode, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
 
     $insert_faculty_stmt = mysqli_prepare($conn, $insert_faculty_query);
     if (!$insert_faculty_stmt) {
         throw new Exception('Error preparing faculty insert: ' . mysqli_error($conn));
     }
 
-    mysqli_stmt_bind_param($insert_faculty_stmt, "sssssi", 
-        $first_name, $last_name, $email, $position, $department, $is_active
+    mysqli_stmt_bind_param($insert_faculty_stmt, "ssssssis", 
+        $first_name, $last_name, $email, $hashed_password, $position, $department, $is_active, $employee_id
     );
     
     if (!mysqli_stmt_execute($insert_faculty_stmt)) {
@@ -199,11 +203,19 @@ try {
         throw new Exception('Error preparing details insert: ' . mysqli_error($conn));
     }
 
+    // Handle NULL values for optional fields
+    $gender_param = !empty($gender) ? $gender : null;
+    $civil_status_param = !empty($civil_status) ? $civil_status : null;
+    $employment_type_param = !empty($employment_type) ? $employment_type : null;
+    $pay_schedule_param = $pay_schedule !== null ? $pay_schedule : null;
+    $highest_education_param = !empty($highest_education) ? $highest_education : null;
+    $year_graduated_param = $year_graduated !== null ? $year_graduated : null;
+    
     mysqli_stmt_bind_param($insert_details_stmt, "isssssssssssssdsdsssssssss", 
-        $faculty_id, $middle_name, $date_of_birth, $gender, $civil_status, $nationality, $religion,
+        $faculty_id, $middle_name, $date_of_birth, $gender_param, $civil_status_param, $nationality, $religion,
         $phone, $emergency_contact_name, $emergency_contact_number, $address,
-        $employee_id, $date_of_hire, $employment_type, $basic_salary, $salary_grade, $allowances, $pay_schedule,
-        $highest_education, $field_of_study, $school_university, $year_graduated,
+        $employee_id, $date_of_hire, $employment_type_param, $basic_salary, $salary_grade, $allowances, $pay_schedule_param,
+        $highest_education_param, $field_of_study, $school_university, $year_graduated_param,
         $tin_number, $sss_number, $philhealth_number, $pagibig_number
     );
     
@@ -246,7 +258,7 @@ try {
     header('Content-Type: application/json');
     echo json_encode([
         'success' => true, 
-        'message' => 'Faculty member added successfully',
+        'message' => 'Faculty member added successfully! Default password is: Seait123',
         'faculty_id' => $faculty_id
     ]);
     

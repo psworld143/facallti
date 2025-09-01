@@ -183,7 +183,7 @@ function displayAvailableRooms(rooms) {
                 <div>Type: ${room.room_type_name}</div>
                 <div>Floor: ${room.floor}</div>
                 <div>Capacity: ${room.capacity} persons</div>
-                <div class="font-medium text-primary">$${room.rate}/night</div>
+                <div class="font-medium text-primary">₱${room.rate}/night</div>
             </div>
         </div>
     `).join('');

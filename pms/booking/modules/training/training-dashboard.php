@@ -161,7 +161,7 @@ include '../../includes/sidebar-unified.php';
                     "The world's largest hotel is the First World Hotel in Malaysia with 7,351 rooms.",
                     "The Burj Al Arab in Dubai has a helipad on its roof, 210 meters above the ground.",
                     "The oldest hotel still in operation is the Nishiyama Onsen Keiunkan in Japan, opened in 705 AD.",
-                    "The most expensive hotel room in the world is the Royal Villa at the Grand Resort Lagonissi in Greece, costing $50,000 per night.",
+                    "The most expensive hotel room in the world is the Royal Villa at the Grand Resort Lagonissi in Greece, costing ₱50,000 per night.",
                     "The world's highest hotel is the Ritz-Carlton Hong Kong, located on the 102nd to 118th floors.",
                     "The largest hotel chain in the world is Marriott International with over 7,000 properties.",
                     "The first hotel to offer room service was the Waldorf-Astoria in New York City in 1893.",
@@ -193,7 +193,7 @@ include '../../includes/sidebar-unified.php';
             </h3>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="text-center p-4 bg-gray-50 rounded-lg">
-                    <div class="text-2xl font-bold text-blue-600">$1.5T</div>
+                    <div class="text-2xl font-bold text-blue-600">₱1.5T</div>
                     <div class="text-sm text-gray-600">Global Hotel Market Size</div>
                 </div>
                 <div class="text-center p-4 bg-gray-50 rounded-lg">

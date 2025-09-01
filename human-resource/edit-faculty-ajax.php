@@ -754,7 +754,7 @@ function showLoading(show) {
 // Employee ID generation
 async function generateEmployeeID() {
     try {
-        const response = await fetch('get-next-employee-id.php');
+        const response = await fetch('get-next-faculty-employee-id.php');
         const data = await response.json();
         
         if (data.success) {

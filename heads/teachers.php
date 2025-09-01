@@ -3,6 +3,8 @@
 
 <?php
 session_start();
+// error_reporting(E_ALL);
+// ini_set('display_errors', 1);
 require_once '../config/database.php';
 require_once '../includes/functions.php';
 
@@ -60,10 +62,10 @@ $param_types = "s";
 $where_conditions = ["f.department = ?"];
 
 if ($search) {
-    $where_conditions[] = "(f.first_name LIKE ? OR f.last_name LIKE ? OR f.email LIKE ?)";
+    $where_conditions[] = "(f.first_name LIKE ? OR f.last_name LIKE ? OR f.email LIKE ? OR f.qrcode LIKE ?)";
     $search_param = "%$search%";
-    $params = array_merge($params, [$search_param, $search_param, $search_param]);
-    $param_types .= "sss";
+    $params = array_merge($params, [$search_param, $search_param, $search_param, $search_param]);
+    $param_types .= "ssss";
 }
 
 if ($status_filter) {
@@ -122,8 +124,22 @@ include 'includes/header.php';
 
 <!-- Page Header -->
 <div class="mb-6">
-    <h1 class="text-2xl font-bold text-gray-900">My Teachers</h1>
-    <p class="text-gray-600">Teachers under <?php echo $head_info['department']; ?> department</p>
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">My Teachers</h1>
+            <p class="text-gray-600">Teachers under <?php echo $head_info['department']; ?> department</p>
+        </div>
+        <div class="flex space-x-3">
+            <a href="../generate-teacher-qr.php?id=1" target="_blank" 
+               class="bg-seait-orange text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition flex items-center">
+                <i class="fas fa-qrcode mr-2"></i>View Sample QR
+            </a>
+            <a href="../seed-faculty-qr-codes.php" target="_blank" 
+               class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition flex items-center">
+                <i class="fas fa-magic mr-2"></i>Generate All QR Codes
+            </a>
+        </div>
+    </div>
 </div>
 
 <!-- Filters -->
@@ -132,7 +148,7 @@ include 'includes/header.php';
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Search</label>
             <input type="text" name="search" value="<?php echo htmlspecialchars($search); ?>" 
-                   placeholder="Search by name or email..."
+                   placeholder="Search by name, email, or QR code..."
                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-seait-orange">
         </div>
         <div>
@@ -162,6 +178,7 @@ include 'includes/header.php';
                 <tr>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teacher</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">QR Code</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Evaluations</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -171,7 +188,7 @@ include 'includes/header.php';
             <tbody class="bg-white divide-y divide-gray-200">
                 <?php if (empty($teachers)): ?>
                     <tr>
-                        <td colspan="6" class="px-6 py-4 text-center text-gray-500">No teachers found</td>
+                        <td colspan="7" class="px-6 py-4 text-center text-gray-500">No teachers found</td>
                     </tr>
                 <?php else: ?>
                     <?php foreach ($teachers as $teacher): ?>
@@ -196,6 +213,23 @@ include 'includes/header.php';
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                 <?php echo $teacher['position']; ?>
                             </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <?php if (!empty($teacher['qrcode'])): ?>
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-sm font-mono text-gray-900 bg-gray-100 px-2 py-1 rounded">
+                                            <?php echo htmlspecialchars($teacher['qrcode']); ?>
+                                        </span>
+                                        <a href="../generate-teacher-qr.php?id=<?php echo $teacher['id']; ?>" 
+                                           target="_blank" 
+                                           class="text-seait-orange hover:text-orange-600" 
+                                           title="View QR Code">
+                                            <i class="fas fa-qrcode"></i>
+                                        </a>
+                                    </div>
+                                <?php else: ?>
+                                    <span class="text-sm text-gray-400">No QR Code</span>
+                                <?php endif; ?>
+                            </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 <?php echo $teacher['email']; ?>
                             </td>
@@ -213,10 +247,23 @@ include 'includes/header.php';
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <a href="view-evaluation.php?faculty_id=<?php echo $teacher['id']; ?>" 
-                                   class="text-seait-orange hover:text-orange-600">
-                                    <i class="fas fa-eye"></i> View Evaluations
-                                </a>
+                                <div class="flex space-x-3">
+                                    <a href="view-evaluation.php?faculty_id=<?php echo $teacher['id']; ?>" 
+                                       class="text-seait-orange hover:text-orange-600">
+                                        <i class="fas fa-eye"></i> View Evaluations
+                                    </a>
+                                    <?php if (!empty($teacher['qrcode'])): ?>
+                                        <a href="../generate-teacher-qr.php?id=<?php echo $teacher['id']; ?>" 
+                                           target="_blank" 
+                                           class="text-blue-600 hover:text-blue-800">
+                                            <i class="fas fa-qrcode"></i> QR Code
+                                        </a>
+                                    <?php else: ?>
+                                        <span class="text-gray-400">
+                                            <i class="fas fa-qrcode"></i> No QR Code
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
                             </td>
                         </tr>
                     <?php endforeach; ?>

@@ -1019,6 +1019,10 @@ $office_session_id = uniqid('office_', true);
                         <i class="fas fa-clock mr-1 sm:mr-2"></i>
                         <span id="pendingCount"> 0 </span> pending requests
                         </span>
+                        <span class="flex items-center text-gray-500 text-xs" id="lastRefreshTime">
+                            <i class="fas fa-sync-alt mr-1"></i>
+                            Last updated: <span id="refreshTimeDisplay"><?php echo date('H:i:s'); ?></span>
+                        </span>
                     </div>
                 </div>
             </div>
@@ -1103,7 +1107,11 @@ $office_session_id = uniqid('office_', true);
         refreshBtn.addEventListener('click', function() {
             // Check for new requests immediately
             checkForConsultationRequests();
-            showNotification('Refreshed consultation requests', 'info');
+            
+            // Also refresh the teacher list
+            refreshTeacherList();
+            
+            showNotification('Refreshed consultation requests and teacher list', 'info');
         });
 
         // Notification functionality
@@ -2127,6 +2135,9 @@ $office_session_id = uniqid('office_', true);
         // Check for requests every 1 second
         setInterval(checkForConsultationRequests, 1000);
         
+        // Refresh teacher list every 30 seconds for automatic updates
+        setInterval(() => refreshTeacherList(true), 30000);
+        
         // Also check immediately when page loads
         console.log('Teacher screen loaded, checking for requests immediately...');
         try {
@@ -2137,6 +2148,8 @@ $office_session_id = uniqid('office_', true);
         
         // Add test button for debugging
         addTestButton();
+        
+
 
         // Keyboard shortcuts
         document.addEventListener('keydown', function(e) {
@@ -2635,6 +2648,11 @@ $office_session_id = uniqid('office_', true);
                     currentTeacherId = teacherId;
                     showEnhancedNotification('✅ Teacher availability confirmed successfully!', 'success');
                     updateTeacherAvailabilityStatus(true, data.teacher);
+                    
+                    // Automatically refresh the teacher list to show updated status
+                    setTimeout(() => {
+                        refreshTeacherList();
+                    }, 1000); // Small delay to ensure database update is complete
                 } else {
                     showEnhancedNotification(data.error || 'Failed to confirm availability', 'error');
                 }
@@ -2666,6 +2684,11 @@ $office_session_id = uniqid('office_', true);
                     showEnhancedNotification('❌ Teacher marked as unavailable', 'info');
                     updateTeacherAvailabilityStatus(false);
                     currentTeacherId = null;
+                    
+                    // Automatically refresh the teacher list to show updated status
+                    setTimeout(() => {
+                        refreshTeacherList();
+                    }, 1000); // Small delay to ensure database update is complete
                 } else {
                     showEnhancedNotification(data.error || 'Failed to mark as unavailable', 'error');
                 }
@@ -2714,6 +2737,163 @@ $office_session_id = uniqid('office_', true);
                 .catch(error => {
                     console.error('Error checking teacher availability status:', error);
                 });
+            }
+        }
+
+        // Refresh teacher list automatically
+        function refreshTeacherList(silent = false) {
+            const department = '<?php echo htmlspecialchars($selected_department); ?>';
+            
+            // Show loading indicator
+            const teacherListContainer = document.querySelector('.grid.grid-cols-1.sm\\:grid-cols-2.lg\\:grid-cols-3');
+            if (teacherListContainer) {
+                teacherListContainer.style.opacity = '0.6';
+                teacherListContainer.style.pointerEvents = 'none';
+            }
+            
+            const apiUrl = `get-teachers-for-department.php?dept=${encodeURIComponent(department)}`;
+            
+            // Fetch updated teacher data
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateTeacherListDisplay(data.teachers);
+                        updateTeacherCounts(data.teachers);
+                        
+                        // Only show notification if not silent (manual refresh)
+                        if (!silent) {
+                            showEnhancedNotification('🔄 Teacher list updated automatically', 'info');
+                        }
+                        
+                        // Update the last refresh time
+                        const refreshTimeDisplay = document.getElementById('refreshTimeDisplay');
+                        if (refreshTimeDisplay) {
+                            refreshTimeDisplay.textContent = new Date().toLocaleTimeString('en-US', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit'
+                            });
+                        }
+                    } else {
+                        console.error('Failed to refresh teacher list:', data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error refreshing teacher list:', error);
+                })
+                .finally(() => {
+                    // Restore normal display
+                    if (teacherListContainer) {
+                        teacherListContainer.style.opacity = '1';
+                        teacherListContainer.style.pointerEvents = 'auto';
+                    }
+                });
+        }
+
+        // Update teacher list display with new data
+        function updateTeacherListDisplay(teachers) {
+            const teacherListContainer = document.querySelector('.grid.grid-cols-1.sm\\:grid-cols-2.lg\\:grid-cols-3');
+            if (!teacherListContainer) {
+                return;
+            }
+
+            if (teachers.length === 0) {
+                teacherListContainer.innerHTML = `
+                    <div class="text-center py-8 col-span-full">
+                        <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-clock text-gray-400 text-2xl"></i>
+                        </div>
+                        <h4 class="text-lg font-semibold text-gray-700 mb-2">No Teachers Available</h4>
+                        <p class="text-gray-500">There are no teachers with consultation hours at this time.</p>
+                        <p class="text-sm text-gray-400 mt-2">Please check back during consultation hours.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            teacherListContainer.innerHTML = teachers.map(teacher => {
+                const is_available = (teacher.availability_status === 'available' && teacher.scan_time);
+                const card_bg_class = is_available ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-300' : 'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-300';
+                const status_text = is_available ? 'Available' : 'Not Scanned';
+                const status_color = is_available ? 'text-green-700' : 'text-gray-600';
+                const status_icon = is_available ? 'fas fa-check-circle text-green-500' : 'fas fa-clock text-gray-500';
+                const avatar_border = is_available ? 'border-green-500' : 'border-gray-400';
+
+                return `
+                    <div class="teacher-card ${card_bg_class} border-2">
+                        <div class="flex items-center space-x-2 sm:space-x-3 mb-2">
+                            <div class="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full flex items-center justify-center flex-shrink-0 border-2 ${avatar_border}">
+                                ${teacher.image_url ? 
+                                    `<img src="../${teacher.image_url}" alt="Teacher" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover">` :
+                                    `<i class="fas fa-user text-gray-600 text-sm sm:text-base"></i>`
+                                }
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <h4 class="text-gray-800 font-semibold text-sm sm:text-base truncate">
+                                    ${teacher.first_name} ${teacher.last_name}
+                                </h4>
+                                <p class="text-gray-600 text-xs sm:text-sm truncate">
+                                    ${teacher.position}
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <!-- Status Indicator -->
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <i class="${status_icon} text-xs sm:text-sm"></i>
+                                <span class="${status_color} text-xs sm:text-sm font-medium">${status_text}</span>
+                            </div>
+                            ${is_available && teacher.scan_time ? 
+                                `<span class="text-xs text-green-600">${new Date(teacher.scan_time).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'})}</span>` : 
+                                ''
+                            }
+                        </div>
+                        
+                        <!-- Consultation Hours -->
+                        ${teacher.start_time && teacher.end_time ? `
+                            <div class="mt-2 pt-2 border-t border-gray-200">
+                                <div class="flex items-center text-xs text-gray-600">
+                                    <i class="fas fa-clock mr-1"></i>
+                                    <span>
+                                        ${new Date('2000-01-01T' + teacher.start_time).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'})} - 
+                                        ${new Date('2000-01-01T' + teacher.end_time).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'})}
+                                        ${teacher.room ? ' | ' + teacher.room : ''}
+                                    </span>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Update teacher counts in the status section
+        function updateTeacherCounts(teachers) {
+            let available_count = 0;
+            let not_scanned_count = 0;
+            
+            teachers.forEach(teacher => {
+                if (teacher.availability_status === 'available' && teacher.scan_time) {
+                    available_count++;
+                } else {
+                    not_scanned_count++;
+                }
+            });
+
+            // Update the count displays
+            const availableElement = document.querySelector('.text-green-600');
+            const notScannedElement = document.querySelector('.text-gray-600');
+            
+            if (availableElement) {
+                const iconElement = availableElement.querySelector('i');
+                availableElement.innerHTML = `${iconElement.outerHTML} ${available_count} available`;
+            }
+            
+            if (notScannedElement) {
+                const iconElement = notScannedElement.querySelector('i');
+                notScannedElement.innerHTML = `${iconElement.outerHTML} ${not_scanned_count} not scanned`;
             }
         }
 

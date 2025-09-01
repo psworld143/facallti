@@ -8,6 +8,7 @@ if (document.readyState === 'loading') {
 }
 
 function initializeManageReservations() {
+    console.log('initializeManageReservations called');
     // Load reservations on page load
     loadReservations();
     
@@ -36,19 +37,30 @@ function initializeManageReservations() {
 
 // Load reservations
 function loadReservations() {
+    console.log('loadReservations function called');
     const container = document.getElementById('reservations-list');
-    if (!container) return;
+    if (!container) {
+        console.error('reservations-list container not found');
+        return;
+    }
     
+    console.log('Fetching reservations from API...');
     // Show loading
     container.innerHTML = '<div class="flex items-center justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>';
     
     // Fetch reservations
     fetch('../../api/get-all-reservations.php')
-        .then(response => response.json())
+        .then(response => {
+            console.log('API response received:', response);
+            return response.json();
+        })
         .then(data => {
+            console.log('API data:', data);
             if (data.success) {
+                console.log('Displaying reservations:', data.reservations);
                 displayReservations(data.reservations);
             } else {
+                console.error('API returned error:', data.message);
                 container.innerHTML = `
                     <div class="px-6 py-12 text-center">
                         <i class="fas fa-exclamation-triangle text-red-400 text-4xl mb-4"></i>
@@ -181,7 +193,7 @@ function displayReservations(reservations) {
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            $${parseFloat(reservation.total_amount).toFixed(2)}
+                            ₱${parseFloat(reservation.total_amount).toFixed(2)}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div class="flex space-x-2">

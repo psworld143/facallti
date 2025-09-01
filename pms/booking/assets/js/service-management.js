@@ -262,7 +262,7 @@ function displayAdditionalServices(services) {
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${service.quantity}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">$${parseFloat(service.total_price).toFixed(2)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">₱${parseFloat(service.total_price).toFixed(2)}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${formatDate(service.created_at)}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <button onclick="viewServiceDetails(${service.id})" 
@@ -346,7 +346,7 @@ function displayServiceCharges(charges) {
                                 <div class="text-sm font-medium text-gray-900">${charge.service_name}</div>
                                 <div class="text-sm text-gray-500">${charge.service_category}</div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">$${parseFloat(charge.total_price).toFixed(2)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">₱${parseFloat(charge.total_price).toFixed(2)}</td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
                                     Billed
@@ -666,7 +666,7 @@ function loadMinibarItems() {
                             <input type="number" class="minibar-quantity w-16 px-2 py-1 border rounded text-center" 
                                    min="0" value="0" onchange="calculateMinibarTotal()">
                             <span class="text-sm font-medium">${item.name}</span>
-                            <span class="text-sm text-gray-500">$${parseFloat(item.unit_price).toFixed(2)} each</span>
+                            <span class="text-sm text-gray-500">₱${parseFloat(item.unit_price).toFixed(2)} each</span>
                         </div>
                         <span class="minibar-item-total text-sm font-medium">$0.00</span>
                     </div>
@@ -682,7 +682,7 @@ function calculateServiceTotal() {
     const quantity = parseInt(document.getElementById('service_quantity').value) || 0;
     const unitPrice = parseFloat(document.getElementById('service_unit_price').value) || 0;
     const total = quantity * unitPrice;
-    document.getElementById('service_total_amount').value = `$${total.toFixed(2)}`;
+    document.getElementById('service_total_amount').value = `₱${total.toFixed(2)}`;
 }
 
 function calculateMinibarTotal() {
@@ -691,10 +691,10 @@ function calculateMinibarTotal() {
         const quantity = parseInt(item.querySelector('.minibar-quantity').value) || 0;
         const unitPrice = parseFloat(item.dataset.unitPrice) || 0;
         const itemTotal = quantity * unitPrice;
-        item.querySelector('.minibar-item-total').textContent = `$${itemTotal.toFixed(2)}`;
+        item.querySelector('.minibar-item-total').textContent = `₱${itemTotal.toFixed(2)}`;
         total += itemTotal;
     });
-    document.getElementById('minibar-total').textContent = `$${total.toFixed(2)}`;
+    document.getElementById('minibar-total').textContent = `₱${total.toFixed(2)}`;
 }
 
 // Validation functions
@@ -1028,16 +1028,16 @@ function displayServiceRequestDetails(data) {
                     <div class="space-y-2">
                         <div class="flex justify-between">
                             <span class="text-sm font-medium text-gray-600">Estimated Cost:</span>
-                            <span class="text-sm text-gray-900">$${costComparison.estimated.toFixed(2)}</span>
+                            <span class="text-sm text-gray-900">₱${costComparison.estimated.toFixed(2)}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-sm font-medium text-gray-600">Actual Cost:</span>
-                            <span class="text-sm text-gray-900">$${costComparison.actual.toFixed(2)}</span>
+                            <span class="text-sm text-gray-900">₱${costComparison.actual.toFixed(2)}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-sm font-medium text-gray-600">Difference:</span>
                             <span class="text-sm ${costComparison.difference >= 0 ? 'text-green-600' : 'text-red-600'}">
-                                ${costComparison.difference >= 0 ? '+' : ''}$${costComparison.difference.toFixed(2)}
+                                ${costComparison.difference >= 0 ? '+' : ''}₱${costComparison.difference.toFixed(2)}
                             </span>
                         </div>
                     </div>
@@ -1088,11 +1088,11 @@ function displayServiceDetails(data) {
                         </div>
                         <div class="flex justify-between">
                             <span class="text-sm font-medium text-gray-600">Unit Price:</span>
-                            <span class="text-sm text-gray-900">$${parseFloat(service.unit_price).toFixed(2)}</span>
+                            <span class="text-sm text-gray-900">₱${parseFloat(service.unit_price).toFixed(2)}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-sm font-medium text-gray-600">Total Amount:</span>
-                            <span class="text-sm font-semibold text-gray-900">$${parseFloat(service.total_price).toFixed(2)}</span>
+                            <span class="text-sm font-semibold text-gray-900">₱${parseFloat(service.total_price).toFixed(2)}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-sm font-medium text-gray-600">Charged By:</span>
@@ -1141,7 +1141,7 @@ function displayServiceDetails(data) {
                                         <div class="text-xs text-gray-500">${formatDate(similar.created_at)}</div>
                                     </div>
                                     <div class="text-right">
-                                        <div class="text-sm font-medium text-gray-900">$${parseFloat(similar.total_price).toFixed(2)}</div>
+                                        <div class="text-sm font-medium text-gray-900">₱${parseFloat(similar.total_price).toFixed(2)}</div>
                                         <div class="text-xs text-gray-500">Qty: ${similar.quantity}</div>
                                     </div>
                                 </div>
@@ -1200,11 +1200,11 @@ function displayChargeDetails(data) {
                         </div>
                         <div class="flex justify-between">
                             <span class="text-sm font-medium text-gray-600">Unit Price:</span>
-                            <span class="text-sm text-gray-900">$${parseFloat(charge.unit_price).toFixed(2)}</span>
+                            <span class="text-sm text-gray-900">₱${parseFloat(charge.unit_price).toFixed(2)}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-sm font-medium text-gray-600">Total Amount:</span>
-                            <span class="text-sm font-semibold text-gray-900">$${parseFloat(charge.total_price).toFixed(2)}</span>
+                            <span class="text-sm font-semibold text-gray-900">₱${parseFloat(charge.total_price).toFixed(2)}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-sm font-medium text-gray-600">Charged By:</span>
@@ -1251,7 +1251,7 @@ function displayChargeDetails(data) {
                     <div class="space-y-2">
                         <div class="flex justify-between">
                             <span class="text-sm font-medium text-gray-600">Total Charges:</span>
-                            <span class="text-sm font-semibold text-gray-900">$${reservationSummary.total_charges.toFixed(2)}</span>
+                            <span class="text-sm font-semibold text-gray-900">₱${reservationSummary.total_charges.toFixed(2)}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-sm font-medium text-gray-600">Number of Charges:</span>
@@ -1259,7 +1259,7 @@ function displayChargeDetails(data) {
                         </div>
                         <div class="flex justify-between">
                             <span class="text-sm font-medium text-gray-600">Average Charge:</span>
-                            <span class="text-sm text-gray-900">$${reservationSummary.average_charge.toFixed(2)}</span>
+                            <span class="text-sm text-gray-900">₱${reservationSummary.average_charge.toFixed(2)}</span>
                         </div>
                     </div>
                 </div>
@@ -1275,7 +1275,7 @@ function displayChargeDetails(data) {
                                         <div class="text-xs text-gray-500">${formatDate(resCharge.created_at)}</div>
                                     </div>
                                     <div class="text-right">
-                                        <div class="text-sm font-medium text-gray-900">$${parseFloat(resCharge.total_price).toFixed(2)}</div>
+                                        <div class="text-sm font-medium text-gray-900">₱${parseFloat(resCharge.total_price).toFixed(2)}</div>
                                         <div class="text-xs text-gray-500">Qty: ${resCharge.quantity}</div>
                                     </div>
                                 </div>

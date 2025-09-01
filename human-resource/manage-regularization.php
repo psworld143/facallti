@@ -37,7 +37,7 @@ if (!empty($category_filter)) {
 }
 
 if (!empty($search)) {
-    $where_conditions[] = "(f.first_name LIKE ? OR f.last_name LIKE ? OR f.email LIKE ? OR fd.employee_id LIKE ?)";
+            $where_conditions[] = "(f.first_name LIKE ? OR f.last_name LIKE ? OR f.email LIKE ? OR f.qrcode LIKE ?)";
     $search_param = "%$search%";
     $params[] = $search_param;
     $params[] = $search_param;
@@ -92,7 +92,7 @@ $query = "SELECT
     f.email,
     f.position,
     f.department,
-    fd.employee_id,
+            f.qrcode as employee_id,
     sc.name as category_name,
     sc.regularization_period_months,
     rs.name as status_name,

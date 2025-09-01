@@ -85,7 +85,7 @@ include '../../includes/sidebar-unified.php';
                         <i class="fas fa-dollar-sign text-white text-xl"></i>
                     </div>
                     <div>
-                        <h4 class="text-lg font-bold text-gray-800">$<?php echo number_format($reservation['total_amount'], 2); ?></h4>
+                        <h4 class="text-lg font-bold text-gray-800">₱<?php echo number_format($reservation['total_amount'], 2); ?></h4>
                         <p class="text-gray-600">Total Amount</p>
                     </div>
                 </div>
@@ -182,7 +182,7 @@ include '../../includes/sidebar-unified.php';
                         </div>
                         <div>
                             <span class="text-gray-500">Rate:</span>
-                            <span class="font-medium">$<?php echo number_format($room_types[$reservation['room_type']]['rate'], 2); ?>/night</span>
+                            <span class="font-medium">₱<?php echo number_format($room_types[$reservation['room_type']]['rate'], 2); ?>/night</span>
                         </div>
                         <div>
                             <span class="text-gray-500">Status:</span>
@@ -204,7 +204,7 @@ include '../../includes/sidebar-unified.php';
                                 <option value="">Select Room Type</option>
                                 <?php foreach ($room_types as $type => $info): ?>
                                 <option value="<?php echo $type; ?>" <?php echo $type === $reservation['room_type'] ? 'selected' : ''; ?>>
-                                    <?php echo ucfirst($type); ?> - $<?php echo number_format($info['rate'], 2); ?>/night
+                                    <?php echo ucfirst($type); ?> - ₱<?php echo number_format($info['rate'], 2); ?>/night
                                 </option>
                                 <?php endforeach; ?>
                             </select>
@@ -247,8 +247,8 @@ include '../../includes/sidebar-unified.php';
                                     if ($info['rate'] > $current_rate):
                                 ?>
                                 <option value="<?php echo $type; ?>">
-                                    <?php echo ucfirst($type); ?> - $<?php echo number_format($info['rate'], 2); ?>/night 
-                                    (+$<?php echo number_format($info['rate'] - $current_rate, 2); ?>)
+                                    <?php echo ucfirst($type); ?> - ₱<?php echo number_format($info['rate'], 2); ?>/night 
+                                    (+₱<?php echo number_format($info['rate'] - $current_rate, 2); ?>)
                                 </option>
                                 <?php 
                                     endif;

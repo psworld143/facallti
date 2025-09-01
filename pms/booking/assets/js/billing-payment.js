@@ -230,8 +230,8 @@ function displayBills(bills) {
                                 <div class="text-sm text-gray-500">Room ${bill.room_number}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-medium text-gray-900">$${parseFloat(bill.total_amount).toFixed(2)}</div>
-                                ${bill.discount_amount > 0 ? `<div class="text-sm text-green-600">-$${parseFloat(bill.discount_amount).toFixed(2)}</div>` : ''}
+                                <div class="text-sm font-medium text-gray-900">₱${parseFloat(bill.total_amount).toFixed(2)}</div>
+                                ${bill.discount_amount > 0 ? `<div class="text-sm text-green-600">-₱${parseFloat(bill.discount_amount).toFixed(2)}</div>` : ''}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="px-2 py-1 text-xs font-medium rounded-full ${getBillStatusClass(bill.status)}">
@@ -302,7 +302,7 @@ function displayPayments(payments) {
                                 <div class="text-sm font-medium text-gray-900">${payment.guest_name}</div>
                                 <div class="text-sm text-gray-500">Room ${payment.room_number}</div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">$${parseFloat(payment.amount).toFixed(2)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">₱${parseFloat(payment.amount).toFixed(2)}</td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="px-2 py-1 text-xs font-medium rounded-full ${getPaymentMethodClass(payment.payment_method)}">
                                     ${getPaymentMethodLabel(payment.payment_method)}
@@ -372,7 +372,7 @@ function displayDiscounts(discounts) {
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
-                                ${discount.discount_type === 'percentage' ? `${discount.discount_value}%` : `$${parseFloat(discount.discount_value).toFixed(2)}`}
+                                ${discount.discount_type === 'percentage' ? `${discount.discount_value}%` : `₱${parseFloat(discount.discount_value).toFixed(2)}`}
                             </td>
                             <td class="px-6 py-4">
                                 <div class="text-sm text-gray-900">${discount.reason || 'N/A'}</div>
@@ -428,7 +428,7 @@ function displayVouchers(vouchers) {
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                ${voucher.voucher_type === 'percentage' ? `${voucher.voucher_value}%` : `$${parseFloat(voucher.voucher_value).toFixed(2)}`}
+                                ${voucher.voucher_type === 'percentage' ? `${voucher.voucher_value}%` : `₱${parseFloat(voucher.voucher_value).toFixed(2)}`}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                 ${voucher.used_count}/${voucher.usage_limit}
@@ -489,7 +489,7 @@ function displayLoyalty(loyalty) {
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${member.points.toLocaleString()}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">$${parseFloat(member.total_spent).toFixed(2)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₱${parseFloat(member.total_spent).toFixed(2)}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${formatDate(member.last_activity)}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div class="flex space-x-2">
@@ -722,7 +722,7 @@ function loadPendingBills(selectId) {
                 const select = document.getElementById(selectId);
                 select.innerHTML = '<option value="">Select Bill</option>';
                 data.bills.forEach(bill => {
-                    select.innerHTML += `<option value="${bill.id}">${bill.bill_number} - ${bill.guest_name} - $${parseFloat(bill.total_amount).toFixed(2)}</option>`;
+                    select.innerHTML += `<option value="${bill.id}">${bill.bill_number} - ${bill.guest_name} - ₱${parseFloat(bill.total_amount).toFixed(2)}</option>`;
                 });
             }
         })
@@ -847,7 +847,7 @@ function viewBill(billId) {
 }
 
 function printBill(billId) {
-    window.open(`../../api/print-bill.php?id=${billId}`, '_blank');
+    window.open(`../../api/generate-bill-pdf.php?id=${billId}`, '_blank');
 }
 
 function processPayment(billId) {

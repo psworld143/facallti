@@ -34,7 +34,7 @@ $query = "SELECT
     f.email,
     f.position,
     f.department,
-    fd.employee_id,
+            f.qrcode as employee_id,
     fd.date_of_hire,
     sc.name as category_name,
     sc.regularization_period_months,

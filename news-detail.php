@@ -30,6 +30,9 @@ if (!$post = mysqli_fetch_assoc($result)) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($post['title']); ?> - SEAIT</title>
+    <link rel="icon" type="image/png" href="assets/images/seait-logo.png">
+    <link rel="shortcut icon" type="image/png" href="assets/images/seait-logo.png">
+    <link rel="apple-touch-icon" type="image/png" href="assets/images/seait-logo.png">
 
     <!-- Open Graph Meta Tags for Social Media Sharing -->
     <meta property="og:title" content="<?php echo htmlspecialchars($post['title']); ?>">

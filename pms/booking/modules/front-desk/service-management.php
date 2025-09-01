@@ -60,7 +60,7 @@ include '../../includes/sidebar-unified.php';
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-500">Today's Service Revenue</p>
-                        <p class="text-2xl font-semibold text-gray-900">$<?php echo number_format($service_stats['today_revenue'], 2); ?></p>
+                        <p class="text-2xl font-semibold text-gray-900">₱<?php echo number_format($service_stats['today_revenue'], 2); ?></p>
                     </div>
                 </div>
             </div>
@@ -400,7 +400,7 @@ include '../../includes/sidebar-unified.php';
                 <div class="border-t pt-4">
                     <div class="flex justify-between items-center">
                         <span class="text-lg font-medium text-gray-900">Total Amount:</span>
-                        <span id="minibar-total" class="text-2xl font-bold text-primary">$0.00</span>
+                        <span id="minibar-total" class="text-2xl font-bold text-primary">₱0.00</span>
                     </div>
                 </div>
 

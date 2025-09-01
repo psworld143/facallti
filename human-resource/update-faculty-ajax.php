@@ -99,7 +99,8 @@ try {
         email = '$email', 
         position = '$position', 
         department = '$department', 
-        is_active = $is_active 
+        is_active = $is_active,
+        qrcode = " . ($employee_id ? "'$employee_id'" : 'NULL') . "
         WHERE id = $faculty_id";
 
     if (!mysqli_query($conn, $update_faculty_query)) {
@@ -124,7 +125,6 @@ try {
             emergency_contact_name = " . ($emergency_contact_name ? "'$emergency_contact_name'" : 'NULL') . ",
             emergency_contact_number = " . ($emergency_contact_number ? "'$emergency_contact_number'" : 'NULL') . ",
             address = " . ($address ? "'$address'" : 'NULL') . ",
-            employee_id = " . ($employee_id ? "'$employee_id'" : 'NULL') . ",
             date_of_hire = " . ($date_of_hire ? "'$date_of_hire'" : 'NULL') . ",
             employment_type = " . ($employment_type ? "'$employment_type'" : 'NULL') . ",
             basic_salary = $basic_salary,
@@ -146,13 +146,13 @@ try {
         $update_details_query = "INSERT INTO faculty_details (
             faculty_id, middle_name, date_of_birth, gender, civil_status, nationality, religion,
             phone, emergency_contact_name, emergency_contact_number, address,
-            employee_id, date_of_hire, employment_type, basic_salary, salary_grade, allowances, pay_schedule,
+            date_of_hire, employment_type, basic_salary, salary_grade, allowances, pay_schedule,
             highest_education, field_of_study, school_university, year_graduated,
             tin_number, sss_number, philhealth_number, pagibig_number, created_at
         ) VALUES (
             $faculty_id, " . ($middle_name ? "'$middle_name'" : 'NULL') . ", " . ($date_of_birth ? "'$date_of_birth'" : 'NULL') . ", " . ($gender ? "'$gender'" : 'NULL') . ", " . ($civil_status ? "'$civil_status'" : 'NULL') . ", " . ($nationality ? "'$nationality'" : 'NULL') . ", " . ($religion ? "'$religion'" : 'NULL') . ",
             " . ($phone ? "'$phone'" : 'NULL') . ", " . ($emergency_contact_name ? "'$emergency_contact_name'" : 'NULL') . ", " . ($emergency_contact_number ? "'$emergency_contact_number'" : 'NULL') . ", " . ($address ? "'$address'" : 'NULL') . ",
-            " . ($employee_id ? "'$employee_id'" : 'NULL') . ", " . ($date_of_hire ? "'$date_of_hire'" : 'NULL') . ", " . ($employment_type ? "'$employment_type'" : 'NULL') . ", $basic_salary, " . ($salary_grade ? "'$salary_grade'" : 'NULL') . ", $allowances, " . ($pay_schedule ? "'$pay_schedule'" : 'NULL') . ",
+            " . ($date_of_hire ? "'$date_of_hire'" : 'NULL') . ", " . ($employment_type ? "'$employment_type'" : 'NULL') . ", $basic_salary, " . ($salary_grade ? "'$salary_grade'" : 'NULL') . ", $allowances, " . ($pay_schedule ? "'$pay_schedule'" : 'NULL') . ",
             " . ($highest_education ? "'$highest_education'" : 'NULL') . ", " . ($field_of_study ? "'$field_of_study'" : 'NULL') . ", " . ($school_university ? "'$school_university'" : 'NULL') . ", " . ($year_graduated ? $year_graduated : 'NULL') . ",
             " . ($tin_number ? "'$tin_number'" : 'NULL') . ", " . ($sss_number ? "'$sss_number'" : 'NULL') . ", " . ($philhealth_number ? "'$philhealth_number'" : 'NULL') . ", " . ($pagibig_number ? "'$pagibig_number'" : 'NULL') . ", NOW()
         )";

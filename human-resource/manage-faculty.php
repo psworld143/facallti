@@ -739,6 +739,7 @@ include 'includes/header.php';
                                 <option value="">Select Pay Schedule</option>
                                 <option value="Monthly">Monthly</option>
                                 <option value="Bi-weekly">Bi-weekly</option>
+                                <option value="Quincena">Quincena</option>
                                 <option value="Weekly">Weekly</option>
                             </select>
                         </div>
@@ -844,6 +845,9 @@ include 'includes/header.php';
                         <div class="text-sm text-gray-600">
                             <i class="fas fa-info-circle mr-2"></i>
                             All fields marked with * are required
+                            <br>
+                            <i class="fas fa-key mr-2"></i>
+                            <span class="text-blue-600 font-medium">Default password will be set to: Seait123</span>
                         </div>
                         <div class="flex space-x-4">
                             <button type="button" onclick="closeAddFacultyModal()" 
@@ -943,7 +947,7 @@ function closeAddFacultyModal() {
 
 // Employee ID generation
 function generateEmployeeID() {
-    fetch('get-next-employee-id.php')
+    fetch('get-next-faculty-employee-id.php')
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -1048,13 +1052,13 @@ document.getElementById('addFacultyForm').addEventListener('submit', function(e)
     })
     .then(data => {
         if (data.success) {
-            showToast('Faculty member added successfully!', 'success');
+            showToast(data.message || 'Faculty member added successfully! Default password is: Seait123', 'success');
             closeAddFacultyModal();
             
-            // Show success animation
+            // Show success animation with password info
             const successIcon = document.createElement('div');
             successIcon.className = 'fixed top-4 right-4 z-50';
-            successIcon.innerHTML = '<div class="bg-white p-6 rounded-lg shadow-lg text-center border border-green-200"><i class="fas fa-check-circle text-4xl text-green-500 mb-3"></i><h3 class="text-lg font-bold text-gray-900">Faculty Member Added Successfully!</h3></div>';
+            successIcon.innerHTML = '<div class="bg-white p-6 rounded-lg shadow-lg text-center border border-green-200"><i class="fas fa-check-circle text-4xl text-green-500 mb-3"></i><h3 class="text-lg font-bold text-gray-900">Faculty Member Added Successfully!</h3><p class="text-sm text-gray-600 mt-2">Default password: <strong>Seait123</strong></p></div>';
             document.body.appendChild(successIcon);
             
             setTimeout(() => {
