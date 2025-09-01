@@ -34,11 +34,26 @@ if (!isset($current_page)) {
 
     <!-- Navigation Menu - Scrollable Content -->
     <div class="sidebar-content">
+        <?php
+        // Get faculty photo information for sidebar
+        $faculty_photo_query = "SELECT image_url FROM faculty WHERE id = ? AND is_active = 1";
+        $faculty_photo_stmt = mysqli_prepare($conn, $faculty_photo_query);
+        mysqli_stmt_bind_param($faculty_photo_stmt, "i", $_SESSION['faculty_id']);
+        mysqli_stmt_execute($faculty_photo_stmt);
+        $faculty_photo_result = mysqli_stmt_get_result($faculty_photo_stmt);
+        $faculty_photo_info = mysqli_fetch_assoc($faculty_photo_result);
+        ?>
         <!-- User Profile Section -->
         <div class="mb-6 p-4 bg-gray-800 rounded-lg mx-3 transform transition-all duration-300 hover:bg-gray-700 hover:scale-105 hover:shadow-lg">
             <div class="flex items-center">
-                <div class="h-12 w-12 rounded-full bg-seait-orange flex items-center justify-center mr-3 transition-all duration-300 hover:bg-orange-500 hover:scale-110 hover:shadow-md">
-                    <span class="text-white font-semibold text-lg"><?php echo strtoupper(substr($_SESSION['first_name'], 0, 1) . substr($_SESSION['last_name'], 0, 1)); ?></span>
+                <div class="h-12 w-12 rounded-full bg-seait-orange flex items-center justify-center mr-3 transition-all duration-300 hover:bg-orange-500 hover:scale-110 hover:shadow-md overflow-hidden">
+                    <?php if (!empty($faculty_photo_info['image_url']) && file_exists('../' . $faculty_photo_info['image_url'])): ?>
+                        <img src="../<?php echo htmlspecialchars($faculty_photo_info['image_url']); ?>" 
+                             alt="Profile Photo" 
+                             class="w-full h-full object-cover">
+                    <?php else: ?>
+                        <span class="text-white font-semibold text-lg"><?php echo strtoupper(substr($_SESSION['first_name'], 0, 1) . substr($_SESSION['last_name'], 0, 1)); ?></span>
+                    <?php endif; ?>
                 </div>
                 <div class="flex-1">
                     <p class="text-white font-semibold text-sm"><?php echo htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']); ?></p>
