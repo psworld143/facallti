@@ -123,7 +123,8 @@ if (isset($_GET['success'])) {
     switch ($_GET['success']) {
         case 'faculty_added':
             $faculty_name = isset($_GET['name']) ? htmlspecialchars($_GET['name']) : 'Faculty member';
-            $message = "Faculty member '{$faculty_name}' has been successfully added to your department!";
+            $password = isset($_GET['password']) ? htmlspecialchars($_GET['password']) : 'Seait123';
+            $message = "Faculty member '{$faculty_name}' has been successfully added to your department! Default password: <strong>{$password}</strong>";
             $message_type = 'success';
             break;
         case 'faculty_updated':
@@ -491,6 +492,15 @@ include 'includes/header.php';
                 </div>
                 
 
+            </div>
+            
+            <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div class="flex items-start">
+                    <i class="fas fa-info-circle text-blue-600 mt-0.5 mr-2 text-sm"></i>
+                    <div class="text-xs text-blue-700">
+                        <p><strong>Note:</strong> New faculty members will be created with the default password <strong>Seait123</strong>. They should change this password upon their first login.</p>
+                    </div>
+                </div>
             </div>
             
             <div class="flex justify-end space-x-3 mt-6">

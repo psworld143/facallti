@@ -161,13 +161,16 @@ elseif (isset($_FILES['faculty_photo']) && $_FILES['faculty_photo']['error'] ===
 $sample_position = 'Instructor'; // Default position
 $sample_bio = 'Faculty member in the ' . $department . ' department. Profile to be updated by HR.';
 
+// Default password for new faculty
+$default_password = password_hash('Seait123', PASSWORD_DEFAULT);
+
 try {
     // Start transaction
     mysqli_begin_transaction($conn);
     
     // Insert into faculty table
-    $faculty_query = "INSERT INTO faculty (first_name, last_name, email, position, department, bio, image_url, qrcode, is_active, created_at) 
-                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, NOW())";
+    $faculty_query = "INSERT INTO faculty (first_name, last_name, email, position, department, bio, image_url, qrcode, password, is_active, created_at) 
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW())";
     $faculty_stmt = mysqli_prepare($conn, $faculty_query);
     
     if (!$faculty_stmt) {
@@ -176,8 +179,8 @@ try {
     
 
     
-    mysqli_stmt_bind_param($faculty_stmt, "ssssssss", 
-        $first_name, $last_name, $email, $sample_position, $department, $sample_bio, $photo_path, $qrcode);
+    mysqli_stmt_bind_param($faculty_stmt, "sssssssss", 
+        $first_name, $last_name, $email, $sample_position, $department, $sample_bio, $photo_path, $qrcode, $default_password);
     
     if (!mysqli_stmt_execute($faculty_stmt)) {
         throw new Exception("Error inserting faculty: " . mysqli_stmt_error($faculty_stmt));
@@ -215,7 +218,7 @@ try {
     mysqli_commit($conn);
     
     // Success - redirect with success message
-    header('Location: teachers.php?success=faculty_added&name=' . urlencode($first_name . ' ' . $last_name));
+    header('Location: teachers.php?success=faculty_added&name=' . urlencode($first_name . ' ' . $last_name) . '&password=Seait123');
     exit();
     
 } catch (Exception $e) {
