@@ -126,6 +126,11 @@ include 'includes/header.php';
             <h1 class="text-2xl font-bold text-gray-900">My Teachers</h1>
             <p class="text-gray-600">Teachers under <?php echo $head_info['department']; ?> department</p>
         </div>
+        <div>
+            <button onclick="openAddFacultyModal()" class="bg-seait-orange text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-all duration-200 transform hover:scale-105 hover:shadow-lg">
+                <i class="fas fa-plus mr-2"></i>Add Faculty
+            </button>
+        </div>
     </div>
 </div>
 
@@ -260,4 +265,117 @@ include 'includes/header.php';
     </div>
 </div>
 
+<!-- Add Faculty Modal -->
+<div id="addFacultyModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-seait-dark">Add New Faculty</h3>
+                <button onclick="closeAddFacultyModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+        </div>
+        
+        <form id="addFacultyForm" method="POST" action="add-faculty.php" class="p-6">
+            <input type="hidden" name="department" value="<?php echo htmlspecialchars($head_info['department']); ?>">
+            
+            <div class="space-y-4">
+                <div>
+                    <label for="qrcode" class="block text-sm font-medium text-gray-700 mb-2">Faculty ID (QR Code) *</label>
+                    <input type="text" id="qrcode" name="qrcode" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-seait-orange focus:border-transparent transition-all duration-200"
+                           placeholder="e.g., 2025-0008">
+                    <p class="text-xs text-gray-500 mt-1">Unique identifier for the faculty member</p>
+                </div>
+                
+                <div>
+                    <label for="first_name" class="block text-sm font-medium text-gray-700 mb-2">First Name *</label>
+                    <input type="text" id="first_name" name="first_name" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-seait-orange focus:border-transparent transition-all duration-200"
+                           placeholder="Enter first name">
+                </div>
+                
+                <div>
+                    <label for="last_name" class="block text-sm font-medium text-gray-700 mb-2">Last Name *</label>
+                    <input type="text" id="last_name" name="last_name" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-seait-orange focus:border-transparent transition-all duration-200"
+                           placeholder="Enter last name">
+                </div>
+                
+                <div>
+                    <label for="middle_name" class="block text-sm font-medium text-gray-700 mb-2">Middle Name</label>
+                    <input type="text" id="middle_name" name="middle_name" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-seait-orange focus:border-transparent transition-all duration-200"
+                           placeholder="Enter middle name (optional)">
+                </div>
+                
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div class="flex items-start">
+                        <i class="fas fa-info-circle text-blue-500 mt-0.5 mr-3"></i>
+                        <div class="text-sm text-blue-700">
+                            <p class="font-medium">Note:</p>
+                            <p>Other details (email, position, etc.) will be filled with sample data. The HR department will update them later.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex justify-end space-x-3 mt-6">
+                <button type="button" onclick="closeAddFacultyModal()" 
+                        class="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+                    Cancel
+                </button>
+                <button type="submit" 
+                        class="px-4 py-2 bg-seait-orange text-white rounded-lg hover:bg-orange-600 transition-all duration-200 transform hover:scale-105">
+                    <i class="fas fa-plus mr-2"></i>Add Faculty
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 
+<script>
+function openAddFacultyModal() {
+    document.getElementById('addFacultyModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeAddFacultyModal() {
+    document.getElementById('addFacultyModal').classList.add('hidden');
+    document.body.style.overflow = 'auto';
+    document.getElementById('addFacultyForm').reset();
+}
+
+// Close modal when clicking outside
+document.getElementById('addFacultyModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeAddFacultyModal();
+    }
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && !document.getElementById('addFacultyModal').classList.contains('hidden')) {
+        closeAddFacultyModal();
+    }
+});
+
+// Auto-generate QR code suggestion
+document.addEventListener('DOMContentLoaded', function() {
+    const qrcodeInput = document.getElementById('qrcode');
+    const currentYear = new Date().getFullYear();
+    
+    // Generate next available QR code
+    fetch('get-next-qrcode.php')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                qrcodeInput.placeholder = `e.g., ${data.next_qrcode}`;
+            }
+        })
+        .catch(error => console.log('Could not fetch next QR code'));
+});
+</script>
+
+<?php include 'includes/footer.php'; ?>
