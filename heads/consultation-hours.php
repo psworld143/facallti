@@ -153,29 +153,56 @@ $active_semester_query = "SELECT name, academic_year FROM semesters WHERE status
 $active_semester_result = mysqli_query($conn, $active_semester_query);
 $active_semester = mysqli_fetch_assoc($active_semester_result);
 
+// Get search parameters
+$search_query = isset($_GET['search']) ? sanitize_input($_GET['search']) : '';
+$semester_filter = isset($_GET['semester']) ? sanitize_input($_GET['semester']) : '';
+$day_filter = isset($_GET['day']) ? sanitize_input($_GET['day']) : '';
+
 // Get consultation hours (filter by active semester by default)
 $consultation_result = null;
 if ($head_info) {
-    if ($active_semester) {
-        $consultation_query = "SELECT ch.*, f.first_name, f.last_name, f.email, f.department 
-                              FROM consultation_hours ch 
-                              JOIN faculty f ON ch.teacher_id = f.id 
-                              WHERE ch.is_active = 1 AND f.department = ? AND ch.semester = ? AND ch.academic_year = ? 
-                              ORDER BY f.last_name ASC, f.first_name ASC, ch.day_of_week ASC, ch.start_time ASC";
-        $consultation_stmt = mysqli_prepare($conn, $consultation_query);
-        if ($consultation_stmt) {
-            mysqli_stmt_bind_param($consultation_stmt, "sss", $head_info['department'], $active_semester['name'], $active_semester['academic_year']);
-        }
-    } else {
-        $consultation_query = "SELECT ch.*, f.first_name, f.last_name, f.email, f.department 
-                              FROM consultation_hours ch 
-                              JOIN faculty f ON ch.teacher_id = f.id 
-                              WHERE ch.is_active = 1 AND f.department = ? 
-                              ORDER BY f.last_name ASC, f.first_name ASC, ch.day_of_week ASC, ch.start_time ASC";
-        $consultation_stmt = mysqli_prepare($conn, $consultation_query);
-        if ($consultation_stmt) {
-            mysqli_stmt_bind_param($consultation_stmt, "s", $head_info['department']);
-        }
+    // Build the base query
+    $consultation_query = "SELECT ch.*, f.first_name, f.last_name, f.email, f.department 
+                          FROM consultation_hours ch 
+                          JOIN faculty f ON ch.teacher_id = f.id 
+                          WHERE ch.is_active = 1 AND f.department = ?";
+    
+    $params = [$head_info['department']];
+    $param_types = "s";
+    
+    // Add semester filter
+    if ($semester_filter) {
+        $consultation_query .= " AND ch.semester = ?";
+        $params[] = $semester_filter;
+        $param_types .= "s";
+    } elseif ($active_semester) {
+        // Default to active semester if no filter is applied
+        $consultation_query .= " AND ch.semester = ? AND ch.academic_year = ?";
+        $params[] = $active_semester['name'];
+        $params[] = $active_semester['academic_year'];
+        $param_types .= "ss";
+    }
+    
+    // Add day filter
+    if ($day_filter) {
+        $consultation_query .= " AND ch.day_of_week = ?";
+        $params[] = $day_filter;
+        $param_types .= "s";
+    }
+    
+    // Add search filter
+    if ($search_query) {
+        $consultation_query .= " AND (f.first_name LIKE ? OR f.last_name LIKE ? OR f.email LIKE ? OR ch.room LIKE ? OR ch.notes LIKE ?)";
+        $search_param = "%$search_query%";
+        $params = array_merge($params, [$search_param, $search_param, $search_param, $search_param, $search_param]);
+        $param_types .= "sssss";
+    }
+    
+    $consultation_query .= " ORDER BY f.last_name ASC, f.first_name ASC, ch.day_of_week ASC, ch.start_time ASC";
+    
+    $consultation_stmt = mysqli_prepare($conn, $consultation_query);
+    if ($consultation_stmt) {
+        mysqli_stmt_bind_param($consultation_stmt, $param_types, ...$params);
     }
     
     if (isset($consultation_stmt) && $consultation_stmt) {
@@ -271,6 +298,77 @@ include 'includes/header.php';
         <div class="px-6 py-4 border-b border-gray-200">
             <h3 class="text-lg font-medium text-gray-900">Consultation Hours - List View</h3>
         </div>
+        
+        <!-- Search and Filters -->
+        <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+            <form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                    <input type="text" name="search" value="<?php echo htmlspecialchars($search_query); ?>" 
+                           placeholder="Search by name, email, room, or notes..."
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-seait-orange">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Semester</label>
+                    <select name="semester" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-seait-orange">
+                        <option value="">All Semesters</option>
+                        <option value="First Semester" <?php echo $semester_filter === 'First Semester' ? 'selected' : ''; ?>>First Semester</option>
+                        <option value="Second Semester" <?php echo $semester_filter === 'Second Semester' ? 'selected' : ''; ?>>Second Semester</option>
+                        <option value="Summer" <?php echo $semester_filter === 'Summer' ? 'selected' : ''; ?>>Summer</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Day of Week</label>
+                    <select name="day" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-seait-orange">
+                        <option value="">All Days</option>
+                        <option value="Monday" <?php echo $day_filter === 'Monday' ? 'selected' : ''; ?>>Monday</option>
+                        <option value="Tuesday" <?php echo $day_filter === 'Tuesday' ? 'selected' : ''; ?>>Tuesday</option>
+                        <option value="Wednesday" <?php echo $day_filter === 'Wednesday' ? 'selected' : ''; ?>>Wednesday</option>
+                        <option value="Thursday" <?php echo $day_filter === 'Thursday' ? 'selected' : ''; ?>>Thursday</option>
+                        <option value="Friday" <?php echo $day_filter === 'Friday' ? 'selected' : ''; ?>>Friday</option>
+                        <option value="Saturday" <?php echo $day_filter === 'Saturday' ? 'selected' : ''; ?>>Saturday</option>
+                        <option value="Sunday" <?php echo $day_filter === 'Sunday' ? 'selected' : ''; ?>>Sunday</option>
+                    </select>
+                </div>
+                <div class="flex items-end space-x-2">
+                    <button type="submit" class="flex-1 bg-seait-orange text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition flex items-center justify-center">
+                        <i class="fas fa-search mr-2"></i>Search
+                    </button>
+                    <a href="consultation-hours.php" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition flex items-center justify-center">
+                        <i class="fas fa-times mr-2"></i>Clear
+                    </a>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Results Summary -->
+        <?php if ($consultation_result && mysqli_num_rows($consultation_result) > 0): ?>
+            <div class="px-6 py-3 bg-blue-50 border-b border-blue-200">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center text-blue-800">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        <span class="text-sm font-medium">
+                            <?php 
+                            $total_results = mysqli_num_rows($consultation_result);
+                            echo $total_results . ' consultation hour' . ($total_results !== 1 ? 's' : '') . ' found';
+                            
+                            if ($search_query || $semester_filter || $day_filter) {
+                                echo ' matching your search criteria';
+                            }
+                            ?>
+                        </span>
+                    </div>
+                    <?php if ($search_query || $semester_filter || $day_filter): ?>
+                        <div class="text-sm text-blue-600">
+                            <a href="consultation-hours.php" class="hover:text-blue-800 underline">
+                                <i class="fas fa-times mr-1"></i>Clear all filters
+                            </a>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        <?php endif; ?>
+        
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
@@ -279,6 +377,7 @@ include 'includes/header.php';
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Semester</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Day</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
@@ -286,8 +385,18 @@ include 'includes/header.php';
                 <tbody class="bg-white divide-y divide-gray-200">
                     <?php if (!$consultation_result || mysqli_num_rows($consultation_result) === 0): ?>
                         <tr>
-                            <td colspan="6" class="px-6 py-4 text-center text-gray-500">
-                                <?php echo $consultation_result ? 'No consultation hours found' : 'Error loading consultation hours'; ?>
+                            <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+                                <?php 
+                                if ($consultation_result) {
+                                    if ($search_query || $semester_filter || $day_filter) {
+                                        echo 'No consultation hours found matching your search criteria.';
+                                    } else {
+                                        echo 'No consultation hours found';
+                                    }
+                                } else {
+                                    echo 'Error loading consultation hours';
+                                }
+                                ?>
                             </td>
                         </tr>
                     <?php else: ?>
@@ -307,6 +416,9 @@ include 'includes/header.php';
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     <?php echo date('g:i A', strtotime($consultation['start_time'])) . ' - ' . date('g:i A', strtotime($consultation['end_time'])); ?>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    <?php echo htmlspecialchars($consultation['room']); ?>
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-900">
                                     <?php echo $consultation['notes'] ?: '-'; ?>

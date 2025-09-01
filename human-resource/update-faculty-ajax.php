@@ -89,6 +89,19 @@ try {
         exit();
     }
 
+    // Check if employee ID already exists in both faculty and employees tables (excluding current faculty)
+    if (!empty($employee_id)) {
+        $check_employee_id_query = "SELECT id FROM employees WHERE employee_id = '$employee_id' 
+                                   UNION ALL 
+                                   SELECT id FROM faculty WHERE qrcode COLLATE utf8mb4_unicode_ci = '$employee_id' COLLATE utf8mb4_unicode_ci AND id != $faculty_id";
+        $check_employee_id_result = mysqli_query($conn, $check_employee_id_query);
+
+        if (mysqli_num_rows($check_employee_id_result) > 0) {
+            echo json_encode(['success' => false, 'message' => 'Employee ID already exists in the system']);
+            exit();
+        }
+    }
+
     // Start transaction
     mysqli_begin_transaction($conn);
     

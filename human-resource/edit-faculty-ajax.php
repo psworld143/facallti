@@ -279,7 +279,7 @@ include 'includes/header.php';
                     <div class="flex space-x-2">
                         <input type="text" name="employee_id" id="employee_id"
                                class="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all"
-                               placeholder="YYYY-XXXX (e.g., 2024-0001)" pattern="\d{4}-\d{4}">
+                               placeholder="YYYY-XXXX (e.g., 2025-0001)" pattern="\d{4}-\d{4}">
                         <button type="button" onclick="generateEmployeeID()" 
                                 class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
                             <i class="fas fa-magic mr-1"></i>Auto

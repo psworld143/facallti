@@ -808,5 +808,3 @@ function showNotification(message, type) {
     }, 5000);
 }
 </script>
-
-<?php include 'includes/footer.php'; ?>

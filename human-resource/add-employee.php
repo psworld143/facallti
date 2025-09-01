@@ -114,17 +114,19 @@ try {
         exit();
     }
 
-    // Check if employee ID already exists
-    $check_employee_id_query = "SELECT id FROM employees WHERE employee_id = ?";
+    // Check if employee ID already exists in both employees and faculty tables
+    $check_employee_id_query = "SELECT id FROM employees WHERE employee_id = ? 
+                               UNION ALL 
+                               SELECT id FROM faculty WHERE qrcode COLLATE utf8mb4_unicode_ci = ? COLLATE utf8mb4_unicode_ci";
     $check_employee_id_stmt = mysqli_prepare($conn, $check_employee_id_query);
-    mysqli_stmt_bind_param($check_employee_id_stmt, 's', $employee_id);
+    mysqli_stmt_bind_param($check_employee_id_stmt, 'ss', $employee_id, $employee_id);
     mysqli_stmt_execute($check_employee_id_stmt);
     $check_employee_id_result = mysqli_stmt_get_result($check_employee_id_stmt);
 
     if (mysqli_num_rows($check_employee_id_result) > 0) {
         echo json_encode([
             'success' => false,
-            'message' => 'Employee ID already exists'
+            'message' => 'Employee ID already exists in the system'
         ]);
         exit();
     }

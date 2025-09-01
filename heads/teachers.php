@@ -1,6 +1,3 @@
-
-
-
 <?php
 session_start();
 // error_reporting(E_ALL);
@@ -128,16 +125,6 @@ include 'includes/header.php';
         <div>
             <h1 class="text-2xl font-bold text-gray-900">My Teachers</h1>
             <p class="text-gray-600">Teachers under <?php echo $head_info['department']; ?> department</p>
-        </div>
-        <div class="flex space-x-3">
-            <a href="../generate-teacher-qr.php?id=1" target="_blank" 
-               class="bg-seait-orange text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition flex items-center">
-                <i class="fas fa-qrcode mr-2"></i>View Sample QR
-            </a>
-            <a href="../seed-faculty-qr-codes.php" target="_blank" 
-               class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition flex items-center">
-                <i class="fas fa-magic mr-2"></i>Generate All QR Codes
-            </a>
         </div>
     </div>
 </div>

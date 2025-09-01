@@ -56,7 +56,7 @@ if (empty($employee_id)) {
     // Validate provided employee ID format
     if (!validateEmployeeID($employee_id)) {
         header('Content-Type: application/json');
-        echo json_encode(['success' => false, 'message' => 'Invalid employee ID format. Use format: YYYY-XXXX (e.g., 2024-0001)']);
+        echo json_encode(['success' => false, 'message' => 'Invalid employee ID format. Use format: YYYY-XXXX (e.g., 2025-0001)']);
         exit();
     }
     
