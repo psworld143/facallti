@@ -1,6 +1,6 @@
 /*
- * Simple RFID Writer for SEENS System
- * Arduino sketch for RC522 RFID module
+ * Complete RFID Writer for SEENS System
+ * Arduino sketch for RC522 RFID module with all commands
  * 
  * Hardware Connections:
  * RC522    Arduino
@@ -21,7 +21,7 @@
 
 MFRC522 mfrc522(SS_PIN, RST_PIN);
 
-// Default key for MiFare Classic (you can change this)
+// Default key for MiFare Classic
 MFRC522::MIFARE_Key key = {
   {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
 };
@@ -40,6 +40,7 @@ void setup() {
   mfrc522.PCD_DumpVersionToSerial();
   
   Serial.println("RFID_WRITER_READY");
+  Serial.println("Waiting for commands...");
 }
 
 void loop() {
@@ -51,16 +52,36 @@ void loop() {
     processCommand(command);
   }
   
-  // Check for RFID card
-  if (mfrc522.PICC_IsNewCardPresent() && mfrc522.PICC_ReadCardSerial()) {
+  // Check for RFID card (with feedback)
+  if (mfrc522.PICC_IsNewCardPresent()) {
     Serial.println("CARD_DETECTED");
-    mfrc522.PICC_HaltA();
+    
+    if (mfrc522.PICC_ReadCardSerial()) {
+      Serial.print("CARD_UID: ");
+      for (byte i = 0; i < mfrc522.uid.size; i++) {
+        Serial.print(mfrc522.uid.uidByte[i] < 0x10 ? " 0" : " ");
+        Serial.print(mfrc522.uid.uidByte[i], HEX);
+      }
+      Serial.println();
+      
+      // Get card type
+      MFRC522::PICC_Type piccType = mfrc522.PICC_GetType(mfrc522.uid.sak);
+      Serial.print("CARD_TYPE: ");
+      Serial.println(mfrc522.PICC_GetTypeName(piccType));
+      
+      mfrc522.PICC_HaltA();
+    } else {
+      Serial.println("CARD_READ_ERROR");
+    }
   }
   
   delay(100);
 }
 
 void processCommand(String command) {
+  Serial.print("COMMAND_RECEIVED: ");
+  Serial.println(command);
+  
   if (command == "STATUS") {
     Serial.println("RFID_WRITER_READY");
   }
@@ -75,6 +96,11 @@ void processCommand(String command) {
     if (firstColon != -1 && secondColon != -1) {
       int block = command.substring(firstColon + 1, secondColon).toInt();
       String data = command.substring(secondColon + 1);
+      
+      Serial.print("WRITE_REQUEST: Block ");
+      Serial.print(block);
+      Serial.print(", Data: ");
+      Serial.println(data);
       
       if (writeToCard(data, block)) {
         Serial.println("WRITE_OK");
@@ -91,6 +117,10 @@ void processCommand(String command) {
     
     if (colon != -1) {
       int block = command.substring(colon + 1).toInt();
+      
+      Serial.print("READ_REQUEST: Block ");
+      Serial.println(block);
+      
       String data = readFromCard(block);
       
       if (data != "") {
@@ -111,19 +141,32 @@ void processCommand(String command) {
 }
 
 bool writeToCard(String data, int block) {
+  Serial.println("WRITE_PROCESS: Starting...");
+  
   // Check if card is present
-  if (!mfrc522.PICC_IsNewCardPresent() || !mfrc522.PICC_ReadCardSerial()) {
+  if (!mfrc522.PICC_IsNewCardPresent()) {
+    Serial.println("WRITE_ERROR: No card present");
     return false;
   }
+  
+  if (!mfrc522.PICC_ReadCardSerial()) {
+    Serial.println("WRITE_ERROR: Cannot read card serial");
+    return false;
+  }
+  
+  Serial.println("WRITE_PROCESS: Card detected");
   
   // Check if it's a MiFare Classic card
   MFRC522::PICC_Type piccType = mfrc522.PICC_GetType(mfrc522.uid.sak);
   if (piccType != MFRC522::PICC_TYPE_MIFARE_MINI &&
       piccType != MFRC522::PICC_TYPE_MIFARE_1K &&
       piccType != MFRC522::PICC_TYPE_MIFARE_4K) {
+    Serial.println("WRITE_ERROR: Not a MiFare Classic card");
     mfrc522.PICC_HaltA();
     return false;
   }
+  
+  Serial.println("WRITE_PROCESS: Card type OK");
   
   // Authenticate the card
   MFRC522::StatusCode status = mfrc522.PCD_Authenticate(
@@ -131,9 +174,12 @@ bool writeToCard(String data, int block) {
   );
   
   if (status != MFRC522::STATUS_OK) {
+    Serial.println("WRITE_ERROR: Authentication failed");
     mfrc522.PICC_HaltA();
     return false;
   }
+  
+  Serial.println("WRITE_PROCESS: Authentication OK");
   
   // Prepare data for writing (16 bytes)
   byte writeData[16];
@@ -151,23 +197,42 @@ bool writeToCard(String data, int block) {
   mfrc522.PICC_HaltA();
   mfrc522.PCD_StopCrypto1();
   
-  return (status == MFRC522::STATUS_OK);
+  if (status == MFRC522::STATUS_OK) {
+    Serial.println("WRITE_PROCESS: Write successful");
+    return true;
+  } else {
+    Serial.println("WRITE_ERROR: Write operation failed");
+    return false;
+  }
 }
 
 String readFromCard(int block) {
+  Serial.println("READ_PROCESS: Starting...");
+  
   // Check if card is present
-  if (!mfrc522.PICC_IsNewCardPresent() || !mfrc522.PICC_ReadCardSerial()) {
+  if (!mfrc522.PICC_IsNewCardPresent()) {
+    Serial.println("READ_ERROR: No card present");
     return "";
   }
+  
+  if (!mfrc522.PICC_ReadCardSerial()) {
+    Serial.println("READ_ERROR: Cannot read card serial");
+    return "";
+  }
+  
+  Serial.println("READ_PROCESS: Card detected");
   
   // Check if it's a MiFare Classic card
   MFRC522::PICC_Type piccType = mfrc522.PICC_GetType(mfrc522.uid.sak);
   if (piccType != MFRC522::PICC_TYPE_MIFARE_MINI &&
       piccType != MFRC522::PICC_TYPE_MIFARE_1K &&
       piccType != MFRC522::PICC_TYPE_MIFARE_4K) {
+    Serial.println("READ_ERROR: Not a MiFare Classic card");
     mfrc522.PICC_HaltA();
     return "";
   }
+  
+  Serial.println("READ_PROCESS: Card type OK");
   
   // Authenticate the card
   MFRC522::StatusCode status = mfrc522.PCD_Authenticate(
@@ -175,9 +240,12 @@ String readFromCard(int block) {
   );
   
   if (status != MFRC522::STATUS_OK) {
+    Serial.println("READ_ERROR: Authentication failed");
     mfrc522.PICC_HaltA();
     return "";
   }
+  
+  Serial.println("READ_PROCESS: Authentication OK");
   
   // Read from card
   byte readData[18];
@@ -189,6 +257,7 @@ String readFromCard(int block) {
   mfrc522.PCD_StopCrypto1();
   
   if (status == MFRC522::STATUS_OK) {
+    Serial.println("READ_PROCESS: Read successful");
     // Convert bytes to string
     String result = "";
     for (int i = 0; i < 16; i++) {
@@ -197,7 +266,8 @@ String readFromCard(int block) {
       }
     }
     return result;
+  } else {
+    Serial.println("READ_ERROR: Read operation failed");
+    return "";
   }
-  
-  return "";
 }

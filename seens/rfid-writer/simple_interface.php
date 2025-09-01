@@ -1,15 +1,15 @@
 <?php
-require_once 'rfid_writer_fixed.php';
+require_once 'arduino_communicator_simple.php';
 
 // Get available ports
-$availablePorts = RFIDWriterFixed::getAvailablePorts();
+$availablePorts = ArduinoCommunicatorSimple::getAvailablePorts();
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SEENS RFID Writer</title>
+    <title>SEENS Simple RFID Writer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -19,9 +19,9 @@ $availablePorts = RFIDWriterFixed::getAvailablePorts();
         <div class="text-center mb-8">
             <h1 class="text-4xl font-bold text-gray-800 mb-2">
                 <i class="fas fa-credit-card text-blue-600"></i>
-                SEENS RFID Writer
+                SEENS Simple RFID Writer
             </h1>
-            <p class="text-gray-600">Write and read data from MiFare RFID cards</p>
+            <p class="text-gray-600">Direct Arduino communication - No external libraries</p>
         </div>
 
         <!-- Connection Status -->
@@ -58,7 +58,7 @@ $availablePorts = RFIDWriterFixed::getAvailablePorts();
                         <?php if (PHP_OS === 'WINNT'): ?>
                             Windows: Usually COM3, COM4, or COM5 for Arduino
                         <?php else: ?>
-                            Linux/Mac: Usually /dev/ttyUSB0, /dev/ttyACM0, or /dev/cu.usbserial-*
+                            macOS/Linux: Usually /dev/cu.usbserial-* or /dev/ttyUSB0
                         <?php endif; ?>
                     </p>
                 </div>
@@ -66,9 +66,9 @@ $availablePorts = RFIDWriterFixed::getAvailablePorts();
                     <button id="connectBtn" class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <i class="fas fa-link mr-2"></i>Connect
                     </button>
-                    <a href="test_mode.php" class="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm">
-                        <i class="fas fa-flask mr-1"></i>Test Mode
-                    </a>
+                    <button id="testBtn" class="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm">
+                        <i class="fas fa-flask mr-1"></i>Test
+                    </button>
                     <span id="connectionStatus" class="ml-4 text-sm text-gray-600">Not connected</span>
                 </div>
             </div>
@@ -161,6 +161,7 @@ $availablePorts = RFIDWriterFixed::getAvailablePorts();
                         <li>• Linux: Usually /dev/ttyUSB0 or /dev/ttyACM0</li>
                         <?php endif; ?>
                         <li>• Click "Connect" to establish connection</li>
+                        <li>• Use "Test" button to verify communication</li>
                         <li>• Place MiFare card on the reader</li>
                         <li>• Enter student ID and click "Write to Card"</li>
                         <li>• Use "Read from Card" to verify data</li>
@@ -187,7 +188,7 @@ $availablePorts = RFIDWriterFixed::getAvailablePorts();
             statusSpan.className = 'ml-4 text-sm text-yellow-600';
             
             try {
-                const response = await fetch('rfid_writer_fixed.php', {
+                const response = await fetch('arduino_communicator_simple.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
@@ -199,15 +200,7 @@ $availablePorts = RFIDWriterFixed::getAvailablePorts();
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
-                const text = await response.text();
-                let result;
-                
-                try {
-                    result = JSON.parse(text);
-                } catch (jsonError) {
-                    console.error('Response text:', text);
-                    throw new Error('Invalid JSON response: ' + text.substring(0, 200));
-                }
+                const result = await response.json();
                 
                 if (result.status === 'success') {
                     isConnected = true;
@@ -223,7 +216,7 @@ $availablePorts = RFIDWriterFixed::getAvailablePorts();
                 statusSpan.className = 'ml-4 text-sm text-red-600';
                 console.error('Connection error:', error);
                 
-                // Display error in UI instead of alert
+                // Display error in UI
                 errorDiv.className = 'mt-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded';
                 errorDiv.innerHTML = `
                     <div class="flex items-center">
@@ -237,6 +230,7 @@ $availablePorts = RFIDWriterFixed::getAvailablePorts();
                             <li>Check if the correct port is selected</li>
                             <li>Verify Arduino sketch is uploaded</li>
                             <li>Try a different USB port</li>
+                            <li>Check if Arduino IDE Serial Monitor is closed</li>
                         </ul>
                     </div>
                 `;
@@ -244,32 +238,54 @@ $availablePorts = RFIDWriterFixed::getAvailablePorts();
             }
         });
 
+        // Test button
+        document.getElementById('testBtn').addEventListener('click', async function() {
+            const port = document.getElementById('portSelect').value;
+            const statusSpan = document.getElementById('connectionStatus');
+            
+            statusSpan.textContent = 'Testing...';
+            statusSpan.className = 'ml-4 text-sm text-yellow-600';
+            
+            try {
+                const response = await fetch('arduino_communicator_simple.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `action=test&port=${encodeURIComponent(port)}`
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    statusSpan.textContent = 'Test successful';
+                    statusSpan.className = 'ml-4 text-sm text-green-600';
+                    isConnected = true;
+                } else {
+                    statusSpan.textContent = 'Test failed';
+                    statusSpan.className = 'ml-4 text-sm text-red-600';
+                    isConnected = false;
+                }
+            } catch (error) {
+                statusSpan.textContent = 'Test failed';
+                statusSpan.className = 'ml-4 text-sm text-red-600';
+                console.error('Test error:', error);
+            }
+        });
+
         // Write form
         document.getElementById('writeForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            // Clear previous results
             const resultDiv = document.getElementById('writeResult');
             resultDiv.classList.add('hidden');
-            
-            if (!isConnected) {
-                resultDiv.className = 'mt-4 p-4 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded';
-                resultDiv.innerHTML = `
-                    <div class="flex items-center">
-                        <i class="fas fa-exclamation-triangle mr-2"></i>
-                        <strong>Not Connected:</strong> Please connect to Arduino first
-                    </div>
-                `;
-                resultDiv.classList.remove('hidden');
-                return;
-            }
             
             const data = document.getElementById('writeData').value;
             const block = document.getElementById('writeBlock').value;
             const port = document.getElementById('portSelect').value;
             
             try {
-                const response = await fetch('rfid_writer_fixed.php', {
+                const response = await fetch('arduino_communicator_simple.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
@@ -300,27 +316,14 @@ $availablePorts = RFIDWriterFixed::getAvailablePorts();
         document.getElementById('readForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            // Clear previous results
             const resultDiv = document.getElementById('readResult');
             resultDiv.classList.add('hidden');
-            
-            if (!isConnected) {
-                resultDiv.className = 'mt-4 p-4 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded';
-                resultDiv.innerHTML = `
-                    <div class="flex items-center">
-                        <i class="fas fa-exclamation-triangle mr-2"></i>
-                        <strong>Not Connected:</strong> Please connect to Arduino first
-                    </div>
-                `;
-                resultDiv.classList.remove('hidden');
-                return;
-            }
             
             const block = document.getElementById('readBlock').value;
             const port = document.getElementById('portSelect').value;
             
             try {
-                const response = await fetch('rfid_writer_fixed.php', {
+                const response = await fetch('arduino_communicator_simple.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',

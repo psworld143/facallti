@@ -269,15 +269,26 @@ class RFIDWriter {
         } else {
             // Linux/Mac
             $devices = glob('/dev/tty*');
-            foreach ($devices as $device) {
-                if (strpos($device, 'USB') !== false || strpos($device, 'ACM') !== false) {
+            $cuDevices = glob('/dev/cu*');
+            $allDevices = array_merge($devices, $cuDevices);
+            
+            foreach ($allDevices as $device) {
+                // Check for various Arduino/USB serial patterns
+                if (strpos($device, 'USB') !== false || 
+                    strpos($device, 'ACM') !== false || 
+                    strpos($device, 'usbserial') !== false ||
+                    strpos($device, 'usbmodem') !== false ||
+                    strpos($device, 'cu.') !== false) {
                     $ports[] = $device;
                 }
             }
             
             // Add common Linux/Mac ports if none found
             if (empty($ports)) {
-                $commonPorts = ['/dev/ttyUSB0', '/dev/ttyUSB1', '/dev/ttyACM0', '/dev/ttyACM1'];
+                $commonPorts = [
+                    '/dev/ttyUSB0', '/dev/ttyUSB1', '/dev/ttyACM0', '/dev/ttyACM1',
+                    '/dev/cu.usbserial-*', '/dev/cu.usbmodem*', '/dev/cu.SLAB_USBtoUART*'
+                ];
                 foreach ($commonPorts as $port) {
                     $ports[] = $port;
                 }
@@ -289,7 +300,7 @@ class RFIDWriter {
 }
 
 // Example usage and API endpoint
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
     // Prevent any output before JSON response
     ob_clean();
     header('Content-Type: application/json');
