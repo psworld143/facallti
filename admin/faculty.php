@@ -295,7 +295,7 @@ while ($row = mysqli_fetch_assoc($colleges_result)) {
                         <h3 class="text-sm font-medium text-blue-800">Faculty Management Updates</h3>
                         <div class="mt-2 text-sm text-blue-700">
                             <p><strong>Department Selection:</strong> Department options are now populated from the colleges database. Each option shows the full college name with its abbreviation in parentheses.</p>
-                            <p class="mt-1"><strong>Login Credentials:</strong> Faculty members use their email address as their login username with the default password "Seait123" which can be changed during editing.</p>
+                            <p class="mt-1"><strong>Login Credentials:</strong> Faculty members can login using their email address or QR code as their login username with the default password "Seait123" which can be changed during editing.</p>
                         </div>
                     </div>
                 </div>

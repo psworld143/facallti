@@ -75,11 +75,11 @@ if (!$user_found) {
 
 // Step 3: If not found in students table, check faculty table
 if (!$user_found) {
-    $query = "SELECT * FROM faculty WHERE email = ? AND is_active = 1";
+    $query = "SELECT * FROM faculty WHERE (email = ? OR qrcode = ?) AND is_active = 1";
     $stmt = mysqli_prepare($conn, $query);
 
     if ($stmt) {
-        mysqli_stmt_bind_param($stmt, "s", $username);
+        mysqli_stmt_bind_param($stmt, "ss", $username, $username);
         mysqli_stmt_execute($stmt);
         $result = mysqli_stmt_get_result($stmt);
 
