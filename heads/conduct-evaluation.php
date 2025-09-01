@@ -165,7 +165,170 @@ foreach ($subcategories as $subcat) {
         'percentage' => 0
     ];
 }
+
+// Set page title
+$page_title = 'Conduct Evaluation - ' . $faculty['first_name'] . ' ' . $faculty['last_name'];
+
+// Include the header
+include 'includes/header.php';
 ?>
+
+<!-- Evaluation Form -->
+<div class="min-h-screen bg-gray-50 py-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900">Faculty Evaluation</h1>
+                    <p class="mt-2 text-gray-600">Evaluating: <?php echo htmlspecialchars($faculty['first_name'] . ' ' . $faculty['last_name']); ?></p>
+                    <p class="text-sm text-gray-500">Department: <?php echo htmlspecialchars($faculty['department']); ?></p>
+                </div>
+                <a href="evaluate-faculty.php" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                    <i class="fas fa-arrow-left mr-2"></i>
+                    Back to Faculty List
+                </a>
+            </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="mb-6">
+            <!-- Mobile Progress -->
+            <div class="block sm:hidden bg-white rounded-lg shadow p-4 mb-4">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-lg font-bold text-gray-900">0% Complete</span>
+                    <span class="text-sm font-medium text-gray-600">0 of <?php echo $total_questions; ?> questions answered</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="bg-white h-2 rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <!-- Desktop Progress -->
+            <div class="hidden sm:block bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-semibold text-gray-900">Evaluation Progress</h2>
+                    <span class="text-sm text-gray-600"><?php echo $total_questions; ?> total questions</span>
+                </div>
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-lg font-bold text-gray-900">0% Complete</span>
+                    <span class="text-sm font-medium text-gray-600">0 of <?php echo $total_questions; ?> questions answered</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="bg-white h-2 rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Evaluation Form -->
+        <form method="POST" action="" class="space-y-6">
+            <input type="hidden" name="action" value="submit_evaluation">
+            
+            <!-- Category Tabs -->
+            <div class="bg-white rounded-lg shadow">
+                <div class="border-b border-gray-200">
+                    <nav class="-mb-px flex space-x-8 px-6" aria-label="Tabs">
+                        <?php $first_tab = true; ?>
+                        <?php foreach ($subcategories as $subcat): ?>
+                        <button type="button" 
+                                onclick="switchTab('<?php echo $subcat['id']; ?>', updateProgress)"
+                                class="category-tab <?php echo $first_tab ? 'border-seait-orange text-seait-orange' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'; ?> whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                            <?php echo htmlspecialchars($subcat['name']); ?>
+                        </button>
+                        <?php $first_tab = false; ?>
+                        <?php endforeach; ?>
+                    </nav>
+                </div>
+
+                <!-- Category Content -->
+                <?php $first_content = true; ?>
+                <?php foreach ($subcategories as $subcat): ?>
+                <div id="<?php echo $subcat['id']; ?>-content" 
+                     class="category-content <?php echo $first_content ? '' : 'hidden'; ?> <?php echo $first_content ? 'active' : ''; ?>"
+                     data-category="<?php echo htmlspecialchars($subcat['name']); ?>">
+                    <div class="p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4"><?php echo htmlspecialchars($subcat['name']); ?></h3>
+                        <div class="space-y-6">
+                            <?php foreach ($questions_by_subcat[$subcat['id']] as $question): ?>
+                            <div class="border border-gray-200 rounded-lg p-4">
+                                <h4 class="text-md font-medium text-gray-900 mb-3"><?php echo htmlspecialchars($question['question']); ?></h4>
+                                
+                                <?php if ($question['question_type'] === 'rating'): ?>
+                                <!-- Rating Question -->
+                                <div class="space-y-2">
+                                    <div class="flex items-center space-x-4">
+                                        <span class="text-sm text-gray-600">Poor</span>
+                                        <?php for ($i = 1; $i <= 5; $i++): ?>
+                                        <label class="rating-star cursor-pointer">
+                                            <input type="radio" name="responses[<?php echo $question['id']; ?>][rating]" value="<?php echo $i; ?>" class="sr-only">
+                                            <i class="fas fa-star text-2xl text-gray-300 hover:text-yellow-400"></i>
+                                        </label>
+                                        <?php endfor; ?>
+                                        <span class="text-sm text-gray-600">Excellent</span>
+                                    </div>
+                                </div>
+                                
+                                <?php elseif ($question['question_type'] === 'yes_no'): ?>
+                                <!-- Yes/No Question -->
+                                <div class="flex space-x-4">
+                                    <label class="yes-no-option cursor-pointer">
+                                        <input type="radio" name="responses[<?php echo $question['id']; ?>][yes_no]" value="yes" class="sr-only">
+                                        <span class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">Yes</span>
+                                    </label>
+                                    <label class="yes-no-option cursor-pointer">
+                                        <input type="radio" name="responses[<?php echo $question['id']; ?>][yes_no]" value="no" class="sr-only">
+                                        <span class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">No</span>
+                                    </label>
+                                </div>
+                                
+                                <?php elseif ($question['question_type'] === 'text'): ?>
+                                <!-- Text Question -->
+                                <textarea name="responses[<?php echo $question['id']; ?>][text]" 
+                                          rows="3" 
+                                          class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-seait-orange focus:border-seait-orange"
+                                          placeholder="Enter your response..."></textarea>
+                                
+                                <?php elseif ($question['question_type'] === 'multiple_choice'): ?>
+                                <!-- Multiple Choice Question -->
+                                <div class="space-y-2">
+                                    <?php 
+                                    $choices = json_decode($question['choices'], true);
+                                    if ($choices):
+                                        foreach ($choices as $choice):
+                                    ?>
+                                    <label class="multiple-choice-option cursor-pointer block">
+                                        <input type="radio" name="responses[<?php echo $question['id']; ?>][rating]" value="<?php echo htmlspecialchars($choice); ?>" class="sr-only">
+                                        <span class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"><?php echo htmlspecialchars($choice); ?></span>
+                                    </label>
+                                    <?php 
+                                        endforeach;
+                                    endif;
+                                    ?>
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+                <?php $first_content = false; ?>
+                <?php endforeach; ?>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="flex justify-end space-x-4">
+                <a href="evaluate-faculty.php" class="inline-flex items-center px-6 py-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                    Cancel
+                </a>
+                <button type="submit" class="inline-flex items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-seait-orange hover:bg-orange-600">
+                    <i class="fas fa-check mr-2"></i>
+                    Submit Evaluation
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 var total_questions = <?php echo (int)$total_questions; ?>;
 var total_answered = <?php echo (int)$total_answered; ?>;
@@ -256,4 +419,9 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     updateProgress();
 });
-</script> 
+</script>
+
+<?php
+// Include the footer
+include 'includes/footer.php';
+?>

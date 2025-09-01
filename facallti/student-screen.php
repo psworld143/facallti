@@ -105,8 +105,8 @@ if ($semester_result && mysqli_num_rows($semester_result) > 0) {
     $active_academic_year = $semester_row['academic_year'];
 }
 
-// Get teachers available for consultation in the selected department who have scheduled hours today
-// and are not on consultation leave, AND have scanned their QR code to confirm availability
+// Get teachers available for consultation in the selected department who have scanned their QR code
+// Teachers are available regardless of their scheduled consultation hours once they scan
 $teachers_query = "SELECT 
                     f.id,
                     f.first_name,
@@ -117,23 +117,21 @@ $teachers_query = "SELECT
                     f.bio,
                     f.image_url,
                     f.is_active,
-                    MIN(ch.start_time) as start_time,
-                    MAX(ch.end_time) as end_time,
-                    GROUP_CONCAT(DISTINCT ch.room ORDER BY ch.room SEPARATOR ', ') as room,
-                    GROUP_CONCAT(DISTINCT ch.notes ORDER BY ch.notes SEPARATOR '; ') as notes,
+                    COALESCE(MIN(ch.start_time), '08:00:00') as start_time,
+                    COALESCE(MAX(ch.end_time), '17:00:00') as end_time,
+                    COALESCE(GROUP_CONCAT(DISTINCT ch.room ORDER BY ch.room SEPARATOR ', '), 'Available') as room,
+                    COALESCE(GROUP_CONCAT(DISTINCT ch.notes ORDER BY ch.notes SEPARATOR '; '), 'Available for consultation') as notes,
                     ta.scan_time,
                     ta.last_activity
                    FROM faculty f 
-                   INNER JOIN consultation_hours ch ON f.id = ch.teacher_id
                    INNER JOIN teacher_availability ta ON f.id = ta.teacher_id
+                   LEFT JOIN consultation_hours ch ON f.id = ch.teacher_id 
+                       AND ch.day_of_week = ? 
+                       AND ch.is_active = 1
+                       " . ($active_semester ? "AND ch.semester = ?" : "") . "
+                       " . ($active_academic_year ? "AND ch.academic_year = ?" : "") . "
                    WHERE f.is_active = 1 
                    AND f.department = ?
-                   AND ch.day_of_week = ?
-                   AND ch.is_active = 1
-                   AND ch.start_time <= ?
-                   AND ch.end_time >= ?
-                   " . ($active_semester ? "AND ch.semester = ?" : "") . "
-                   " . ($active_academic_year ? "AND ch.academic_year = ?" : "") . "
                    AND f.id NOT IN (
                        SELECT teacher_id 
                        FROM consultation_leave 
@@ -147,8 +145,8 @@ $teachers_query = "SELECT
 $teachers_stmt = mysqli_prepare($conn, $teachers_query);
 if ($teachers_stmt) {
     // Build parameter types and values dynamically
-    $param_types = "ssss";
-    $param_values = [$selected_department, $current_day, $current_time, $current_time];
+    $param_types = "s";
+    $param_values = [$current_day];
     
     if ($active_semester) {
         $param_types .= "s";
@@ -158,6 +156,10 @@ if ($teachers_stmt) {
         $param_types .= "s";
         $param_values[] = $active_academic_year;
     }
+    
+    // Add department parameter at the end
+    $param_types .= "s";
+    $param_values[] = $selected_department;
     
     mysqli_stmt_bind_param($teachers_stmt, $param_types, ...$param_values);
     mysqli_stmt_execute($teachers_stmt);
@@ -176,8 +178,8 @@ if ($teachers_stmt) {
 // If no teachers found for the department, try partial matching
 if (empty($teachers)) {
     
-    // Try partial matching for teachers with scheduled hours today
-    // and are not on consultation leave, AND have scanned their QR code to confirm availability
+    // Try partial matching for teachers who have scanned their QR code
+    // Teachers are available regardless of their scheduled consultation hours once they scan
     $partial_query = "SELECT 
                         f.id,
                         f.first_name,
@@ -188,23 +190,21 @@ if (empty($teachers)) {
                         f.bio,
                         f.image_url,
                         f.is_active,
-                        MIN(ch.start_time) as start_time,
-                        MAX(ch.end_time) as end_time,
-                        GROUP_CONCAT(DISTINCT ch.room ORDER BY ch.room SEPARATOR ', ') as room,
-                        GROUP_CONCAT(DISTINCT ch.notes ORDER BY ch.notes SEPARATOR '; ') as notes,
+                        COALESCE(MIN(ch.start_time), '08:00:00') as start_time,
+                        COALESCE(MAX(ch.end_time), '17:00:00') as end_time,
+                        COALESCE(GROUP_CONCAT(DISTINCT ch.room ORDER BY ch.room SEPARATOR ', '), 'Available') as room,
+                        COALESCE(GROUP_CONCAT(DISTINCT ch.notes ORDER BY ch.notes SEPARATOR '; '), 'Available for consultation') as notes,
                         ta.scan_time,
                         ta.last_activity
                        FROM faculty f 
-                       INNER JOIN consultation_hours ch ON f.id = ch.teacher_id
                        INNER JOIN teacher_availability ta ON f.id = ta.teacher_id
+                       LEFT JOIN consultation_hours ch ON f.id = ch.teacher_id 
+                           AND ch.day_of_week = ? 
+                           AND ch.is_active = 1
+                           " . ($active_semester ? "AND ch.semester = ?" : "") . "
+                           " . ($active_academic_year ? "AND ch.academic_year = ?" : "") . "
                        WHERE f.is_active = 1 
                        AND f.department LIKE ?
-                       AND ch.day_of_week = ?
-                       AND ch.is_active = 1
-                       AND ch.start_time <= ?
-                       AND ch.end_time >= ?
-                       " . ($active_semester ? "AND ch.semester = ?" : "") . "
-                       " . ($active_academic_year ? "AND ch.academic_year = ?" : "") . "
                        AND f.id NOT IN (
                            SELECT teacher_id 
                            FROM consultation_leave 
@@ -220,8 +220,8 @@ if (empty($teachers)) {
         $search_term = '%' . $selected_department . '%';
         
         // Build parameter types and values dynamically
-        $param_types = "ssss";
-        $param_values = [$search_term, $current_day, $current_time, $current_time];
+        $param_types = "s";
+        $param_values = [$current_day];
         
         if ($active_semester) {
             $param_types .= "s";
@@ -231,6 +231,10 @@ if (empty($teachers)) {
             $param_types .= "s";
             $param_values[] = $active_academic_year;
         }
+        
+        // Add department search term at the end
+        $param_types .= "s";
+        $param_values[] = $search_term;
         
         mysqli_stmt_bind_param($partial_stmt, $param_types, ...$param_values);
         mysqli_stmt_execute($partial_stmt);
@@ -255,22 +259,20 @@ if (empty($teachers) && empty($selected_department)) {
                         f.bio,
                         f.image_url,
                         f.is_active,
-                        MIN(ch.start_time) as start_time,
-                        MAX(ch.end_time) as end_time,
-                        GROUP_CONCAT(DISTINCT ch.room ORDER BY ch.room SEPARATOR ', ') as room,
-                        GROUP_CONCAT(DISTINCT ch.notes ORDER BY ch.notes SEPARATOR '; ') as notes,
+                        COALESCE(MIN(ch.start_time), '08:00:00') as start_time,
+                        COALESCE(MAX(ch.end_time), '17:00:00') as end_time,
+                        COALESCE(GROUP_CONCAT(DISTINCT ch.room ORDER BY ch.room SEPARATOR ', '), 'Available') as room,
+                        COALESCE(GROUP_CONCAT(DISTINCT ch.notes ORDER BY ch.notes SEPARATOR '; '), 'Available for consultation') as notes,
                         ta.scan_time,
                         ta.last_activity
                        FROM faculty f 
-                       INNER JOIN consultation_hours ch ON f.id = ch.teacher_id
                        INNER JOIN teacher_availability ta ON f.id = ta.teacher_id
+                       LEFT JOIN consultation_hours ch ON f.id = ch.teacher_id 
+                           AND ch.day_of_week = ? 
+                           AND ch.is_active = 1
+                           " . ($active_semester ? "AND ch.semester = ?" : "") . "
+                           " . ($active_academic_year ? "AND ch.academic_year = ?" : "") . "
                        WHERE f.is_active = 1 
-                       AND ch.day_of_week = ?
-                       AND ch.is_active = 1
-                       AND ch.start_time <= ?
-                       AND ch.end_time >= ?
-                       " . ($active_semester ? "AND ch.semester = ?" : "") . "
-                       " . ($active_academic_year ? "AND ch.academic_year = ?" : "") . "
                        AND f.id NOT IN (
                            SELECT teacher_id 
                            FROM consultation_leave 
@@ -284,8 +286,8 @@ if (empty($teachers) && empty($selected_department)) {
     $fallback_stmt = mysqli_prepare($conn, $fallback_query);
     if ($fallback_stmt) {
         // Build parameter types and values dynamically
-        $param_types = "sss";
-        $param_values = [$current_day, $current_time, $current_time];
+        $param_types = "s";
+        $param_values = [$current_day];
         
         if ($active_semester) {
             $param_types .= "s";
@@ -483,8 +485,7 @@ if (empty($teachers) && empty($selected_department)) {
             transform: scale(1);
         }
         
-        /* Enhanced Teacher Card Styling */
-        /* Enhanced Teacher Card Styling */
+        /* Enhanced Teacher Card Styling with Animations */
         .teacher-card {
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
@@ -493,6 +494,15 @@ if (empty($teachers) && empty($selected_department)) {
             background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
             border: 1px solid #e2e8f0;
         }
+        
+        /* Card hover animations */
+        .teacher-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.15), 0 8px 16px -4px rgba(0, 0, 0, 0.1);
+            border-color: #FF6B35;
+        }
+        
+
         
 
 
@@ -516,8 +526,23 @@ if (empty($teachers) && empty($selected_department)) {
             transition: all 0.2s ease;
         }
         
+
+        
         #studentIdInput {
-            transition: all 0.2s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        #studentIdInput:focus {
+            animation: inputGlow 2s ease-in-out infinite;
+        }
+        
+        @keyframes inputGlow {
+            0%, 100% {
+                box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1), 0 0 0 1px rgba(16, 185, 129, 0.2);
+            }
+            50% {
+                box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2), 0 0 0 1px rgba(16, 185, 129, 0.4);
+            }
         }
         
         /* Pulsing animation for focused input */
@@ -778,8 +803,8 @@ if (empty($teachers) && empty($selected_department)) {
             background: white;
             border-radius: 12px;
             padding: 1.5rem;
-            max-width: 500px;
-            width: 100%;
+            max-width: 720px;
+            width: 95%;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
         }
 
@@ -1283,7 +1308,7 @@ if (empty($teachers) && empty($selected_department)) {
     
     <!-- Standby Countdown Indicator -->
     <div id="standbyCountdown" class="standby-countdown">
-        <i class="fas fa-clock mr-1"></i>Standby in <span id="countdownTimer">10</span>s
+                                    <i class="fas fa-clock mr-1"></i>Standby in <span id="countdownTimer">30</span>s
     </div>
     
     <!-- No Teachers Available Modal -->
@@ -1394,10 +1419,10 @@ if (empty($teachers) && empty($selected_department)) {
                     <i class="fas fa-qrcode text-white text-sm"></i>
                 </div>
                 <div class="flex-1">
-                    <h3 class="text-lg sm:text-xl font-bold text-gray-800">🔑 Scan Your Student ID to Start</h3>
+                    <h3 class="text-lg sm:text-xl font-bold text-gray-800">🔑 QR Code Scanner - Teachers & Students</h3>
                 </div>
                 <!-- Real-time Update Indicator -->
-                <div id="realtimeIndicator" class="hidden flex items-center space-x-2 text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full border border-green-200">
+                <div id="realtimeIndicator" class="hidden items-center space-x-2 text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full border border-green-200 animate-pulse">
                     <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                     <span class="font-medium">Live Updates</span>
                 </div>
@@ -1408,17 +1433,16 @@ if (empty($teachers) && empty($selected_department)) {
                 <div class="flex items-center space-x-3">
                     <div class="flex-1">
                         <label for="studentIdInput" class="block text-xs font-medium text-gray-700 mb-1">
-                            <i class="fas fa-id-card mr-1 text-green-600"></i>Student ID (Required)
+                            <i class="fas fa-qrcode mr-1 text-green-600"></i>QR Code Scanner (Teacher/Student)
                         </label>
                         <div class="relative">
                             <input type="text" 
                                    id="studentIdInput" 
                                    name="student_id" 
-                                   placeholder="🔍 Scan QR code or enter student ID manually" 
-                                   class="w-full px-3 py-2 border border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-base pr-10"
+                                   placeholder="🔍 Scan Teacher QR (to mark available) or Student QR (to request consultation)" 
+                                   class="w-full px-3 py-2 border border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-base text-center pr-10"
                                    autocomplete="off"
                                    inputmode="text"
-                                   pattern="[0-9\-]*"
                                    autofocus
                                    required>
                             <div class="absolute inset-y-0 right-0 flex items-center pr-2">
@@ -1426,7 +1450,7 @@ if (empty($teachers) && empty($selected_department)) {
                             </div>
                         </div>
                         <p class="text-xs text-gray-500 mt-1">
-                            <i class="fas fa-info-circle mr-1"></i>Student ID will be logged in consultation records
+                            <i class="fas fa-info-circle mr-1"></i>Teacher QR → Mark available & accept requests | Student QR → Start consultation request
                         </p>
                     </div>
                 </div>
@@ -1510,27 +1534,33 @@ if (empty($teachers) && empty($selected_department)) {
         </div>
         <?php endif; ?>
 
-        <!-- Student ID Required Notice -->
+        <!-- QR Code Required Notice -->
         <div id="studentIdRequiredNotice" class="col-span-full bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center mb-6">
             <div class="flex items-center justify-center space-x-3 mb-4">
                 <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-exclamation-triangle text-yellow-600 text-xl"></i>
+                    <i class="fas fa-qrcode text-yellow-600 text-xl"></i>
                 </div>
                 <div>
-                    <h3 class="text-lg font-semibold text-yellow-800">Student ID Required</h3>
-                    <p class="text-yellow-700">Please scan your student ID above to access consultation requests</p>
+                    <h3 class="text-lg font-semibold text-yellow-800">QR Code Required</h3>
+                    <p class="text-yellow-700">Please scan a QR code above to proceed</p>
                 </div>
             </div>
-            <div class="flex items-center justify-center space-x-2 text-sm text-yellow-600">
-                <i class="fas fa-qrcode"></i>
-                <span>Scan QR code or enter student ID manually</span>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                <div class="flex items-center justify-center space-x-2 text-yellow-600 bg-yellow-100 rounded-lg p-3">
+                    <i class="fas fa-user-tie"></i>
+                    <span><strong>Teacher QR:</strong> Mark as available</span>
+                </div>
+                <div class="flex items-center justify-center space-x-2 text-yellow-600 bg-yellow-100 rounded-lg p-3">
+                    <i class="fas fa-user-graduate"></i>
+                    <span><strong>Student QR:</strong> Request consultation</span>
+                </div>
             </div>
         </div>
 
 
 
         <!-- Teachers Section (Hidden until student ID is scanned) -->
-        <div id="teachersSection" class="hidden transition-all duration-500 ease-in-out">
+        <div id="teachersSection" class="hidden">
             <!-- Teachers Grid -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 <?php if (empty($teachers)): ?>
@@ -1594,29 +1624,7 @@ if (empty($teachers) && empty($selected_department)) {
                                     <h3 class="text-lg sm:text-xl font-bold text-gray-800">
                                         <?php echo htmlspecialchars($teacher['first_name'] . ' ' . $teacher['last_name']); ?>
                                     </h3>
-                                    
-                                    <!-- Status -->
-                                    <div class="flex items-center justify-center space-x-2">
-                                        <div class="status-badge w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-green-500"></div>
-                                        <span class="text-xs sm:text-sm text-green-600 font-semibold">Available for Consultation</span>
-                                    </div>
-                                    
-                                    <!-- Consultation Hours -->
-                                    <?php if (isset($teacher['start_time']) && isset($teacher['end_time'])): ?>
-                                    <div class="flex items-center justify-center text-gray-600 text-xs sm:text-sm">
-                                        <i class="fas fa-clock mr-2 text-green-500"></i>
-                                        <span>
-                                            <?php 
-                                            echo date('g:i A', strtotime($teacher['start_time'])) . ' - ' . 
-                                                 date('g:i A', strtotime($teacher['end_time']));
-                                            if (isset($teacher['room']) && !empty($teacher['room'])) {
-                                                echo ' | ' . htmlspecialchars($teacher['room']);
-                                            }
-                                            ?>
-                                        </span>
-                                    </div>
-                                    <?php endif; ?>
-                                </div>
+                                                                                                        </div>
                             </div>
 
                             <!-- Card Footer -->
@@ -1705,13 +1713,7 @@ if (empty($teachers) && empty($selected_department)) {
             </div>
         </div>
 
-        <!-- Notification -->
-        <div id="notification" class="notification" style="display: none;">
-            <div class="flex items-center">
-                <i class="fas fa-bell mr-2"></i>
-                <span id="notificationText">Teacher notified successfully!</span>
-            </div>
-        </div>
+        <!-- Notifications removed for cleaner interface -->
     </main>
 
     <!-- Footer -->
@@ -1805,38 +1807,118 @@ if (empty($teachers) && empty($selected_department)) {
                 }
             }
             
-            // Handle student ID input (from QR scan or manual entry)
-            function handleStudentIdInput(studentId) {
-                if (!studentId || studentId.trim() === '') {
+            // Handle QR code input (from QR scan or manual entry)
+            function handleStudentIdInput(qrCode) {
+                if (!qrCode || qrCode.trim() === '') {
                     hideStudentInfo();
                     return;
                 }
                 
-                // Clean the student ID - preserve original format
-                studentId = studentId.trim();
+                // Clean the QR code - preserve original format
+                qrCode = qrCode.trim();
                 
-                // Debug logging to track student ID processing
-                console.log('Original student ID input:', studentId);
-                console.log('Student ID type:', typeof studentId);
-                console.log('Student ID length:', studentId.length);
+                // Debug logging to track QR code processing
+                console.log('Original QR code input:', qrCode);
+                console.log('QR code type:', typeof qrCode);
+                console.log('QR code length:', qrCode.length);
+                
+                // Process QR code through the differentiation API
+                processQRCode(qrCode);
+            }
+            
+            // Process QR code to determine if it's teacher or student
+            function processQRCode(qrCode) {
+                console.log('Processing QR code:', qrCode);
+                
+                // Log QR processing (no visual notification)
+                console.log('Processing QR code...');
+                
+                // Send QR code to processing API
+                const formData = new FormData();
+                formData.append('qr_code', qrCode);
+                
+                fetch('../api/process-qr-scan.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('QR processing response:', data);
+                    
+                    if (data.success) {
+                        if (data.type === 'teacher') {
+                            // Handle teacher QR code
+                            handleTeacherQRCode(data);
+                        } else if (data.type === 'student') {
+                            // Handle student QR code
+                            handleStudentQRCode(data);
+                        }
+                    } else {
+                        console.error('QR processing failed:', data.error);
+                        // Clear the input field
+                        if (studentIdInput) {
+                            studentIdInput.value = '';
+                        }
+                        hideStudentInfo();
+                    }
+                })
+                .catch(error => {
+                    console.error('QR processing error:', error);
+                    // Clear the input field
+                    if (studentIdInput) {
+                        studentIdInput.value = '';
+                    }
+                    hideStudentInfo();
+                });
+            }
+            
+            // Handle teacher QR code scan
+            function handleTeacherQRCode(data) {
+                console.log('Teacher QR code detected:', data.teacher.name);
+                
+                if (data.requires_confirmation) {
+                    // Show teacher confirmation modal
+                    showTeacherConfirmationModal(data);
+                } else {
+                    // Show teacher availability modal (for backward compatibility)
+                    showTeacherAvailabilityModal(data);
+                }
+                
+                // Clear the input field for next scan
+                if (studentIdInput) {
+                    studentIdInput.value = '';
+                }
+            }
+            
+            // Handle student QR code scan
+            function handleStudentQRCode(data) {
+                console.log('Student QR code detected:', data.student.id);
+                
+                const studentId = data.student.id;
                 
                 // Store the student ID exactly as received
                 currentStudentId = studentId;
-                currentStudentName = 'Student ' + studentId;
-                currentStudentDept = 'General';
+                currentStudentName = data.student.name;
+                currentStudentDept = data.student.department;
                 
-                // Display student info with QR code only
-                displayStudentInfo({ name: 'Student ' + studentId, department: 'General', id: studentId });
+                // Display student info
+                displayStudentInfo({
+                    name: data.student.name,
+                    department: data.student.department,
+                    id: studentId
+                });
                 
-                // Store in session storage for use in consultation requests - preserve original format
+                // Store in session storage for use in consultation requests
                 sessionStorage.setItem('currentStudentId', studentId);
-                sessionStorage.setItem('currentStudentName', 'Student ' + studentId);
-                sessionStorage.setItem('currentStudentDept', 'General');
+                sessionStorage.setItem('currentStudentName', data.student.name);
+                sessionStorage.setItem('currentStudentDept', data.student.department);
                 
                 console.log('Student ID processed and stored:', studentId);
-                console.log('Student name with ID:', currentStudentName);
-                console.log('Session storage currentStudentId:', sessionStorage.getItem('currentStudentId'));
-                console.log('Session storage currentStudentName:', sessionStorage.getItem('currentStudentName'));
+                console.log('Student name:', currentStudentName);
+                console.log('Session storage updated');
+                
+                // Log success message
+                console.log('Student QR processed:', data.message);
             }
             
 
@@ -1846,13 +1928,9 @@ if (empty($teachers) && empty($selected_department)) {
                 studentNameDisplay.textContent = studentData.name;
                 studentIdDisplay.textContent = studentData.id || currentStudentId;
                 studentDeptDisplay.textContent = studentData.department;
-                studentInfoDisplay.classList.remove('hidden');
                 
-                // Add success animation
-                studentInfoDisplay.classList.add('animate-pulse');
-                setTimeout(() => {
-                    studentInfoDisplay.classList.remove('animate-pulse');
-                }, 1000);
+                // Show student info - simple
+                studentInfoDisplay.classList.remove('hidden');
                 
                 // Show teachers section
                 showTeachersSection();
@@ -2012,8 +2090,8 @@ if (empty($teachers) && empty($selected_department)) {
                     handleStudentIdInput(decodedText);
                 }
                 
-                // Show success notification
-                showNotification('QR Code scanned successfully!', 'success');
+                // Log QR scan success
+                console.log('QR Code scanned successfully!');
             }
             
             function onScanFailure(error) {
@@ -2025,44 +2103,10 @@ if (empty($teachers) && empty($selected_department)) {
             window.openQRScanner = openQRScanner;
             window.closeQRScannerModal = closeQRScannerModal;
             
-            // Simple notification function
+            // Simple notification function (disabled - no notifications)
             function showNotification(message, type = 'info') {
-                // Create notification element
-                const notification = document.createElement('div');
-                notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm transform transition-all duration-300 translate-x-full`;
-                
-                // Set colors based on type
-                if (type === 'success') {
-                    notification.className += ' bg-green-500 text-white';
-                } else if (type === 'error') {
-                    notification.className += ' bg-red-500 text-white';
-                } else {
-                    notification.className += ' bg-blue-500 text-white';
-                }
-                
-                notification.innerHTML = `
-                    <div class="flex items-center">
-                        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'} mr-2"></i>
-                        <span>${message}</span>
-                    </div>
-                `;
-                
-                document.body.appendChild(notification);
-                
-                // Animate in
-                setTimeout(() => {
-                    notification.classList.remove('translate-x-full');
-                }, 100);
-                
-                // Auto remove after 3 seconds
-                setTimeout(() => {
-                    notification.classList.add('translate-x-full');
-                    setTimeout(() => {
-                        if (notification.parentNode) {
-                            notification.parentNode.removeChild(notification);
-                        }
-                    }, 300);
-                }, 3000);
+                // Notifications disabled for student screen
+                console.log(`Notification (${type}): ${message}`);
             }
             
             // Clear button functionality
@@ -2082,13 +2126,13 @@ if (empty($teachers) && empty($selected_department)) {
                 const teachersSection = document.getElementById('teachersSection');
                 const notice = document.getElementById('studentIdRequiredNotice');
                 
-                // Show teachers section
+                // Show teachers section - simple
                 if (teachersSection) {
                     teachersSection.classList.remove('hidden');
                     teachersSection.style.display = 'block';
                 }
                 
-                // Hide the notice
+                // Hide the notice - simple
                 if (notice) {
                     notice.style.display = 'none';
                 }
@@ -2097,11 +2141,13 @@ if (empty($teachers) && empty($selected_department)) {
                 setTimeout(() => {
                     initializeTeacherCardListeners();
                     
-                    // Check if there are any teachers available after student ID is entered
-                    checkTeachersAvailability();
-                    
-                    // Start real-time teacher updates
+                    // Start real-time teacher updates first
                     startTeacherUpdates();
+                    
+                    // Delay the availability check to allow real-time updates to load teachers first
+                    setTimeout(() => {
+                        checkTeachersAvailability();
+                    }, 2000); // Wait 2 seconds for API call to complete
                 }, 100);
                 
                 console.log('Teachers section shown - real-time updates started');
@@ -2152,6 +2198,21 @@ if (empty($teachers) && empty($selected_department)) {
                 }
             }
             
+            // Hide no teachers modal
+            function hideNoTeachersModal() {
+                const modal = document.getElementById('noTeachersModal');
+                if (modal) {
+                    modal.classList.add('hidden');
+                    modal.style.display = 'none';
+                    
+                    // Remove animation classes
+                    const modalContent = modal.querySelector('.bg-white');
+                    if (modalContent) {
+                        modalContent.classList.add('scale-95', 'opacity-0');
+                        modalContent.classList.remove('scale-100', 'opacity-100');
+                    }
+                }
+            }
 
             
             function hideTeachersSection() {
@@ -2252,6 +2313,7 @@ if (empty($teachers) && empty($selected_department)) {
             const indicator = document.getElementById('realtimeIndicator');
             if (indicator) {
                 indicator.classList.remove('hidden');
+                indicator.classList.add('flex');
             }
             
             // Update immediately
@@ -2275,6 +2337,7 @@ if (empty($teachers) && empty($selected_department)) {
             const indicator = document.getElementById('realtimeIndicator');
             if (indicator) {
                 indicator.classList.add('hidden');
+                indicator.classList.remove('flex');
             }
         }
         
@@ -2286,6 +2349,14 @@ if (empty($teachers) && empty($selected_department)) {
             
             if (!studentId || !teachersSection || teachersSection.classList.contains('hidden')) {
                 return;
+            }
+            
+            // Show loading animation on teachers grid
+            const teachersGrid = teachersSection.querySelector('.grid');
+            if (teachersGrid && teachersGrid.children.length > 0) {
+                teachersGrid.style.opacity = '0.7';
+                teachersGrid.style.transform = 'scale(0.98)';
+                teachersGrid.style.transition = 'all 0.3s ease';
             }
             
             const department = window.selectedDepartment || '';
@@ -2307,11 +2378,27 @@ if (empty($teachers) && empty($selected_department)) {
             })
             .then(data => {
                 if (data.success) {
+                    // Restore teachers grid to normal state
+                    const teachersGrid = teachersSection.querySelector('.grid');
+                    if (teachersGrid) {
+                        teachersGrid.style.opacity = '1';
+                        teachersGrid.style.transform = 'scale(1)';
+                        teachersGrid.style.transition = 'all 0.3s ease';
+                    }
+                    
                     updateTeachersDisplay(data.teachers);
                     lastTeacherUpdate = data.last_update;
                     console.log(`Updated teachers list: ${data.count} teachers available`);
                 } else {
                     console.error('Failed to fetch teachers:', data.error);
+                    
+                    // Restore teachers grid to normal state on error
+                    const teachersGrid = teachersSection.querySelector('.grid');
+                    if (teachersGrid) {
+                        teachersGrid.style.opacity = '1';
+                        teachersGrid.style.transform = 'scale(1)';
+                        teachersGrid.style.transition = 'all 0.3s ease';
+                    }
                 }
             })
             .catch(error => {
@@ -2319,7 +2406,7 @@ if (empty($teachers) && empty($selected_department)) {
             });
         }
         
-        // Update teachers display
+                // Update teachers display - simplified
         function updateTeachersDisplay(newTeachers) {
             const teachersGrid = document.querySelector('#teachersSection .grid');
             if (!teachersGrid) return;
@@ -2336,6 +2423,11 @@ if (empty($teachers) && empty($selected_department)) {
             // Store new teachers list
             currentTeachers = newTeachers;
             
+            // If we now have teachers, hide the no teachers modal
+            if (newTeachers.length > 0) {
+                hideNoTeachersModal();
+            }
+            
             // Show notification for newly available teachers
             const newlyAvailable = newTeachers.filter(newTeacher => 
                 !currentTeacherIds.includes(newTeacher.id)
@@ -2345,7 +2437,7 @@ if (empty($teachers) && empty($selected_department)) {
                 showNewTeacherNotification(newlyAvailable);
             }
             
-            // Clear existing teachers
+            // Clear existing content
             teachersGrid.innerHTML = '';
             
             if (newTeachers.length === 0) {
@@ -2375,22 +2467,22 @@ if (empty($teachers) && empty($selected_department)) {
                 return;
             }
             
-            // Add teachers to grid
+            // Add teachers to grid - simple and clean
             newTeachers.forEach(teacher => {
                 const teacherCard = createTeacherCard(teacher);
                 teachersGrid.appendChild(teacherCard);
             });
             
-            // Re-initialize teacher card listeners
+            // Initialize teacher card listeners
             setTimeout(() => {
                 initializeTeacherCardListeners();
             }, 100);
         }
         
-        // Create teacher card element
+        // Create teacher card element - simplified
         function createTeacherCard(teacher) {
             const card = document.createElement('div');
-            card.className = 'teacher-card bg-white rounded-xl shadow-lg hover:shadow-2xl cursor-pointer transform hover:scale-105 transition-all duration-300 border border-gray-200 flex flex-col overflow-hidden';
+            card.className = 'teacher-card bg-white rounded-xl shadow-lg hover:shadow-2xl cursor-pointer transition-all duration-300 border border-gray-200 flex flex-col overflow-hidden';
             card.setAttribute('data-teacher-id', teacher.id);
             card.setAttribute('data-teacher-name', `${teacher.first_name} ${teacher.last_name}`);
             card.setAttribute('data-teacher-dept', teacher.department);
@@ -2420,23 +2512,6 @@ if (empty($teachers) && empty($selected_department)) {
                         <h3 class="text-lg sm:text-xl font-bold text-gray-800">
                             ${teacher.first_name} ${teacher.last_name}
                         </h3>
-                        
-                        <!-- Status -->
-                        <div class="flex items-center justify-center space-x-2">
-                            <div class="status-badge w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-green-500"></div>
-                            <span class="text-xs sm:text-sm text-green-600 font-semibold">Available for Consultation</span>
-                        </div>
-                        
-                        <!-- Consultation Hours -->
-                        ${teacher.start_time && teacher.end_time ? `
-                        <div class="flex items-center justify-center text-gray-600 text-xs sm:text-sm">
-                            <i class="fas fa-clock mr-2 text-green-500"></i>
-                            <span>
-                                ${formatTime(teacher.start_time)} - ${formatTime(teacher.end_time)}
-                                ${teacher.room ? ` | ${teacher.room}` : ''}
-                            </span>
-                        </div>
-                        ` : ''}
                     </div>
                 </div>
 
@@ -2470,16 +2545,16 @@ if (empty($teachers) && empty($selected_department)) {
             });
         }
         
-        // Show notification for newly available teachers
+        // Show notification for newly available teachers (disabled)
         function showNewTeacherNotification(newTeachers) {
             const teacherNames = newTeachers.map(t => `${t.first_name} ${t.last_name}`).join(', ');
             const message = newTeachers.length === 1 ? 
                 `🎉 ${teacherNames} is now available for consultation!` :
                 `🎉 ${newTeachers.length} new teachers are now available: ${teacherNames}`;
             
-            showNotification(message, 'success');
+            console.log(`New teacher notification (disabled): ${message}`);
             
-            // Play notification sound
+            // Play notification sound (keep sound, remove visual notification)
             try {
                 const audio = new Audio('../consultation/notification-sound.mp3');
                 audio.volume = 0.3;
@@ -2512,13 +2587,9 @@ if (empty($teachers) && empty($selected_department)) {
         function initializeTeacherCardListeners() {
             const teacherCards = document.querySelectorAll('.teacher-card');
             const loadingState = document.getElementById('loadingState');
-            const notification = document.getElementById('notification');
-            const notificationText = document.getElementById('notificationText');
             
             console.log('Initializing teacher card listeners. Found cards:', teacherCards.length);
             console.log('Loading state element:', loadingState);
-            console.log('Notification element:', notification);
-            console.log('Notification text element:', notificationText);
 
             if (teacherCards.length === 0) {
                 console.warn('No teacher cards found to initialize listeners');
@@ -2664,7 +2735,7 @@ if (empty($teachers) && empty($selected_department)) {
                     }
                     
                     if (data.status === 'accepted') {
-                        console.log('Consultation accepted! Stopping status checking...');
+                        console.log('Request sent successfully! Stopping status checking...');
                         stopStatusChecking();
                         hidePendingRequest();
                         showConsultationResponse('accepted', data.teacher_name, data);
@@ -2682,7 +2753,7 @@ if (empty($teachers) && empty($selected_department)) {
                         // Play notification sound
                         playNotificationSound();
                     } else if (data.status === 'pending') {
-                        console.log('Status still pending, continuing to check...');
+                        console.log('Request still being processed, continuing to check...');
                         // Update the wait time display if function exists
                         if (typeof updateWaitTimeDisplay === 'function') {
                             updateWaitTimeDisplay();
@@ -2918,7 +2989,7 @@ if (empty($teachers) && empty($selected_department)) {
         function showConsultationResponse(response, teacherName, data = null) {
             // Log to console for debugging
             if (response === 'accepted') {
-                console.log(`🎉 Consultation Accepted! ${teacherName} has accepted your consultation request.`);
+                console.log(`📤 Request Sent! Your consultation request has been sent to ${teacherName}.`);
             } else {
                 console.log(`❌ Consultation Declined. ${teacherName} has declined your consultation request.`);
             }
@@ -2937,14 +3008,14 @@ if (empty($teachers) && empty($selected_department)) {
                 modalContent = `
                     <div class="ultra-simple-content" id="consultationModalContent">
                         <!-- Enhanced Modal Header -->
-                        <div class="flex items-center justify-between p-4 sm:p-6 border-b border-green-200 bg-gradient-to-r from-green-50 to-green-100 rounded-t-2xl">
+                        <div class="flex items-center justify-between p-4 sm:p-6 border-b border-blue-200 bg-gradient-to-r from-blue-50 to-blue-100 rounded-t-2xl">
                             <div class="flex items-center space-x-3">
-                                <div class="w-12 h-12 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center shadow-lg">
-                                    <i class="fas fa-check-circle text-white text-xl"></i>
+                                <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
+                                    <i class="fas fa-paper-plane text-white text-xl"></i>
                                 </div>
                                 <div>
-                                    <h3 class="text-lg sm:text-xl font-bold text-gray-800">Consultation Accepted</h3>
-                                    <p class="text-xs sm:text-sm text-green-600 font-medium">Success!</p>
+                                    <h3 class="text-lg sm:text-xl font-bold text-gray-800">Request Sent Successfully</h3>
+                                    <p class="text-xs sm:text-sm text-blue-600 font-medium">Waiting for Response</p>
                                 </div>
                             </div>
                             <button onclick="closeConsultationModal()" class="text-gray-400 hover:text-gray-600 transition-colors duration-200 p-2 rounded-full hover:bg-gray-100">
@@ -2956,26 +3027,26 @@ if (empty($teachers) && empty($selected_department)) {
                         <div class="p-4 sm:p-6">
                             <div class="text-center">
                                 <div class="mb-6">
-                                    <div class="w-20 h-20 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg animate-pulse">
-                                        <i class="fas fa-check-circle text-white text-3xl"></i>
+                                    <div class="w-20 h-20 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg animate-pulse">
+                                        <i class="fas fa-paper-plane text-white text-3xl"></i>
                                     </div>
-                                    <h4 class="text-xl sm:text-2xl font-bold text-gray-800 mb-3">🎉 Consultation Accepted!</h4>
+                                    <h4 class="text-xl sm:text-2xl font-bold text-gray-800 mb-3">📤 Request Sent Successfully!</h4>
                                     <p class="text-sm sm:text-base text-gray-600 leading-relaxed mb-4">
-                                        <strong>${teacherName}</strong> has accepted your consultation request.
+                                        Your consultation request has been sent to <strong>${teacherName}</strong>.
                                     </p>
-                                    <div class="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-xl p-4 mb-4">
+                                    <div class="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4 mb-4">
                                         <div class="flex items-center justify-center space-x-2 mb-2">
-                                            <i class="fas fa-info-circle text-green-600"></i>
-                                            <span class="text-sm font-semibold text-green-800">Ready to Start</span>
+                                            <i class="fas fa-info-circle text-blue-600"></i>
+                                            <span class="text-sm font-semibold text-blue-800">What Happens Next?</span>
                                         </div>
-                                        <p class="text-xs sm:text-sm text-green-700">
-                                            You can now proceed with your consultation session. The teacher will be notified of your acceptance.
+                                        <p class="text-xs sm:text-sm text-blue-700">
+                                            Please wait for the teacher to reach out to you. They will contact you when they are ready to start the consultation session.
                                         </p>
                                     </div>
                                     <div class="flex items-center justify-center space-x-4 text-xs sm:text-sm text-gray-500">
                                         <span class="flex items-center">
                                             <i class="fas fa-clock mr-1"></i>
-                                            Real-time
+                                            Waiting
                                         </span>
                                         <span class="flex items-center">
                                             <i class="fas fa-shield-alt mr-1"></i>
@@ -2991,13 +3062,13 @@ if (empty($teachers) && empty($selected_department)) {
                         </div>
 
                         <!-- Enhanced Modal Footer -->
-                        <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 p-4 sm:p-6 border-t border-green-200 bg-gradient-to-r from-green-50 to-green-100 rounded-b-2xl">
+                        <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 p-4 sm:p-6 border-t border-blue-200 bg-gradient-to-r from-blue-50 to-blue-100 rounded-b-2xl">
                             <button onclick="stopResponseAudio()"
                                     class="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-red-600 hover:to-red-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 shadow-lg transform hover:scale-105">
                                 <i class="fas fa-volume-mute mr-2"></i>Stop Audio
                             </button>
                             <button data-action="close-modal"
-                                    class="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-green-600 hover:to-green-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 shadow-lg transform hover:scale-105">
+                                    class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-blue-600 hover:to-blue-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-lg transform hover:scale-105">
                                 <i class="fas fa-times mr-2"></i>Close
                             </button>
                         </div>
@@ -3377,6 +3448,441 @@ if (empty($teachers) && empty($selected_department)) {
         // Make function globally accessible
         window.tryAnotherTeacher = tryAnotherTeacher;
         
+        // Show teacher availability modal when teacher QR is scanned
+        function showTeacherAvailabilityModal(data) {
+            console.log('Showing teacher availability modal for:', data.teacher.name);
+            
+            // Create teacher availability modal
+            const modal = document.createElement('div');
+            modal.className = 'ultra-simple-modal';
+            modal.id = 'teacherAvailabilityModal';
+            
+            let modalContent = `
+                <div class="ultra-simple-content" id="teacherAvailabilityModalContent">
+                    <!-- Enhanced Modal Header -->
+                    <div class="flex items-center justify-between p-4 sm:p-6 border-b border-green-200 bg-gradient-to-r from-green-50 to-green-100 rounded-t-2xl">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-12 h-12 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center shadow-lg">
+                                <i class="fas fa-user-check text-white text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg sm:text-xl font-bold text-gray-800">Teacher Available</h3>
+                                <p class="text-xs sm:text-sm text-green-600 font-medium">QR Code Processed</p>
+                            </div>
+                        </div>
+                        <button onclick="closeTeacherAvailabilityModal()" class="text-gray-400 hover:text-gray-600 transition-colors duration-200 p-2 rounded-full hover:bg-gray-100">
+                            <i class="fas fa-times text-lg sm:text-xl"></i>
+                        </button>
+                    </div>
+
+                    <!-- Enhanced Modal Body -->
+                    <div class="p-4 sm:p-6">
+                        <div class="text-center">
+                            <div class="mb-6">
+                                <div class="w-20 h-20 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg animate-pulse">
+                                    <i class="fas fa-user-check text-white text-3xl"></i>
+                                </div>
+                                <h4 class="text-xl sm:text-2xl font-bold text-gray-800 mb-3">✅ Teacher Now Available</h4>
+                                <p class="text-sm sm:text-base text-gray-600 leading-relaxed mb-4">
+                                    <strong>${data.teacher.name}</strong> from <strong>${data.teacher.department}</strong> is now available for consultation.
+                                </p>
+                                
+                                ${data.auto_accepted ? `
+                                <div class="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4 mb-4">
+                                    <div class="flex items-center justify-center space-x-2 mb-2">
+                                        <i class="fas fa-check-circle text-blue-600"></i>
+                                        <span class="text-sm font-semibold text-blue-800">Consultation Request Auto-Accepted!</span>
+                                    </div>
+                                    <p class="text-xs sm:text-sm text-blue-700">
+                                        A pending consultation request for <strong>${data.pending_request.student_name}</strong> (${data.pending_request.student_id}) has been automatically accepted.
+                                    </p>
+                                </div>
+                                ` : ''}
+                                
+                                <div class="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-xl p-4 mb-4">
+                                    <div class="flex items-center justify-center space-x-2 mb-2">
+                                        <i class="fas fa-info-circle text-green-600"></i>
+                                        <span class="text-sm font-semibold text-green-800">System Update</span>
+                                    </div>
+                                    <p class="text-xs sm:text-sm text-green-700">
+                                        Teacher status has been updated to "Available for Consultation" and will appear in the student consultation system.
+                                    </p>
+                                </div>
+                                
+                                <div class="flex items-center justify-center space-x-4 text-xs sm:text-sm text-gray-500">
+                                    <span class="flex items-center">
+                                        <i class="fas fa-qrcode mr-1"></i>
+                                        QR Scanned
+                                    </span>
+                                    <span class="flex items-center">
+                                        <i class="fas fa-clock mr-1"></i>
+                                        Real-time
+                                    </span>
+                                    <span class="flex items-center">
+                                        <i class="fas fa-users mr-1"></i>
+                                        Available
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Enhanced Modal Footer -->
+                    <div class="flex flex-col space-y-2 p-4 sm:p-6 border-t border-green-200 bg-gradient-to-r from-green-50 to-green-100 rounded-b-2xl">
+                        <button onclick="closeTeacherAvailabilityModal()"
+                                class="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-green-600 hover:to-green-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 shadow-lg transform hover:scale-105">
+                            <i class="fas fa-check mr-2"></i>Continue
+                        </button>
+                        
+                        ${data.auto_accepted ? `
+                        <button onclick="redirectToTeacherScreen()"
+                                class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-blue-600 hover:to-blue-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-lg transform hover:scale-105">
+                            <i class="fas fa-external-link-alt mr-2"></i>Go to Teacher Screen
+                        </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+            
+            modal.innerHTML = modalContent;
+            document.body.appendChild(modal);
+            
+            // Prevent background scrolling
+            document.body.style.overflow = 'hidden';
+            
+            // Close modal when clicking outside
+            modal.addEventListener('click', function(event) {
+                if (event.target === modal) {
+                    closeTeacherAvailabilityModal();
+                }
+            });
+
+            // Close modal with Escape key
+            const handleEscape = function(event) {
+                if (event.key === 'Escape') {
+                    closeTeacherAvailabilityModal();
+                    document.removeEventListener('keydown', handleEscape);
+                }
+            };
+            document.addEventListener('keydown', handleEscape);
+            
+            // Auto-close after 8 seconds if no pending request was auto-accepted
+            if (!data.auto_accepted) {
+                setTimeout(() => {
+                    closeTeacherAvailabilityModal();
+                }, 8000);
+            }
+            
+            // Play success sound
+            try {
+                const successAudio = new Audio('notification-sound.mp3');
+                successAudio.volume = 0.3;
+                successAudio.play().catch(e => console.log('Success audio failed:', e));
+            } catch (e) {
+                console.log('Success audio not supported:', e);
+            }
+        }
+        
+        // Close teacher availability modal
+        function closeTeacherAvailabilityModal() {
+            const modal = document.getElementById('teacherAvailabilityModal');
+            if (modal) {
+                modal.remove();
+                document.body.style.overflow = '';
+                cleanupBlurEffects();
+            }
+            
+            // Clear the input field for next scan
+            const studentIdInput = document.getElementById('studentIdInput');
+            if (studentIdInput) {
+                setTimeout(() => {
+                    studentIdInput.focus();
+                }, 100);
+            }
+        }
+        
+        // Redirect to teacher screen (if auto-accepted request)
+        function redirectToTeacherScreen() {
+            closeTeacherAvailabilityModal();
+            // Open teacher screen in new tab/window
+            window.open('teacher-screen.php', '_blank');
+        }
+        
+        // Make functions globally accessible
+        window.closeTeacherAvailabilityModal = closeTeacherAvailabilityModal;
+        window.redirectToTeacherScreen = redirectToTeacherScreen;
+        
+        // Show teacher confirmation modal when teacher QR is scanned
+        function showTeacherConfirmationModal(data) {
+            console.log('Showing teacher confirmation modal for:', data.teacher.name);
+            console.log('Action type:', data.action_type);
+            console.log('Current status:', data.current_status);
+            
+            // Create teacher confirmation modal
+            const modal = document.createElement('div');
+            modal.className = 'ultra-simple-modal';
+            modal.id = 'teacherConfirmationModal';
+            
+            // Determine modal styling and content based on action type
+            const isMarkingAvailable = data.action_type === 'mark_available';
+            const headerColor = isMarkingAvailable ? 'blue' : 'red';
+            const actionIcon = isMarkingAvailable ? 'user-check' : 'user-times';
+            const actionTitle = isMarkingAvailable ? 'Mark Yourself as Available?' : 'Mark Yourself as Unavailable?';
+            const actionEmoji = isMarkingAvailable ? '🎯' : '🔴';
+            
+            // Current status display
+            const currentStatusInfo = `
+                <div class="bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200 rounded-xl p-4 mb-4">
+                    <div class="flex items-center justify-center space-x-2 mb-2">
+                        <i class="fas fa-info-circle text-gray-600"></i>
+                        <span class="text-sm font-semibold text-gray-800">Current Status</span>
+                    </div>
+                    <div class="text-center">
+                        <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full ${data.current_status === 'available' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                            <i class="fas fa-${data.current_status === 'available' ? 'check-circle' : 'times-circle'}"></i>
+                            <span class="font-semibold">${data.current_status === 'available' ? 'Available' : 'Not Available'}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Pending requests info (only show for marking available)
+            const pendingRequestsInfo = (isMarkingAvailable && data.pending_count > 0) ? `
+                <div class="bg-gradient-to-r from-orange-50 to-orange-100 border border-orange-200 rounded-xl p-4 mb-4">
+                    <div class="flex items-center justify-center space-x-2 mb-2">
+                        <i class="fas fa-clock text-orange-600"></i>
+                        <span class="text-sm font-semibold text-orange-800">Pending Consultation Requests</span>
+                    </div>
+                    <p class="text-xs sm:text-sm text-orange-700 mb-2">
+                        You have <strong>${data.pending_count}</strong> pending consultation request(s) that will be automatically accepted if you confirm availability.
+                    </p>
+                    <div class="space-y-1">
+                        ${data.pending_requests.map(req => `
+                            <div class="text-xs text-orange-600 bg-orange-50 rounded px-2 py-1">
+                                ${req.student_name} (${req.student_id}) - ${formatTimeAgo(req.request_time)}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : '';
+            
+            // Warning for marking unavailable
+            const unavailableWarning = !isMarkingAvailable ? `
+                <div class="bg-gradient-to-r from-yellow-50 to-yellow-100 border border-yellow-200 rounded-xl p-4 mb-4">
+                    <div class="flex items-center justify-center space-x-2 mb-2">
+                        <i class="fas fa-exclamation-triangle text-yellow-600"></i>
+                        <span class="text-sm font-semibold text-yellow-800">Warning</span>
+                    </div>
+                    <p class="text-xs sm:text-sm text-yellow-700">
+                        Marking yourself as unavailable will remove you from the consultation system. Students will no longer see you as available for consultation.
+                    </p>
+                </div>
+            ` : '';
+            
+            const yesButtonText = isMarkingAvailable ? 'Yes, I\'m Available' : 'Yes, Make Me Unavailable';
+            const noButtonText = isMarkingAvailable ? 'No, Stay Unavailable' : 'No, Stay Available';
+            const yesButtonColor = isMarkingAvailable ? 'green' : 'red';
+            
+            let modalContent = `
+                <div class="ultra-simple-content" id="teacherConfirmationModalContent">
+                    <!-- Enhanced Modal Header -->
+                    <div class="flex items-center justify-between p-4 sm:p-6 border-b border-${headerColor}-200 bg-gradient-to-r from-${headerColor}-50 to-${headerColor}-100 rounded-t-2xl">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-12 h-12 bg-gradient-to-br from-${headerColor}-400 to-${headerColor}-600 rounded-full flex items-center justify-center shadow-lg">
+                                <i class="fas fa-${actionIcon} text-white text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg sm:text-xl font-bold text-gray-800">Confirm Status Change</h3>
+                                <p class="text-xs sm:text-sm text-${headerColor}-600 font-medium">Teacher QR Code Verified</p>
+                            </div>
+                        </div>
+                        <button onclick="closeTeacherConfirmationModal()" class="text-gray-400 hover:text-gray-600 transition-colors duration-200 p-2 rounded-full hover:bg-gray-100">
+                            <i class="fas fa-times text-lg sm:text-xl"></i>
+                        </button>
+                    </div>
+
+                    <!-- Enhanced Modal Body -->
+                    <div class="p-4 sm:p-6">
+                        <div class="text-center">
+                            <div class="mb-6">
+                                <div class="w-20 h-20 bg-gradient-to-br from-${headerColor}-400 to-${headerColor}-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg animate-pulse">
+                                    <i class="fas fa-question-circle text-white text-3xl"></i>
+                                </div>
+                                <h4 class="text-xl sm:text-2xl font-bold text-gray-800 mb-3">${actionEmoji} ${actionTitle}</h4>
+                                <p class="text-sm sm:text-base text-gray-600 leading-relaxed mb-4">
+                                    Hello <strong>${data.teacher.name}</strong>!<br>
+                                    ${data.message}
+                                </p>
+                                
+                                ${currentStatusInfo}
+                                ${pendingRequestsInfo}
+                                ${unavailableWarning}
+                                
+                                <div class="flex items-center justify-center space-x-4 text-xs sm:text-sm text-gray-500">
+                                    <span class="flex items-center">
+                                        <i class="fas fa-qrcode mr-1"></i>
+                                        QR Verified
+                                    </span>
+                                    <span class="flex items-center">
+                                        <i class="fas fa-clock mr-1"></i>
+                                        Real-time
+                                    </span>
+                                    <span class="flex items-center">
+                                        <i class="fas fa-shield-alt mr-1"></i>
+                                        Secure
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Enhanced Modal Footer -->
+                    <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 p-4 sm:p-6 border-t border-${headerColor}-200 bg-gradient-to-r from-${headerColor}-50 to-${headerColor}-100 rounded-b-2xl">
+                        <button onclick="confirmTeacherAvailability(${data.teacher.id}, false, '${data.action_type}')"
+                                class="flex-1 bg-gradient-to-r from-gray-500 to-gray-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-gray-600 hover:to-gray-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 shadow-lg transform hover:scale-105">
+                            <i class="fas fa-times mr-2"></i>${noButtonText}
+                        </button>
+                        <button onclick="confirmTeacherAvailability(${data.teacher.id}, true, '${data.action_type}')"
+                                class="flex-1 bg-gradient-to-r from-${yesButtonColor}-500 to-${yesButtonColor}-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-${yesButtonColor}-600 hover:to-${yesButtonColor}-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-${yesButtonColor}-500 focus:ring-offset-2 shadow-lg transform hover:scale-105">
+                            <i class="fas fa-check mr-2"></i>${yesButtonText}
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            modal.innerHTML = modalContent;
+            document.body.appendChild(modal);
+            
+            // Prevent background scrolling
+            document.body.style.overflow = 'hidden';
+            
+            // Close modal when clicking outside
+            modal.addEventListener('click', function(event) {
+                if (event.target === modal) {
+                    closeTeacherConfirmationModal();
+                }
+            });
+
+            // Close modal with Escape key
+            const handleEscape = function(event) {
+                if (event.key === 'Escape') {
+                    closeTeacherConfirmationModal();
+                    document.removeEventListener('keydown', handleEscape);
+                }
+            };
+            document.addEventListener('keydown', handleEscape);
+            
+            // Play notification sound
+            try {
+                const notificationAudio = new Audio('notification-sound.mp3');
+                notificationAudio.volume = 0.3;
+                notificationAudio.play().catch(e => console.log('Notification audio failed:', e));
+            } catch (e) {
+                console.log('Notification audio not supported:', e);
+            }
+        }
+        
+        // Close teacher confirmation modal
+        function closeTeacherConfirmationModal() {
+            const modal = document.getElementById('teacherConfirmationModal');
+            if (modal) {
+                modal.remove();
+                document.body.style.overflow = '';
+                cleanupBlurEffects();
+            }
+            
+            // Clear the input field for next scan
+            const studentIdInput = document.getElementById('studentIdInput');
+            if (studentIdInput) {
+                setTimeout(() => {
+                    studentIdInput.focus();
+                }, 100);
+            }
+        }
+        
+        // Confirm teacher availability
+        function confirmTeacherAvailability(teacherId, confirmed, actionType) {
+            console.log('Confirming teacher availability:', teacherId, confirmed, actionType);
+            
+            // Close confirmation modal
+            closeTeacherConfirmationModal();
+            
+            // Log processing status
+            const actionText = actionType === 'mark_available' ? 'marking available' : 'marking unavailable';
+            console.log(`Processing ${actionText}...`);
+            
+            // Send confirmation to API
+            const formData = new FormData();
+            formData.append('teacher_id', teacherId);
+            formData.append('confirmed', confirmed ? 'true' : 'false');
+            formData.append('action_type', actionType);
+            
+            fetch('../api/confirm-teacher-availability.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Confirmation response:', data);
+                
+                if (data.success) {
+                    if (data.confirmed) {
+                        if (data.action_type === 'mark_available') {
+                            // Teacher confirmed availability - show success modal
+                            showTeacherAvailabilityModal({
+                                teacher: data.teacher,
+                                marked_available: data.marked_available,
+                                auto_accepted: data.auto_accepted_count > 0,
+                                pending_request: data.accepted_requests && data.accepted_requests.length > 0 ? data.accepted_requests[0] : null,
+                                accepted_requests: data.accepted_requests || []
+                            });
+                        } else if (data.action_type === 'mark_unavailable') {
+                            // Teacher confirmed unavailability - log message
+                            console.log('Teacher marked unavailable:', data.message);
+                            
+                            // Play success sound
+                            try {
+                                const successAudio = new Audio('notification-sound.mp3');
+                                successAudio.volume = 0.3;
+                                successAudio.play().catch(e => console.log('Success audio failed:', e));
+                            } catch (e) {
+                                console.log('Success audio not supported:', e);
+                            }
+                        }
+                    } else {
+                        // Teacher declined the action
+                        console.log('Teacher declined action:', data.message);
+                    }
+                } else {
+                    console.error('Confirmation failed:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Confirmation error:', error);
+            });
+        }
+        
+        // Helper function to format time ago
+        function formatTimeAgo(timestamp) {
+            const now = new Date();
+            const time = new Date(timestamp);
+            const diffInMinutes = Math.floor((now - time) / (1000 * 60));
+            
+            if (diffInMinutes < 1) return 'Just now';
+            if (diffInMinutes === 1) return '1 minute ago';
+            if (diffInMinutes < 60) return `${diffInMinutes} minutes ago`;
+            
+            const diffInHours = Math.floor(diffInMinutes / 60);
+            if (diffInHours === 1) return '1 hour ago';
+            if (diffInHours < 24) return `${diffInHours} hours ago`;
+            
+            return time.toLocaleDateString();
+        }
+        
+        // Make functions globally accessible
+        window.closeTeacherConfirmationModal = closeTeacherConfirmationModal;
+        window.confirmTeacherAvailability = confirmTeacherAvailability;
+        
         // Show pending request indicator
         function showPendingRequest(teacherName) {
             // Remove any existing pending indicator
@@ -3387,19 +3893,19 @@ if (empty($teachers) && empty($selected_department)) {
             
             const pendingIndicator = document.createElement('div');
             pendingIndicator.id = 'pendingRequestIndicator';
-            pendingIndicator.className = 'fixed bottom-6 right-6 z-50 p-6 rounded-2xl shadow-2xl bg-gradient-to-r from-orange-500 to-orange-600 text-white animate-pulse border border-orange-400 max-w-sm';
+            pendingIndicator.className = 'fixed bottom-6 right-6 z-50 p-6 rounded-2xl shadow-2xl bg-gradient-to-r from-blue-500 to-blue-600 text-white animate-pulse border border-blue-400 max-w-sm';
             pendingIndicator.innerHTML = `
                 <div class="flex items-start space-x-4">
                     <div class="flex-shrink-0">
                         <div class="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                            <i class="fas fa-clock text-xl"></i>
+                            <i class="fas fa-paper-plane text-xl"></i>
                         </div>
                     </div>
                     <div class="flex-1">
-                        <h4 class="font-bold text-lg mb-1">⏳ Waiting for Response</h4>
-                        <p class="text-sm text-orange-100 mb-3">Waiting for <strong>${teacherName}</strong> to respond to your consultation request...</p>
+                        <h4 class="font-bold text-lg mb-1">📤 Request Sent Successfully</h4>
+                        <p class="text-sm text-blue-100 mb-3">Your consultation request has been sent to <strong>${teacherName}</strong>. Please wait for them to reach out to you.</p>
                         <div class="flex items-center justify-between mb-2">
-                            <span class="text-xs text-orange-100">Checking every 500ms...</span>
+                            <span class="text-xs text-blue-100">Waiting for teacher response...</span>
                             <div class="flex space-x-1">
                                 <div class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
                                 <div class="w-1.5 h-1.5 bg-white rounded-full animate-pulse" style="animation-delay: 0.1s;"></div>
@@ -3408,8 +3914,8 @@ if (empty($teachers) && empty($selected_department)) {
                                 <div class="w-1.5 h-1.5 bg-white rounded-full animate-pulse" style="animation-delay: 0.4s;"></div>
                             </div>
                         </div>
-                        <div class="text-xs text-orange-100">
-                            <i class="fas fa-bolt mr-1"></i>Fast response monitoring active
+                        <div class="text-xs text-blue-100">
+                            <i class="fas fa-info-circle mr-1"></i>Teacher will contact you when ready
                         </div>
                     </div>
                 </div>
@@ -3473,15 +3979,10 @@ if (empty($teachers) && empty($selected_department)) {
         window.addEventListener('load', function() {
             console.log('Page loaded');
             const loadingState = document.getElementById('loadingState');
-            const notification = document.getElementById('notification');
             
             if (loadingState) {
                 loadingState.style.display = 'none';
                 console.log('Loading state hidden');
-            }
-            if (notification) {
-                notification.style.display = 'none';
-                console.log('Notification hidden');
             }
             
             // Initialize teacher card listeners if teachers section is visible
@@ -3596,7 +4097,7 @@ if (empty($teachers) && empty($selected_department)) {
             let countdownInterval;
             let isStandbyActive = false;
             let lastActivityTime = Date.now();
-            const STANDBY_DELAY = 10000; // 10 seconds of inactivity (reduced for testing)
+            const STANDBY_DELAY = 30000; // 30 seconds of inactivity
             
             // Function to start standby mode
             function startStandbyMode() {
@@ -3698,7 +4199,7 @@ if (empty($teachers) && empty($selected_department)) {
             function startCountdown() {
                 if (isStandbyActive) return;
                 
-                let timeLeft = 5;
+                let timeLeft = 30;
                 standbyCountdown.classList.add('active');
                 countdownTimer.textContent = timeLeft;
                 

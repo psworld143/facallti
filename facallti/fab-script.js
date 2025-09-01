@@ -101,13 +101,23 @@ class FloatingActionButton {
                         const statusText = teacher.has_consultation ? teacher.consultation_time : 'Click to request consultation';
                         const cardClass = teacher.has_consultation ? 'fab-teacher-card has-consultation' : 'fab-teacher-card no-consultation';
                         
+                        // Create avatar HTML - show photo if available, otherwise show initials
+                        let avatarHTML = '';
+                        if (teacher.image_url && teacher.image_url.trim() !== '') {
+                            avatarHTML = `<img src="../${teacher.image_url}" alt="${teacher.full_name}" class="fab-teacher-photo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" onload="this.style.opacity='1'; this.nextElementSibling.style.display='none';" style="opacity: 0;">`;
+                        }
+                        // Always include initials as fallback
+                        avatarHTML += `<div class="fab-teacher-initials" style="${teacher.image_url && teacher.image_url.trim() !== '' ? 'display: flex;' : 'display: flex;'}">${teacher.initials}</div>`;
+                        
                         teachersHTML += `
                             <div class="${cardClass}" 
                                  data-teacher-id="${teacher.id}" 
                                  data-teacher-name="${teacher.full_name}" 
                                  data-teacher-dept="${teacher.department}"
                                  data-has-consultation="${teacher.has_consultation}">
-                                <div class="fab-teacher-avatar">${teacher.initials}</div>
+                                <div class="fab-teacher-avatar">
+                                    ${avatarHTML}
+                                </div>
                                 <div class="fab-teacher-name">${teacher.full_name}</div>
                                 <div class="fab-teacher-dept">${teacher.department}</div>
                                 <div class="${statusClass}">${statusText}</div>

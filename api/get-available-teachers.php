@@ -50,7 +50,7 @@ try {
         $active_academic_year = $semester_row['academic_year'];
     }
     
-    // Build the main query
+    // Build the main query - Teachers are available regardless of scheduled hours once they scan
     $teachers_query = "SELECT 
                         f.id,
                         f.first_name,
@@ -61,23 +61,21 @@ try {
                         f.bio,
                         f.image_url,
                         f.is_active,
-                        MIN(ch.start_time) as start_time,
-                        MAX(ch.end_time) as end_time,
-                        GROUP_CONCAT(DISTINCT ch.room ORDER BY ch.room SEPARATOR ', ') as room,
-                        GROUP_CONCAT(DISTINCT ch.notes ORDER BY ch.notes SEPARATOR '; ') as notes,
+                        COALESCE(MIN(ch.start_time), '08:00:00') as start_time,
+                        COALESCE(MAX(ch.end_time), '17:00:00') as end_time,
+                        COALESCE(GROUP_CONCAT(DISTINCT ch.room ORDER BY ch.room SEPARATOR ', '), 'Available') as room,
+                        COALESCE(GROUP_CONCAT(DISTINCT ch.notes ORDER BY ch.notes SEPARATOR '; '), 'Available for consultation') as notes,
                         ta.scan_time,
                         ta.last_activity,
                         ta.created_at as availability_created
                        FROM faculty f 
-                       INNER JOIN consultation_hours ch ON f.id = ch.teacher_id
                        INNER JOIN teacher_availability ta ON f.id = ta.teacher_id
+                       LEFT JOIN consultation_hours ch ON f.id = ch.teacher_id 
+                           AND ch.day_of_week = ? 
+                           AND ch.is_active = 1
+                           " . ($active_semester ? "AND ch.semester = ?" : "") . "
+                           " . ($active_academic_year ? "AND ch.academic_year = ?" : "") . "
                        WHERE f.is_active = 1 
-                       AND ch.day_of_week = ?
-                       AND ch.is_active = 1
-                       AND ch.start_time <= ?
-                       AND ch.end_time >= ?
-                       " . ($active_semester ? "AND ch.semester = ?" : "") . "
-                       " . ($active_academic_year ? "AND ch.academic_year = ?" : "") . "
                        AND f.id NOT IN (
                            SELECT teacher_id 
                            FROM consultation_leave 
@@ -98,8 +96,8 @@ try {
     
     if ($teachers_stmt) {
         // Build parameter types and values dynamically
-        $param_types = "sss";
-        $param_values = [$current_day, $current_time, $current_time];
+        $param_types = "s";
+        $param_values = [$current_day];
         
         if ($active_semester) {
             $param_types .= "s";
@@ -123,8 +121,9 @@ try {
             $teachers[] = $row;
         }
         
-        // If no exact match and department is specified, try partial matching
+        // If no teachers found and department is specified, try fallback approaches
         if (empty($teachers) && !empty($selected_department)) {
+            // First try partial matching for the department
             $partial_query = "SELECT 
                                 f.id,
                                 f.first_name,
@@ -187,6 +186,68 @@ try {
                     $teachers[] = $row;
                 }
             }
+            
+            // If still no teachers found after partial matching, show all available teachers
+            if (empty($teachers)) {
+                $all_teachers_query = "SELECT 
+                                        f.id,
+                                        f.first_name,
+                                        f.last_name,
+                                        f.department,
+                                        f.position,
+                                        f.email,
+                                        f.bio,
+                                        f.image_url,
+                                        f.is_active,
+                                        COALESCE(MIN(ch.start_time), '08:00:00') as start_time,
+                                        COALESCE(MAX(ch.end_time), '17:00:00') as end_time,
+                                        COALESCE(GROUP_CONCAT(DISTINCT ch.room ORDER BY ch.room SEPARATOR ', '), 'Available') as room,
+                                        COALESCE(GROUP_CONCAT(DISTINCT ch.notes ORDER BY ch.notes SEPARATOR '; '), 'Available for consultation') as notes,
+                                        ta.scan_time,
+                                        ta.last_activity,
+                                        ta.created_at as availability_created
+                                       FROM faculty f 
+                                       INNER JOIN teacher_availability ta ON f.id = ta.teacher_id
+                                       LEFT JOIN consultation_hours ch ON f.id = ch.teacher_id 
+                                           AND ch.day_of_week = ? 
+                                           AND ch.is_active = 1
+                                           " . ($active_semester ? "AND ch.semester = ?" : "") . "
+                                           " . ($active_academic_year ? "AND ch.academic_year = ?" : "") . "
+                                       WHERE f.is_active = 1 
+                                       AND f.id NOT IN (
+                                           SELECT teacher_id 
+                                           FROM consultation_leave 
+                                           WHERE leave_date = CURDATE()
+                                       )
+                                       AND ta.availability_date = CURDATE()
+                                       AND ta.status = 'available'
+                                       GROUP BY f.id, f.first_name, f.last_name, f.department, f.position, f.email, f.bio, f.image_url, f.is_active, ta.scan_time, ta.last_activity, ta.created_at
+                                       ORDER BY ta.scan_time DESC, f.first_name, f.last_name";
+                
+                $all_teachers_stmt = mysqli_prepare($conn, $all_teachers_query);
+                if ($all_teachers_stmt) {
+                    // Build parameter types and values dynamically
+                    $param_types = "s";
+                    $param_values = [$current_day];
+                    
+                    if ($active_semester) {
+                        $param_types .= "s";
+                        $param_values[] = $active_semester;
+                    }
+                    if ($active_academic_year) {
+                        $param_types .= "s";
+                        $param_values[] = $active_academic_year;
+                    }
+                    
+                    mysqli_stmt_bind_param($all_teachers_stmt, $param_types, ...$param_values);
+                    mysqli_stmt_execute($all_teachers_stmt);
+                    $all_teachers_result = mysqli_stmt_get_result($all_teachers_stmt);
+                    
+                    while ($row = mysqli_fetch_assoc($all_teachers_result)) {
+                        $teachers[] = $row;
+                    }
+                }
+            }
         }
         
         // If still no teachers and no department specified, get all available
@@ -201,23 +262,21 @@ try {
                                 f.bio,
                                 f.image_url,
                                 f.is_active,
-                                MIN(ch.start_time) as start_time,
-                                MAX(ch.end_time) as end_time,
-                                GROUP_CONCAT(DISTINCT ch.room ORDER BY ch.room SEPARATOR ', ') as room,
-                                GROUP_CONCAT(DISTINCT ch.notes ORDER BY ch.notes SEPARATOR '; ') as notes,
+                                COALESCE(MIN(ch.start_time), '08:00:00') as start_time,
+                                COALESCE(MAX(ch.end_time), '17:00:00') as end_time,
+                                COALESCE(GROUP_CONCAT(DISTINCT ch.room ORDER BY ch.room SEPARATOR ', '), 'Available') as room,
+                                COALESCE(GROUP_CONCAT(DISTINCT ch.notes ORDER BY ch.notes SEPARATOR '; '), 'Available for consultation') as notes,
                                 ta.scan_time,
                                 ta.last_activity,
                                 ta.created_at as availability_created
                                FROM faculty f 
-                               INNER JOIN consultation_hours ch ON f.id = ch.teacher_id
                                INNER JOIN teacher_availability ta ON f.id = ta.teacher_id
+                               LEFT JOIN consultation_hours ch ON f.id = ch.teacher_id 
+                                   AND ch.day_of_week = ? 
+                                   AND ch.is_active = 1
+                                   " . ($active_semester ? "AND ch.semester = ?" : "") . "
+                                   " . ($active_academic_year ? "AND ch.academic_year = ?" : "") . "
                                WHERE f.is_active = 1 
-                               AND ch.day_of_week = ?
-                               AND ch.is_active = 1
-                               AND ch.start_time <= ?
-                               AND ch.end_time >= ?
-                               " . ($active_semester ? "AND ch.semester = ?" : "") . "
-                               " . ($active_academic_year ? "AND ch.academic_year = ?" : "") . "
                                AND f.id NOT IN (
                                    SELECT teacher_id 
                                    FROM consultation_leave 
@@ -230,8 +289,8 @@ try {
             
             $fallback_stmt = mysqli_prepare($conn, $fallback_query);
             if ($fallback_stmt) {
-                $param_types = "sss";
-                $param_values = [$current_day, $current_time, $current_time];
+                $param_types = "s";
+                $param_values = [$current_day];
                 
                 if ($active_semester) {
                     $param_types .= "s";
