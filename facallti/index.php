@@ -8,24 +8,50 @@ $page_title = 'Student-Teacher Consultation';
 // Initialize arrays
 $all_departments = [];
 
-// Get departments from heads table with error handling
-$heads_departments_query = "SELECT DISTINCT department FROM heads WHERE status = 'active' ORDER BY department";
-$heads_departments_result = mysqli_query($conn, $heads_departments_query);
-
-if ($heads_departments_result && mysqli_num_rows($heads_departments_result) > 0) {
-    while ($row = mysqli_fetch_assoc($heads_departments_result)) {
-        $all_departments[] = [
-            'id' => null,
-            'name' => $row['department'],
-            'description' => 'Department consultation services',
-            'icon' => 'fas fa-building',
-            'color_theme' => '#FF6B35'
-        ];
-    }
+// Debug: Check database connection
+if (!isset($conn) || !$conn) {
+    error_log("Database connection failed in facallti/index.php");
+    die("Database connection failed. Please check your configuration.");
 }
 
-// If no departments from heads table, add default ones
+// Get departments from colleges table with error handling
+$college_departments_query = "SELECT id, name, description, color_theme FROM colleges WHERE is_active = 1 ORDER BY sort_order, name";
+error_log("Executing query: " . $college_departments_query);
+
+$college_departments_result = mysqli_query($conn, $college_departments_query);
+
+// Check for database errors
+if (!$college_departments_result) {
+    $error_msg = "Database error in colleges query: " . mysqli_error($conn);
+    error_log($error_msg);
+    // Fall back to default departments if query fails
+    $all_departments = [];
+} elseif (mysqli_num_rows($college_departments_result) > 0) {
+    error_log("Found " . mysqli_num_rows($college_departments_result) . " colleges in database");
+    while ($row = mysqli_fetch_assoc($college_departments_result)) {
+        $all_departments[] = [
+            'id' => $row['id'],
+            'name' => $row['name'],
+            'description' => $row['description'] ?: 'College consultation services',
+            'icon' => 'fas fa-building',
+            'color_theme' => $row['color_theme'] ?: '#FF6B35'
+        ];
+    }
+} else {
+    // No colleges found in database
+    error_log("No colleges found in database");
+    $all_departments = [];
+}
+
+// Debug: Log final departments array
+error_log("Final departments array count: " . count($all_departments));
+if (!empty($all_departments)) {
+    error_log("Departments loaded: " . implode(', ', array_column($all_departments, 'name')));
+}
+
+// If no departments from colleges table, add default ones
 if (empty($all_departments)) {
+    error_log("Using fallback default departments");
     $all_departments = [
         [
             'id' => 1,
@@ -70,7 +96,11 @@ if (empty($all_departments)) {
             'color_theme' => '#9B59B6'
         ]
     ];
+    error_log("Fallback departments loaded: " . count($all_departments));
 }
+
+// Debug: Final check before HTML
+error_log("Final departments before HTML: " . count($all_departments));
 
 // Define available screens
 $available_screens = [
