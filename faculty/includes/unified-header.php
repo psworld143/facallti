@@ -14,6 +14,9 @@ if (!isset($sidebar_context)) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo isset($page_title) ? $page_title . ' - Faculty Portal' : 'Faculty Portal'; ?></title>
+    <link rel="icon" type="image/png" href="../../assets/images/seait-logo.png">
+    <link rel="shortcut icon" type="image/png" href="../../assets/images/seait-logo.png">
+    <link rel="apple-touch-icon" type="image/png" href="../../assets/images/seait-logo.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -697,13 +700,28 @@ if (!isset($sidebar_context)) {
                         </div>
                     </div>
 
+                    <?php
+                    // Get faculty photo information
+                    $faculty_photo_query = "SELECT image_url FROM faculty WHERE id = ? AND is_active = 1";
+                    $faculty_photo_stmt = mysqli_prepare($conn, $faculty_photo_query);
+                    mysqli_stmt_bind_param($faculty_photo_stmt, "i", $_SESSION['faculty_id']);
+                    mysqli_stmt_execute($faculty_photo_stmt);
+                    $faculty_photo_result = mysqli_stmt_get_result($faculty_photo_stmt);
+                    $faculty_photo_info = mysqli_fetch_assoc($faculty_photo_result);
+                    ?>
                     <div class="flex items-center space-x-4">
                         <div class="hidden sm:block text-right">
                             <p class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']); ?></p>
                             <p class="text-sm text-gray-500">Teacher</p>
                         </div>
-                        <div class="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-seait-orange flex items-center justify-center">
-                            <span class="text-white text-sm sm:text-base font-medium"><?php echo strtoupper(substr($_SESSION['first_name'], 0, 1) . substr($_SESSION['last_name'], 0, 1)); ?></span>
+                        <div class="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-seait-orange flex items-center justify-center overflow-hidden">
+                            <?php if (!empty($faculty_photo_info['image_url']) && file_exists('../' . $faculty_photo_info['image_url'])): ?>
+                                <img src="../<?php echo htmlspecialchars($faculty_photo_info['image_url']); ?>" 
+                                     alt="Profile Photo" 
+                                     class="w-full h-full object-cover">
+                            <?php else: ?>
+                                <span class="text-white text-sm sm:text-base font-medium"><?php echo strtoupper(substr($_SESSION['first_name'], 0, 1) . substr($_SESSION['last_name'], 0, 1)); ?></span>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>

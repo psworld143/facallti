@@ -135,7 +135,7 @@ $query = "SELECT
     fd.field_of_study,
     fd.school_university,
     fd.year_graduated,
-    fd.employee_id
+            f.qrcode as employee_id
 FROM faculty f
 LEFT JOIN faculty_details fd ON f.id = fd.faculty_id
 WHERE $where_clause

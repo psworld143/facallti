@@ -3,18 +3,123 @@ session_start();
 require_once 'config/database.php';
 require_once 'includes/functions.php';
 
-// Set page title
-$page_title = 'Page Not Found - 404 Error';
+// Get the error type from the server - try multiple methods
+$error_type = '404'; // Default fallback
 
-// Get the requested URL for logging
+// Method 1: Try REDIRECT_STATUS
+if (isset($_SERVER['REDIRECT_STATUS']) && !empty($_SERVER['REDIRECT_STATUS'])) {
+    $error_type = $_SERVER['REDIRECT_STATUS'];
+}
+// Method 2: Try HTTP status from headers
+elseif (isset($_SERVER['HTTP_STATUS']) && !empty($_SERVER['HTTP_STATUS'])) {
+    $error_type = $_SERVER['HTTP_STATUS'];
+}
+// Method 3: Check if there's a specific error parameter
+elseif (isset($_GET['error']) && !empty($_GET['error'])) {
+    $error_type = $_GET['error'];
+}
+// Method 4: Try to detect from error conditions
+else {
+    // Check for common error conditions
+    if (isset($_SERVER['HTTP_REFERER']) && strpos($_SERVER['HTTP_REFERER'], 'error') !== false) {
+        $error_type = '500'; // Assume server error if coming from error page
+    }
+}
 $requested_url = $_SERVER['REQUEST_URI'];
 $referrer = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : 'Direct Access';
 
-// Log the 404 error for analytics
+// Set page title and error message based on error type
+switch ($error_type) {
+    case '400':
+        $page_title = 'Bad Request - 400 Error';
+        $error_number = '400';
+        $error_title = 'Bad Request';
+        $error_message = 'The server cannot process your request. Please check your input and try again.';
+        $error_color = 'from-red-400 via-red-500 to-red-600';
+        break;
+    case '401':
+        $page_title = 'Unauthorized - 401 Error';
+        $error_number = '401';
+        $error_title = 'Unauthorized Access';
+        $error_message = 'You need to be logged in to access this page. Please sign in and try again.';
+        $error_color = 'from-yellow-400 via-yellow-500 to-yellow-600';
+        break;
+    case '403':
+        $page_title = 'Forbidden - 403 Error';
+        $error_number = '403';
+        $error_title = 'Access Forbidden';
+        $error_message = 'You don\'t have permission to access this page. Please contact your administrator.';
+        $error_color = 'from-orange-400 via-orange-500 to-orange-600';
+        break;
+    case '404':
+        $page_title = 'Page Not Found - 404 Error';
+        $error_number = '404';
+        $error_title = 'Page Not Found';
+        $error_message = 'The page you\'re looking for seems to have wandered off into the digital wilderness. Don\'t worry, we\'ll help you find your way back!';
+        $error_color = 'from-purple-400 via-pink-500 to-red-500';
+        break;
+    case '408':
+        $page_title = 'Request Timeout - 408 Error';
+        $error_number = '408';
+        $error_title = 'Request Timeout';
+        $error_message = 'The request took too long to complete. Please try again.';
+        $error_color = 'from-blue-400 via-blue-500 to-blue-600';
+        break;
+    case '429':
+        $page_title = 'Too Many Requests - 429 Error';
+        $error_number = '429';
+        $error_title = 'Too Many Requests';
+        $error_message = 'You\'ve made too many requests. Please wait a moment and try again.';
+        $error_color = 'from-yellow-400 via-orange-500 to-red-500';
+        break;
+    case '500':
+        $page_title = 'Server Error - 500 Error';
+        $error_number = '500';
+        $error_title = 'Internal Server Error';
+        $error_message = 'Something went wrong on our end. We\'re working to fix this issue. Please try again later.';
+        $error_color = 'from-red-400 via-red-500 to-red-600';
+        break;
+    case '502':
+        $page_title = 'Bad Gateway - 502 Error';
+        $error_number = '502';
+        $error_title = 'Bad Gateway';
+        $error_message = 'The server received an invalid response. Please try again later.';
+        $error_color = 'from-purple-400 via-purple-500 to-purple-600';
+        break;
+    case '503':
+        $page_title = 'Service Unavailable - 503 Error';
+        $error_number = '503';
+        $error_title = 'Service Unavailable';
+        $error_message = 'The service is temporarily unavailable. Please try again later.';
+        $error_color = 'from-gray-400 via-gray-500 to-gray-600';
+        break;
+    case '504':
+        $page_title = 'Gateway Timeout - 504 Error';
+        $error_number = '504';
+        $error_title = 'Gateway Timeout';
+        $error_message = 'The request took too long to process. Please try again.';
+        $error_color = 'from-blue-400 via-blue-500 to-blue-600';
+        break;
+    case '505':
+        $page_title = 'HTTP Version Not Supported - 505 Error';
+        $error_number = '505';
+        $error_title = 'HTTP Version Not Supported';
+        $error_message = 'The server does not support the HTTP protocol version used in the request.';
+        $error_color = 'from-indigo-400 via-indigo-500 to-indigo-600';
+        break;
+    default:
+        $page_title = 'Page Not Found - 404 Error';
+        $error_number = '404';
+        $error_title = 'Page Not Found';
+        $error_message = 'The page you\'re looking for seems to have wandered off into the digital wilderness. Don\'t worry, we\'ll help you find your way back!';
+        $error_color = 'from-purple-400 via-pink-500 to-red-500';
+        break;
+}
+
+// Log the error for analytics
 $log_query = "INSERT INTO error_logs (error_type, requested_url, referrer, user_agent, ip_address, created_at) VALUES (?, ?, ?, ?, ?, NOW())";
 $log_stmt = mysqli_prepare($conn, $log_query);
 if ($log_stmt) {
-    $error_type = '404';
     $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
     $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
     mysqli_stmt_bind_param($log_stmt, "sssss", $error_type, $requested_url, $referrer, $user_agent, $ip_address);
@@ -29,6 +134,9 @@ if ($log_stmt) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $page_title; ?> - SEAIT</title>
+    <link rel="icon" type="image/png" href="assets/images/seait-logo.png">
+    <link rel="shortcut icon" type="image/png" href="assets/images/seait-logo.png">
+    <link rel="apple-touch-icon" type="image/png" href="assets/images/seait-logo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -74,24 +182,23 @@ if ($log_stmt) {
         <div class="max-w-6xl mx-auto text-center">
             <!-- Main Error Section -->
             <div class="mb-12">
-                <!-- Animated 404 Number -->
+                <!-- Animated Error Number -->
                 <div class="relative mb-8">
-                    <h1 class="text-9xl md:text-[12rem] font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 animate-pulse">
-                        404
+                    <h1 class="text-9xl md:text-[12rem] font-black text-transparent bg-clip-text bg-gradient-to-r <?php echo $error_color; ?> animate-pulse">
+                        <?php echo $error_number; ?>
                     </h1>
                     <div class="absolute inset-0 text-9xl md:text-[12rem] font-black text-gray-800 opacity-10 -z-10 animate-ping">
-                        404
+                        <?php echo $error_number; ?>
                     </div>
                 </div>
 
                 <!-- Error Message -->
                 <div class="space-y-6 mb-12">
                     <h2 class="text-4xl md:text-5xl font-bold text-white mb-4">
-                        Oops! Page Not Found
+                        Oops! <?php echo $error_title; ?>
                     </h2>
                     <p class="text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
-                        The page you're looking for seems to have wandered off into the digital wilderness. 
-                        Don't worry, we'll help you find your way back!
+                        <?php echo $error_message; ?>
                     </p>
                 </div>
 
@@ -179,7 +286,7 @@ if ($log_stmt) {
             </div>
 
             <!-- Search Section -->
-            <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-8 max-w-3xl mx-auto border border-white/20">
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-8 max-w-3xl mx-auto border border-white/20 mb-12">
                 <h3 class="text-2xl font-bold text-white mb-6 flex items-center justify-center">
                     <i class="fas fa-search mr-3 text-purple-400"></i>
                     Find What You're Looking For
@@ -197,6 +304,26 @@ if ($log_stmt) {
                         <i class="fas fa-search text-lg"></i>
                     </button>
                 </form>
+            </div>
+
+            <!-- Contact Support -->
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 max-w-2xl mx-auto border border-white/20">
+                <h3 class="text-lg font-semibold text-white mb-4 flex items-center justify-center">
+                    <i class="fas fa-headset mr-2"></i>Need Help?
+                </h3>
+                <p class="text-gray-300 mb-4">
+                    If you need assistance or can't find what you're looking for, please contact our support team.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                    <a href="mailto:mposebando@ndmu.edu.ph" 
+                       class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3 rounded-lg hover:from-blue-600 hover:to-blue-700 transform transition-all hover:scale-105 font-medium flex items-center justify-center">
+                        <i class="fas fa-envelope mr-2"></i>Email Support
+                    </a>
+                    <a href="tel:+639600338862" 
+                       class="bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-lg hover:from-green-600 hover:to-green-700 transform transition-all hover:scale-105 font-medium flex items-center justify-center">
+                        <i class="fas fa-phone mr-2"></i>Call Support
+                    </a>
+                </div>
             </div>
         </div>
     </div>

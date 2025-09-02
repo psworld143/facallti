@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once '../../../includes/error_handler.php';
 require_once '../../includes/config.php';
 require_once '../../includes/functions.php';
 
@@ -66,7 +67,7 @@ include '../../includes/sidebar-unified.php';
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-500">Total Guests</p>
-                        <p class="text-2xl font-semibold text-gray-900"><?php echo number_format($guest_stats['total_guests']); ?></p>
+                        <p class="text-2xl font-semibold text-gray-900"><?php echo number_format($guest_stats['total_guests'] ?? 0); ?></p>
                     </div>
                 </div>
             </div>
@@ -80,7 +81,7 @@ include '../../includes/sidebar-unified.php';
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-500">VIP Guests</p>
-                        <p class="text-2xl font-semibold text-gray-900"><?php echo number_format($guest_stats['vip_guests']); ?></p>
+                        <p class="text-2xl font-semibold text-gray-900"><?php echo number_format($guest_stats['vip_guests'] ?? 0); ?></p>
                     </div>
                 </div>
             </div>
@@ -94,7 +95,7 @@ include '../../includes/sidebar-unified.php';
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-500">Active Guests</p>
-                        <p class="text-2xl font-semibold text-gray-900"><?php echo number_format($guest_stats['active_guests']); ?></p>
+                        <p class="text-2xl font-semibold text-gray-900"><?php echo number_format($guest_stats['active_guests'] ?? 0); ?></p>
                     </div>
                 </div>
             </div>
@@ -108,7 +109,7 @@ include '../../includes/sidebar-unified.php';
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-500">Pending Feedback</p>
-                        <p class="text-2xl font-semibold text-gray-900"><?php echo number_format($guest_stats['pending_feedback']); ?></p>
+                        <p class="text-2xl font-semibold text-gray-900"><?php echo number_format($guest_stats['pending_feedback'] ?? 0); ?></p>
                     </div>
                 </div>
             </div>

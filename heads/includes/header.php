@@ -8,6 +8,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo isset($page_title) ? $page_title . ' - Head Dashboard' : 'Head Dashboard'; ?></title>
+    <link rel="icon" type="image/png" href="../../assets/images/seait-logo.png">
+    <link rel="shortcut icon" type="image/png" href="../../assets/images/seait-logo.png">
+    <link rel="apple-touch-icon" type="image/png" href="../../assets/images/seait-logo.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -255,7 +258,7 @@
                     <div class="animate-fadeInUp" style="animation-delay: 0.2s;">
                         <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Teacher Management</h3>
                         <div class="space-y-1">
-                            <a href="teachers.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'teachers.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                            <a href="teachers.php" class="flex items-center <?php echo (basename($_SERVER['PHP_SELF']) === 'teachers.php' || basename($_SERVER['PHP_SELF']) === 'edit-faculty.php') ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
                                 <i class="fas fa-chalkboard-teacher mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>My Teachers
                             </a>
                             <a href="consultation-hours.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'consultation-hours.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
@@ -291,6 +294,9 @@
                     <div class="animate-fadeInUp" style="animation-delay: 0.45s;">
                         <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">System</h3>
                         <div class="space-y-1">
+                            <a href="profile.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'profile.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                                <i class="fas fa-user-edit mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Profile Settings
+                            </a>
                             <?php if (function_exists('is_head_evaluation_active') && is_head_evaluation_active()): ?>
                                 <a href="evaluate-faculty.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'evaluate-faculty.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
                                     <i class="fas fa-clipboard-check mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Evaluate Faculty

@@ -37,9 +37,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 </div>
 
                 <!-- Navigation Menu -->
-                <nav class="space-y-2">
-                    <!-- Dashboard -->
-                    <div class="animate-fadeInUp" style="animation-delay: 0.2s;">
+                <nav class="space-y-6">
+                    <!-- Dashboard Section -->
+                    <div class="animate-fadeInUp" style="animation-delay: 0.1s;">
                         <a href="dashboard.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'dashboard.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
                             <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'dashboard.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
                                 <i class="fas fa-tachometer-alt text-sm transition-transform duration-200 hover:rotate-12"></i>
@@ -48,85 +48,111 @@ $current_page = basename($_SERVER['PHP_SELF']);
                         </a>
                     </div>
 
+                    <!-- User Management Section -->
+                    <div class="animate-fadeInUp" style="animation-delay: 0.2s;">
+                        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-4">User Management</h3>
+                        <div class="space-y-1">
+                            <a href="users.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'users.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
+                                <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'users.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
+                                    <i class="fas fa-users text-sm transition-transform duration-200 hover:rotate-12"></i>
+                                </div>
+                                <span class="font-medium">Users</span>
+                            </a>
+                            
+                            <a href="faculty.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'faculty.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
+                                <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'faculty.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
+                                    <i class="fas fa-chalkboard-teacher text-sm transition-transform duration-200 hover:rotate-12"></i>
+                                </div>
+                                <span class="font-medium">Faculty</span>
+                            </a>
+                            
+                            <a href="students.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'students.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
+                                <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'students.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
+                                    <i class="fas fa-user-graduate text-sm transition-transform duration-200 hover:rotate-12"></i>
+                                </div>
+                                <span class="font-medium">Student Registration</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Content Management Section -->
                     <div class="animate-fadeInUp" style="animation-delay: 0.3s;">
-                        <a href="users.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'users.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
-                            <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'users.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
-                                <i class="fas fa-users text-sm transition-transform duration-200 hover:rotate-12"></i>
-                            </div>
-                            <span class="font-medium">Users</span>
-                        </a>
+                        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-4">Content Management</h3>
+                        <div class="space-y-1">
+                            <a href="posts.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'posts.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
+                                <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'posts.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
+                                    <i class="fas fa-newspaper text-sm transition-transform duration-200 hover:rotate-12"></i>
+                                </div>
+                                <span class="font-medium">Posts</span>
+                            </a>
+                            
+                            <a href="programs.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'programs.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
+                                <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'programs.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
+                                    <i class="fas fa-graduation-cap text-sm transition-transform duration-200 hover:rotate-12"></i>
+                                </div>
+                                <span class="font-medium">Academic Programs</span>
+                            </a>
+                            
+                            <a href="manage-faqs.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'manage-faqs.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
+                                <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'manage-faqs.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
+                                    <i class="fas fa-question-circle text-sm transition-transform duration-200 hover:rotate-12"></i>
+                                </div>
+                                <span class="font-medium">FAQ Management</span>
+                            </a>
+                        </div>
                     </div>
 
+                    <!-- Communication Section -->
                     <div class="animate-fadeInUp" style="animation-delay: 0.4s;">
-                        <a href="posts.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'posts.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
-                            <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'posts.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
-                                <i class="fas fa-newspaper text-sm transition-transform duration-200 hover:rotate-12"></i>
-                            </div>
-                            <span class="font-medium">Posts</span>
-                        </a>
+                        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-4">Communication</h3>
+                        <div class="space-y-1">
+                            <a href="inquiries.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'inquiries.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
+                                <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'inquiries.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
+                                    <i class="fas fa-comments text-sm transition-transform duration-200 hover:rotate-12"></i>
+                                </div>
+                                <span class="font-medium">View Inquiries</span>
+                            </a>
+                        </div>
                     </div>
 
+                    <!-- Reports & Analytics Section -->
                     <div class="animate-fadeInUp" style="animation-delay: 0.5s;">
-                        <a href="programs.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'programs.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
-                            <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'programs.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
-                                <i class="fas fa-graduation-cap text-sm transition-transform duration-200 hover:rotate-12"></i>
-                            </div>
-                            <span class="font-medium">Academic Programs</span>
-                        </a>
+                        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-4">Reports & Analytics</h3>
+                        <div class="space-y-1">
+                            <a href="reports.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'reports.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
+                                <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'reports.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
+                                    <i class="fas fa-chart-bar text-sm transition-transform duration-200 hover:rotate-12"></i>
+                                </div>
+                                <span class="font-medium">Reports</span>
+                            </a>
+                        </div>
                     </div>
 
+                    <!-- System Management Section -->
                     <div class="animate-fadeInUp" style="animation-delay: 0.6s;">
-                        <a href="faculty.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'faculty.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
-                            <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'faculty.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
-                                <i class="fas fa-chalkboard-teacher text-sm transition-transform duration-200 hover:rotate-12"></i>
-                            </div>
-                            <span class="font-medium">Faculty</span>
-                        </a>
-                    </div>
-
-                    <div class="animate-fadeInUp" style="animation-delay: 0.7s;">
-                        <a href="students.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'students.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
-                            <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'students.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
-                                <i class="fas fa-user-graduate text-sm transition-transform duration-200 hover:rotate-12"></i>
-                            </div>
-                            <span class="font-medium">Student Registration</span>
-                        </a>
-                    </div>
-
-                    <div class="animate-fadeInUp" style="animation-delay: 0.8s;">
-                        <a href="manage-faqs.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'manage-faqs.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
-                            <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'manage-faqs.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
-                                <i class="fas fa-question-circle text-sm transition-transform duration-200 hover:rotate-12"></i>
-                            </div>
-                            <span class="font-medium">FAQ Management</span>
-                        </a>
-                    </div>
-
-                    <div class="animate-fadeInUp" style="animation-delay: 0.9s;">
-                        <a href="inquiries.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'inquiries.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
-                            <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'inquiries.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
-                                <i class="fas fa-comments text-sm transition-transform duration-200 hover:rotate-12"></i>
-                            </div>
-                            <span class="font-medium">View Inquiries</span>
-                        </a>
-                    </div>
-
-                    <div class="animate-fadeInUp" style="animation-delay: 1.0s;">
-                        <a href="settings.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'settings.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
-                            <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'settings.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
-                                <i class="fas fa-cog text-sm transition-transform duration-200 hover:rotate-12"></i>
-                            </div>
-                            <span class="font-medium">Settings</span>
-                        </a>
-                    </div>
-
-                    <div class="animate-fadeInUp" style="animation-delay: 1.1s;">
-                        <a href="reports.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'reports.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
-                            <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'reports.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
-                                <i class="fas fa-chart-bar text-sm transition-transform duration-200 hover:rotate-12"></i>
-                            </div>
-                            <span class="font-medium">Reports</span>
-                        </a>
+                        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-4">System</h3>
+                        <div class="space-y-1">
+                            <a href="database-sync.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'database-sync.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
+                                <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'database-sync.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
+                                    <i class="fas fa-sync-alt text-sm transition-transform duration-200 hover:rotate-12"></i>
+                                </div>
+                                <span class="font-medium">Database Sync</span>
+                            </a>
+                            
+                            <a href="ftp-manager.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'ftp-manager.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
+                                <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'ftp-manager.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
+                                    <i class="fas fa-server text-sm transition-transform duration-200 hover:scale-110"></i>
+                                </div>
+                                <span class="font-medium">FTP Manager</span>
+                            </a>
+                            
+                            <a href="settings.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'settings.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
+                                <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'settings.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
+                                    <i class="fas fa-cog text-sm transition-transform duration-200 hover:rotate-12"></i>
+                                </div>
+                                <span class="font-medium">Settings</span>
+                            </a>
+                        </div>
                     </div>
                 </nav>
 

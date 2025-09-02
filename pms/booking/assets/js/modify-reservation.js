@@ -278,7 +278,7 @@ function updatePricingCalculation() {
                 <div class="text-sm text-gray-600">
                     <div class="flex justify-between">
                         <span>Room Rate:</span>
-                        <span>$${currentRate.toFixed(2)}/night</span>
+                        <span>₱${currentRate.toFixed(2)}/night</span>
                     </div>
                     <div class="flex justify-between">
                         <span>Nights:</span>
@@ -286,15 +286,15 @@ function updatePricingCalculation() {
                     </div>
                     <div class="flex justify-between">
                         <span>Subtotal:</span>
-                        <span>$${(currentRate * nights).toFixed(2)}</span>
+                        <span>₱${(currentRate * nights).toFixed(2)}</span>
                     </div>
                     <div class="flex justify-between">
                         <span>Tax (10%):</span>
-                        <span>$${(currentRate * nights * 0.1).toFixed(2)}</span>
+                        <span>₱${(currentRate * nights * 0.1).toFixed(2)}</span>
                     </div>
                     <div class="flex justify-between font-medium">
                         <span>Total:</span>
-                        <span>$${total.toFixed(2)}</span>
+                        <span>₱${total.toFixed(2)}</span>
                     </div>
                 </div>
             `;

@@ -116,7 +116,7 @@ function generateRandomString($length = 10) {
  * Format currency
  */
 function formatCurrency($amount) {
-    return '$' . number_format($amount, 2);
+    return '₱' . number_format($amount, 2);
 }
 
 /**
@@ -925,7 +925,15 @@ function getAllReservations($filters = []) {
             ORDER BY r.created_at DESC
         ");
         $stmt->execute($params);
-        return $stmt->fetchAll();
+        $reservations = $stmt->fetchAll();
+        
+        // Add status formatting
+        foreach ($reservations as &$reservation) {
+            $reservation['status_class'] = getStatusBadgeClass($reservation['status']);
+            $reservation['status_label'] = getStatusLabel($reservation['status']);
+        }
+        
+        return $reservations;
         
     } catch (PDOException $e) {
         error_log("Error getting reservations: " . $e->getMessage());
@@ -1686,11 +1694,15 @@ function getServiceRequests($status_filter = '', $type_filter = '') {
             SELECT mr.*, 
                    r.room_number,
                    CONCAT(u1.name, ' (', u1.role, ')') as reported_by_name,
-                   u2.name as assigned_to_name
+                   u2.name as assigned_to_name,
+                   CONCAT(g.first_name, ' ', g.last_name) as guest_name,
+                   g.phone as guest_phone
             FROM maintenance_requests mr
             LEFT JOIN rooms r ON mr.room_id = r.id
             LEFT JOIN users u1 ON mr.reported_by = u1.id
             LEFT JOIN users u2 ON mr.assigned_to = u2.id
+            LEFT JOIN reservations res ON r.id = res.room_id AND res.status IN ('checked_in', 'confirmed')
+            LEFT JOIN guests g ON res.guest_id = g.id
             WHERE {$where_clause}
             ORDER BY mr.created_at DESC
         ";
@@ -2251,7 +2263,7 @@ function getTrainingScenarios($difficulty_filter = '', $category_filter = '') {
     global $pdo;
     
     try {
-        $where_conditions = ["1=1"];
+        $where_conditions = ["status = 'active'"];
         $params = [];
         
         if (!empty($difficulty_filter)) {
@@ -2292,17 +2304,19 @@ function getCustomerServiceScenarios($type_filter = '') {
     global $pdo;
     
     try {
-        $where_condition = "1=1";
+        $where_conditions = ["status = 'active'"];
         $params = [];
         
         if (!empty($type_filter)) {
-            $where_condition = "type = ?";
+            $where_conditions[] = "type = ?";
             $params[] = $type_filter;
         }
         
+        $where_clause = implode(" AND ", $where_conditions);
+        
         $query = "
             SELECT * FROM customer_service_scenarios 
-            WHERE {$where_condition}
+            WHERE {$where_clause}
             ORDER BY difficulty, title
         ";
         
@@ -2324,17 +2338,19 @@ function getProblemScenarios($severity_filter = '') {
     global $pdo;
     
     try {
-        $where_condition = "1=1";
+        $where_conditions = ["status = 'active'"];
         $params = [];
         
         if (!empty($severity_filter)) {
-            $where_condition = "severity = ?";
+            $where_conditions[] = "severity = ?";
             $params[] = $severity_filter;
         }
         
+        $where_clause = implode(" AND ", $where_conditions);
+        
         $query = "
             SELECT * FROM problem_scenarios 
-            WHERE {$where_condition}
+            WHERE {$where_clause}
             ORDER BY severity, difficulty, title
         ";
         
@@ -2826,11 +2842,23 @@ function getGuestStatistics() {
         ");
         $new_guests = $stmt->fetch()['total'];
         
+        // Pending feedback (if feedback table exists)
+        $pending_feedback = 0;
+        try {
+            $stmt = $pdo->query("SELECT COUNT(*) as total FROM feedback WHERE status = 'pending'");
+            $result = $stmt->fetch();
+            $pending_feedback = $result ? $result['total'] : 0;
+        } catch (PDOException $e) {
+            // Feedback table might not exist, so we'll use 0
+            $pending_feedback = 0;
+        }
+        
         return [
             'total_guests' => $total_guests,
             'vip_guests' => $vip_guests,
             'active_guests' => $active_guests,
-            'new_guests' => $new_guests
+            'new_guests' => $new_guests,
+            'pending_feedback' => $pending_feedback
         ];
         
     } catch (PDOException $e) {
@@ -2839,7 +2867,8 @@ function getGuestStatistics() {
             'total_guests' => 0,
             'vip_guests' => 0,
             'active_guests' => 0,
-            'new_guests' => 0
+            'new_guests' => 0,
+            'pending_feedback' => 0
         ];
     }
 }
@@ -2993,6 +3022,11 @@ function getStatusBadgeClass($status) {
         case 'in_progress': return 'bg-blue-100 text-blue-800';
         case 'completed': return 'bg-green-100 text-green-800';
         case 'cancelled': return 'bg-red-100 text-red-800';
+        case 'confirmed': return 'bg-blue-100 text-blue-800';
+        case 'checked_in': return 'bg-green-100 text-green-800';
+        case 'checked_out': return 'bg-gray-100 text-gray-800';
+        case 'no_show': return 'bg-red-100 text-red-800';
+        case 'walked': return 'bg-orange-100 text-orange-800';
         default: return 'bg-gray-100 text-gray-800';
     }
 }
@@ -3011,7 +3045,12 @@ function getStatusLabel($status) {
         case 'in_progress': return 'In Progress';
         case 'completed': return 'Completed';
         case 'cancelled': return 'Cancelled';
-        default: return ucfirst($status);
+        case 'confirmed': return 'Confirmed';
+        case 'checked_in': return 'Checked In';
+        case 'checked_out': return 'Checked Out';
+        case 'no_show': return 'No Show';
+        case 'walked': return 'Walked';
+        default: return ucfirst(str_replace('_', ' ', $status));
     }
 }
 
@@ -3062,34 +3101,50 @@ function getBillingDetails($reservation_id) {
     global $pdo;
     
     try {
-        // Get services total
+        // Get services total from service_charges table
         $stmt = $pdo->prepare("
-            SELECT COALESCE(SUM(amount), 0) as services_total
+            SELECT COALESCE(SUM(total_price), 0) as services_total
             FROM service_charges 
             WHERE reservation_id = ?
         ");
         $stmt->execute([$reservation_id]);
         $services_total = $stmt->fetchColumn();
         
-        // Calculate taxes (assuming 10% tax rate)
+        // Get billing information from billing table
         $stmt = $pdo->prepare("
-            SELECT total_amount FROM reservations WHERE id = ?
+            SELECT room_charges, additional_charges, tax_amount, total_amount
+            FROM billing 
+            WHERE reservation_id = ?
         ");
         $stmt->execute([$reservation_id]);
-        $total_amount = $stmt->fetchColumn();
+        $billing = $stmt->fetch();
         
-        $taxes = $total_amount * 0.10; // 10% tax
+        if ($billing) {
+            return [
+                'services_total' => $services_total,
+                'taxes' => $billing['tax_amount'],
+                'room_charges' => $billing['room_charges'],
+                'additional_charges' => $billing['additional_charges'],
+                'total_amount' => $billing['total_amount']
+            ];
+        }
         
         return [
             'services_total' => $services_total,
-            'taxes' => $taxes
+            'taxes' => 0,
+            'room_charges' => 0,
+            'additional_charges' => 0,
+            'total_amount' => 0
         ];
         
     } catch (PDOException $e) {
         error_log("Error getting billing details: " . $e->getMessage());
         return [
             'services_total' => 0,
-            'taxes' => 0
+            'taxes' => 0,
+            'room_charges' => 0,
+            'additional_charges' => 0,
+            'total_amount' => 0
         ];
     }
 }
@@ -3143,8 +3198,10 @@ function getAdditionalServicesForReservation($reservation_id) {
     try {
         $stmt = $pdo->prepare("
             SELECT 
-                sc.service_name,
-                sc.amount,
+                sc.quantity,
+                sc.unit_price,
+                sc.total_price,
+                sc.notes,
                 sc.created_at
             FROM service_charges sc
             WHERE sc.reservation_id = ?
@@ -3217,6 +3274,34 @@ function getCheckOutDate($room_id) {
         return $result ? date('M d, Y', strtotime($result['check_out_date'])) : '-';
     } catch (PDOException $e) {
         return '-';
+    }
+}
+
+/**
+ * Get bill details by ID
+ */
+function getBillDetails($bill_id) {
+    global $pdo;
+    
+    try {
+        $stmt = $pdo->prepare("
+            SELECT b.*, 
+                   CONCAT(g.first_name, ' ', g.last_name) as guest_name,
+                   r.room_number,
+                   COALESCE(d.discount_amount, 0) as discount_amount
+            FROM bills b
+            JOIN reservations res ON b.reservation_id = res.id
+            JOIN guests g ON res.guest_id = g.id
+            JOIN rooms r ON res.room_id = r.id
+            LEFT JOIN discounts d ON b.id = d.bill_id
+            WHERE b.id = ?
+        ");
+        $stmt->execute([$bill_id]);
+        return $stmt->fetch();
+        
+    } catch (PDOException $e) {
+        error_log("Error getting bill details: " . $e->getMessage());
+        return null;
     }
 }
 

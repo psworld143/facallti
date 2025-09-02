@@ -1,0 +1,10 @@
+# PHP Settings for Large File Uploads
+php_value upload_max_filesize 500M
+php_value post_max_size 500M
+php_value memory_limit 1G
+php_value max_execution_time 300
+php_value max_input_time 300
+php_value max_file_uploads 20
+
+# Enable file uploads
+php_flag file_uploads On

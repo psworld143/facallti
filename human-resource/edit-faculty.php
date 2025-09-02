@@ -27,219 +27,6 @@ if ($faculty_id <= 0) {
     exit();
 }
 
-// Get faculty details with comprehensive HR information using JOIN
-$query = "SELECT 
-    f.*,
-    fd.middle_name,
-    fd.date_of_birth,
-    fd.gender,
-    fd.civil_status,
-    fd.nationality,
-    fd.religion,
-    fd.phone,
-    fd.emergency_contact_name,
-    fd.emergency_contact_number,
-    fd.address,
-    fd.employee_id,
-    fd.date_of_hire,
-    fd.employment_type,
-    fd.basic_salary,
-    fd.salary_grade,
-    fd.allowances,
-    fd.pay_schedule,
-    fd.highest_education,
-    fd.field_of_study,
-    fd.school_university,
-    fd.year_graduated,
-    fd.tin_number,
-    fd.sss_number,
-    fd.philhealth_number,
-    fd.pagibig_number,
-    fd.created_at as details_created_at,
-    fd.updated_at as details_updated_at
-FROM faculty f
-LEFT JOIN faculty_details fd ON f.id = fd.faculty_id
-WHERE f.id = ?";
-
-$stmt = mysqli_prepare($conn, $query);
-mysqli_stmt_bind_param($stmt, "i", $faculty_id);
-mysqli_stmt_execute($stmt);
-$result = mysqli_stmt_get_result($stmt);
-
-if (!$faculty = mysqli_fetch_assoc($result)) {
-    header('Location: manage-faculty.php');
-    exit();
-}
-
-// Handle form submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Get form data for main faculty table
-    $first_name = sanitize_input($_POST['first_name'] ?? '');
-    $last_name = sanitize_input($_POST['last_name'] ?? '');
-    $email = sanitize_input($_POST['email'] ?? '');
-    $position = sanitize_input($_POST['position'] ?? '');
-    $department = sanitize_input($_POST['department'] ?? '');
-    $is_active = isset($_POST['is_active']) ? 1 : 0;
-
-    // Get form data for faculty_details table
-    $middle_name = sanitize_input($_POST['middle_name'] ?? '');
-    $date_of_birth = sanitize_input($_POST['date_of_birth'] ?? '');
-    $gender = sanitize_input($_POST['gender'] ?? '');
-    $civil_status = sanitize_input($_POST['civil_status'] ?? '');
-    $nationality = sanitize_input($_POST['nationality'] ?? '');
-    $religion = sanitize_input($_POST['religion'] ?? '');
-    $phone = sanitize_input($_POST['phone'] ?? '');
-    $emergency_contact_name = sanitize_input($_POST['emergency_contact_name'] ?? '');
-    $emergency_contact_number = sanitize_input($_POST['emergency_contact_number'] ?? '');
-    $address = sanitize_input($_POST['address'] ?? '');
-    $employee_id = sanitize_input($_POST['employee_id'] ?? '');
-
-// Validate employee ID if provided
-if (!empty($employee_id)) {
-    if (!validateEmployeeID($employee_id)) {
-        $error = 'Invalid employee ID format. Use format: YYYY-XXXX (e.g., 2024-0001)';
-    } elseif (!isEmployeeIDUnique($conn, $employee_id, $faculty_id)) {
-        $error = 'Employee ID already exists';
-    }
-}
-    $date_of_hire = sanitize_input($_POST['date_of_hire'] ?? '');
-    $employment_type = sanitize_input($_POST['employment_type'] ?? '');
-    $basic_salary = isset($_POST['basic_salary']) ? (float)$_POST['basic_salary'] : 0;
-    $salary_grade = sanitize_input($_POST['salary_grade'] ?? '');
-    $allowances = isset($_POST['allowances']) ? (float)$_POST['allowances'] : 0;
-    $pay_schedule = sanitize_input($_POST['pay_schedule'] ?? '');
-    $highest_education = sanitize_input($_POST['highest_education'] ?? '');
-    $field_of_study = sanitize_input($_POST['field_of_study'] ?? '');
-    $school_university = sanitize_input($_POST['school_university'] ?? '');
-    $year_graduated = isset($_POST['year_graduated']) ? (int)$_POST['year_graduated'] : null;
-    $tin_number = sanitize_input($_POST['tin_number'] ?? '');
-    $sss_number = sanitize_input($_POST['sss_number'] ?? '');
-    $philhealth_number = sanitize_input($_POST['philhealth_number'] ?? '');
-    $pagibig_number = sanitize_input($_POST['pagibig_number'] ?? '');
-
-    // Validate required fields
-    if (empty($first_name) || empty($last_name) || empty($email)) {
-        $error = 'First name, last name, and email are required';
-    } else {
-        // Check if email already exists (excluding current faculty)
-        $check_query = "SELECT id FROM faculty WHERE email = ? AND id != ?";
-        $check_stmt = mysqli_prepare($conn, $check_query);
-        mysqli_stmt_bind_param($check_stmt, "si", $email, $faculty_id);
-        mysqli_stmt_execute($check_stmt);
-        $check_result = mysqli_stmt_get_result($check_stmt);
-
-        if (mysqli_num_rows($check_result) > 0) {
-            $error = 'Email address already exists';
-        } else {
-            // Start transaction
-            mysqli_begin_transaction($conn);
-            
-            try {
-                // Update main faculty table
-                $update_faculty_query = "UPDATE faculty SET first_name = ?, last_name = ?, email = ?, position = ?, department = ?, is_active = ? WHERE id = ?";
-                $update_faculty_stmt = mysqli_prepare($conn, $update_faculty_query);
-                mysqli_stmt_bind_param($update_faculty_stmt, "sssssii", $first_name, $last_name, $email, $position, $department, $is_active, $faculty_id);
-
-                if (!mysqli_stmt_execute($update_faculty_stmt)) {
-                    throw new Exception('Error updating faculty: ' . mysqli_error($conn));
-                }
-
-                // Check if faculty_details record exists
-                $check_details_query = "SELECT id FROM faculty_details WHERE faculty_id = ?";
-                $check_details_stmt = mysqli_prepare($conn, $check_details_query);
-                mysqli_stmt_bind_param($check_details_stmt, "i", $faculty_id);
-                mysqli_stmt_execute($check_details_stmt);
-                $details_exists = mysqli_num_rows(mysqli_stmt_get_result($check_details_stmt)) > 0;
-
-                if ($details_exists) {
-                    // Update existing faculty_details
-                    $update_details_query = "UPDATE faculty_details SET 
-                        middle_name = ?, date_of_birth = ?, gender = ?, civil_status = ?, nationality = ?, religion = ?,
-                        phone = ?, emergency_contact_name = ?, emergency_contact_number = ?, address = ?,
-                        employee_id = ?, date_of_hire = ?, employment_type = ?, basic_salary = ?, salary_grade = ?, allowances = ?, pay_schedule = ?,
-                        highest_education = ?, field_of_study = ?, school_university = ?, year_graduated = ?,
-                        tin_number = ?, sss_number = ?, philhealth_number = ?, pagibig_number = ?, updated_at = NOW()
-                        WHERE faculty_id = ?";
-                    
-                    $update_details_stmt = mysqli_prepare($conn, $update_details_query);
-                    mysqli_stmt_bind_param($update_details_stmt, "ssssssssssssdsisssssssssssssssssi", 
-                        $middle_name, $date_of_birth, $gender, $civil_status, $nationality, $religion,
-                        $phone, $emergency_contact_name, $emergency_contact_number, $address,
-                        $employee_id, $date_of_hire, $employment_type, $basic_salary, $salary_grade, $allowances, $pay_schedule,
-                        $highest_education, $field_of_study, $school_university, $year_graduated,
-                        $tin_number, $sss_number, $philhealth_number, $pagibig_number, $faculty_id
-                    );
-                } else {
-                    // Insert new faculty_details record
-                    $insert_details_query = "INSERT INTO faculty_details (
-                        faculty_id, middle_name, date_of_birth, gender, civil_status, nationality, religion,
-                        phone, emergency_contact_name, emergency_contact_number, address,
-                        employee_id, date_of_hire, employment_type, basic_salary, salary_grade, allowances, pay_schedule,
-                        highest_education, field_of_study, school_university, year_graduated,
-                        tin_number, sss_number, philhealth_number, pagibig_number, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
-                    
-                    $insert_details_stmt = mysqli_prepare($conn, $insert_details_query);
-                    mysqli_stmt_bind_param($insert_details_stmt, "isssssssssssssdsisssssssssssssssss", 
-                        $faculty_id, $middle_name, $date_of_birth, $gender, $civil_status, $nationality, $religion,
-                        $phone, $emergency_contact_name, $emergency_contact_number, $address,
-                        $employee_id, $date_of_hire, $employment_type, $basic_salary, $salary_grade, $allowances, $pay_schedule,
-                        $highest_education, $field_of_study, $school_university, $year_graduated,
-                        $tin_number, $sss_number, $philhealth_number, $pagibig_number
-                    );
-                }
-
-                if (!mysqli_stmt_execute($details_exists ? $update_details_stmt : $insert_details_stmt)) {
-                    throw new Exception('Error updating faculty details: ' . mysqli_error($conn));
-                }
-
-                // Commit transaction
-                mysqli_commit($conn);
-                
-                $success = 'Faculty member updated successfully';
-                
-                // Refresh faculty data
-                $faculty['first_name'] = $first_name;
-                $faculty['last_name'] = $last_name;
-                $faculty['email'] = $email;
-                $faculty['position'] = $position;
-                $faculty['department'] = $department;
-                $faculty['is_active'] = $is_active;
-                $faculty['middle_name'] = $middle_name;
-                $faculty['date_of_birth'] = $date_of_birth;
-                $faculty['gender'] = $gender;
-                $faculty['civil_status'] = $civil_status;
-                $faculty['nationality'] = $nationality;
-                $faculty['religion'] = $religion;
-                $faculty['phone'] = $phone;
-                $faculty['emergency_contact_name'] = $emergency_contact_name;
-                $faculty['emergency_contact_number'] = $emergency_contact_number;
-                $faculty['address'] = $address;
-                $faculty['employee_id'] = $employee_id;
-                $faculty['date_of_hire'] = $date_of_hire;
-                $faculty['employment_type'] = $employment_type;
-                $faculty['basic_salary'] = $basic_salary;
-                $faculty['salary_grade'] = $salary_grade;
-                $faculty['allowances'] = $allowances;
-                $faculty['pay_schedule'] = $pay_schedule;
-                $faculty['highest_education'] = $highest_education;
-                $faculty['field_of_study'] = $field_of_study;
-                $faculty['school_university'] = $school_university;
-                $faculty['year_graduated'] = $year_graduated;
-                $faculty['tin_number'] = $tin_number;
-                $faculty['sss_number'] = $sss_number;
-                $faculty['philhealth_number'] = $philhealth_number;
-                $faculty['pagibig_number'] = $pagibig_number;
-                
-            } catch (Exception $e) {
-                // Rollback transaction on error
-                mysqli_rollback($conn);
-                $error = 'Error updating faculty member: ' . $e->getMessage();
-            }
-        }
-    }
-}
-
 // Get colleges for dropdown
 $colleges_query = "SELECT name FROM colleges WHERE is_active = 1 ORDER BY name";
 $colleges_result = mysqli_query($conn, $colleges_query);
@@ -265,22 +52,24 @@ include 'includes/header.php';
     </div>
 </div>
 
-<!-- Success/Error Messages -->
-<?php if (isset($success)): ?>
-    <div class="mb-6 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg">
-        <i class="fas fa-check-circle mr-2"></i><?php echo $success; ?>
+<!-- Loading Spinner -->
+<div id="loadingSpinner" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3 text-center">
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100">
+                <i class="fas fa-spinner fa-spin text-blue-600 text-xl"></i>
+            </div>
+            <h3 class="text-lg leading-6 font-medium text-gray-900 mt-4">Loading...</h3>
+            <p class="text-sm text-gray-500 mt-2">Please wait while we load the faculty data.</p>
+        </div>
     </div>
-<?php endif; ?>
+</div>
 
-<?php if (isset($error)): ?>
-    <div class="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
-        <i class="fas fa-exclamation-circle mr-2"></i><?php echo $error; ?>
-    </div>
-<?php endif; ?>
+
 
 <!-- Edit Faculty Form -->
 <div class="bg-white rounded-xl shadow-lg p-6">
-    <form method="POST" class="space-y-8">
+    <form id="editFacultyForm" class="space-y-8">
         <!-- Basic Information Section -->
         <div class="bg-gray-50 rounded-xl p-6 border border-gray-200">
             <div class="flex items-center mb-6">
@@ -296,60 +85,67 @@ include 'includes/header.php';
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">First Name <span class="text-red-500">*</span></label>
-                    <input type="text" name="first_name" value="<?php echo htmlspecialchars($faculty['first_name']); ?>" required
+                    <input type="text" name="first_name" id="first_name" required
                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all bg-white shadow-sm"
                            placeholder="Enter first name">
+                    <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Middle Name</label>
-                    <input type="text" name="middle_name" value="<?php echo htmlspecialchars($faculty['middle_name'] ?? ''); ?>"
+                    <input type="text" name="middle_name" id="middle_name"
                            class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all"
                            placeholder="Enter middle name">
+                    <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Last Name <span class="text-red-500">*</span></label>
-                    <input type="text" name="last_name" value="<?php echo htmlspecialchars($faculty['last_name']); ?>" required
+                    <input type="text" name="last_name" id="last_name" required
                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all bg-white shadow-sm"
                            placeholder="Enter last name">
+                    <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                 </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Email Address <span class="text-red-500">*</span></label>
-                    <input type="email" name="email" value="<?php echo htmlspecialchars($faculty['email']); ?>" required
+                    <input type="email" name="email" id="email" required
                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all bg-white shadow-sm"
                            placeholder="Enter email address">
+                    <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                    <input type="tel" name="phone" value="<?php echo htmlspecialchars($faculty['phone'] ?? ''); ?>"
+                    <input type="tel" name="phone" id="phone"
                            class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all"
                            placeholder="Enter phone number">
+                    <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                 </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Position/Title <span class="text-red-500">*</span></label>
-                    <input type="text" name="position" value="<?php echo htmlspecialchars($faculty['position']); ?>" required
+                    <input type="text" name="position" id="position" required
                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all bg-white shadow-sm"
                            placeholder="Enter position/title">
+                    <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Department/College <span class="text-red-500">*</span></label>
-                    <select name="department" required class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all bg-white shadow-sm">
+                    <select name="department" id="department" required class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all bg-white shadow-sm">
                         <option value="">Select Department/College</option>
                         <?php foreach ($colleges as $college): ?>
-                            <option value="<?php echo htmlspecialchars($college); ?>" <?php echo ($faculty['department'] ?? '') === $college ? 'selected' : ''; ?>>
+                            <option value="<?php echo htmlspecialchars($college); ?>">
                                 <?php echo htmlspecialchars($college); ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
+                    <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                 </div>
             </div>
         </div>
@@ -369,47 +165,52 @@ include 'includes/header.php';
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
-                    <input type="date" name="date_of_birth" value="<?php echo htmlspecialchars($faculty['date_of_birth'] ?? ''); ?>"
+                    <input type="date" name="date_of_birth" id="date_of_birth"
                            class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all">
+                    <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Gender</label>
-                    <select name="gender" class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all">
+                    <select name="gender" id="gender" class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all">
                         <option value="">Select Gender</option>
-                        <option value="Male" <?php echo ($faculty['gender'] ?? '') === 'Male' ? 'selected' : ''; ?>>Male</option>
-                        <option value="Female" <?php echo ($faculty['gender'] ?? '') === 'Female' ? 'selected' : ''; ?>>Female</option>
-                        <option value="Other" <?php echo ($faculty['gender'] ?? '') === 'Other' ? 'selected' : ''; ?>>Other</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
                     </select>
+                    <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                 </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Civil Status</label>
-                    <select name="civil_status" class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all">
+                    <select name="civil_status" id="civil_status" class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all">
                         <option value="">Select Civil Status</option>
-                        <option value="Single" <?php echo ($faculty['civil_status'] ?? '') === 'Single' ? 'selected' : ''; ?>>Single</option>
-                        <option value="Married" <?php echo ($faculty['civil_status'] ?? '') === 'Married' ? 'selected' : ''; ?>>Married</option>
-                        <option value="Widowed" <?php echo ($faculty['civil_status'] ?? '') === 'Widowed' ? 'selected' : ''; ?>>Widowed</option>
-                        <option value="Divorced" <?php echo ($faculty['civil_status'] ?? '') === 'Divorced' ? 'selected' : ''; ?>>Divorced</option>
-                        <option value="Separated" <?php echo ($faculty['civil_status'] ?? '') === 'Separated' ? 'selected' : ''; ?>>Separated</option>
+                        <option value="Single">Single</option>
+                        <option value="Married">Married</option>
+                        <option value="Widowed">Widowed</option>
+                        <option value="Divorced">Divorced</option>
+                        <option value="Separated">Separated</option>
                     </select>
+                    <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Nationality</label>
-                    <input type="text" name="nationality" value="<?php echo htmlspecialchars($faculty['nationality'] ?? ''); ?>"
+                    <input type="text" name="nationality" id="nationality"
                            class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all"
                            placeholder="Enter nationality">
+                    <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                 </div>
             </div>
 
             <div class="mt-6">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Religion</label>
-                <input type="text" name="religion" value="<?php echo htmlspecialchars($faculty['religion'] ?? ''); ?>"
+                <input type="text" name="religion" id="religion"
                        class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all"
                        placeholder="Enter religion">
+                <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
             </div>
         </div>
 
@@ -428,24 +229,27 @@ include 'includes/header.php';
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Emergency Contact Name</label>
-                    <input type="text" name="emergency_contact_name" value="<?php echo htmlspecialchars($faculty['emergency_contact_name'] ?? ''); ?>"
+                    <input type="text" name="emergency_contact_name" id="emergency_contact_name"
                            class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all"
                            placeholder="Enter emergency contact name">
+                    <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Emergency Contact Number</label>
-                    <input type="tel" name="emergency_contact_number" value="<?php echo htmlspecialchars($faculty['emergency_contact_number'] ?? ''); ?>"
+                    <input type="tel" name="emergency_contact_number" id="emergency_contact_number"
                            class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all"
                            placeholder="Enter emergency contact number">
+                    <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                 </div>
             </div>
 
             <div class="mt-6">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Complete Address</label>
-                <textarea name="address" rows="3"
+                <textarea name="address" id="address" rows="3"
                           class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all"
-                          placeholder="Enter complete address"><?php echo htmlspecialchars($faculty['address'] ?? ''); ?></textarea>
+                          placeholder="Enter complete address"></textarea>
+                <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
             </div>
         </div>
 
@@ -465,45 +269,49 @@ include 'includes/header.php';
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Employee ID</label>
                     <div class="flex space-x-2">
-                        <input type="text" name="employee_id" id="employee_id_input" value="<?php echo htmlspecialchars($faculty['employee_id'] ?? ''); ?>"
+                        <input type="text" name="employee_id" id="employee_id"
                                class="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all"
-                               placeholder="YYYY-XXXX (e.g., 2024-0001)" pattern="\d{4}-\d{4}">
+                               placeholder="YYYY-XXXX (e.g., 2025-0001)" pattern="\d{4}-\d{4}">
                         <button type="button" onclick="generateEmployeeID()" 
                                 class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
                             <i class="fas fa-magic mr-1"></i>Auto
                         </button>
                     </div>
                     <p class="text-xs text-gray-500 mt-1">Format: YYYY-XXXX (Year-Series)</p>
+                    <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Date of Hire</label>
-                    <input type="date" name="date_of_hire" value="<?php echo htmlspecialchars($faculty['date_of_hire'] ?? ''); ?>"
+                    <input type="date" name="date_of_hire" id="date_of_hire"
                            class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all">
+                    <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                 </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Employment Type</label>
-                    <select name="employment_type" class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all">
+                    <select name="employment_type" id="employment_type" class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all">
                         <option value="">Select Employment Type</option>
-                        <option value="Full-time" <?php echo ($faculty['employment_type'] ?? '') === 'Full-time' ? 'selected' : ''; ?>>Full-time</option>
-                        <option value="Part-time" <?php echo ($faculty['employment_type'] ?? '') === 'Part-time' ? 'selected' : ''; ?>>Part-time</option>
-                        <option value="Contract" <?php echo ($faculty['employment_type'] ?? '') === 'Contract' ? 'selected' : ''; ?>>Contract</option>
-                        <option value="Temporary" <?php echo ($faculty['employment_type'] ?? '') === 'Temporary' ? 'selected' : ''; ?>>Temporary</option>
-                        <option value="Probationary" <?php echo ($faculty['employment_type'] ?? '') === 'Probationary' ? 'selected' : ''; ?>>Probationary</option>
+                        <option value="Full-time">Full-time</option>
+                        <option value="Part-time">Part-time</option>
+                        <option value="Contract">Contract</option>
+                        <option value="Temporary">Temporary</option>
+                        <option value="Probationary">Probationary</option>
                     </select>
+                    <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Pay Schedule</label>
-                    <select name="pay_schedule" class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all">
+                    <select name="pay_schedule" id="pay_schedule" class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all">
                         <option value="">Select Pay Schedule</option>
-                        <option value="Monthly" <?php echo ($faculty['pay_schedule'] ?? '') === 'Monthly' ? 'selected' : ''; ?>>Monthly</option>
-                        <option value="Bi-weekly" <?php echo ($faculty['pay_schedule'] ?? '') === 'Bi-weekly' ? 'selected' : ''; ?>>Bi-weekly</option>
-                        <option value="Weekly" <?php echo ($faculty['pay_schedule'] ?? '') === 'Weekly' ? 'selected' : ''; ?>>Weekly</option>
+                        <option value="Monthly">Monthly</option>
+                        <option value="Bi-weekly">Bi-weekly</option>
+                        <option value="Weekly">Weekly</option>
                     </select>
+                    <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                 </div>
             </div>
         </div>
@@ -523,23 +331,26 @@ include 'includes/header.php';
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Basic Salary</label>
-                    <input type="number" name="basic_salary" value="<?php echo htmlspecialchars($faculty['basic_salary'] ?? ''); ?>" step="0.01" min="0"
+                    <input type="number" name="basic_salary" id="basic_salary" step="0.01" min="0"
                            class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all"
                            placeholder="Enter basic salary">
+                    <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Salary Grade</label>
-                    <input type="text" name="salary_grade" value="<?php echo htmlspecialchars($faculty['salary_grade'] ?? ''); ?>"
+                    <input type="text" name="salary_grade" id="salary_grade"
                            class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all"
                            placeholder="Enter salary grade">
+                    <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Allowances</label>
-                    <input type="number" name="allowances" value="<?php echo htmlspecialchars($faculty['allowances'] ?? ''); ?>" step="0.01" min="0"
+                    <input type="number" name="allowances" id="allowances" step="0.01" min="0"
                            class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all"
                            placeholder="Enter allowances">
+                    <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                 </div>
             </div>
         </div>
@@ -559,38 +370,42 @@ include 'includes/header.php';
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Highest Educational Attainment</label>
-                    <select name="highest_education" class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all">
+                    <select name="highest_education" id="highest_education" class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all">
                         <option value="">Select Highest Education</option>
-                        <option value="High School" <?php echo ($faculty['highest_education'] ?? '') === 'High School' ? 'selected' : ''; ?>>High School</option>
-                        <option value="Associate Degree" <?php echo ($faculty['highest_education'] ?? '') === 'Associate Degree' ? 'selected' : ''; ?>>Associate Degree</option>
-                        <option value="Bachelor's Degree" <?php echo ($faculty['highest_education'] ?? '') === 'Bachelor\'s Degree' ? 'selected' : ''; ?>>Bachelor's Degree</option>
-                        <option value="Master's Degree" <?php echo ($faculty['highest_education'] ?? '') === 'Master\'s Degree' ? 'selected' : ''; ?>>Master's Degree</option>
-                        <option value="Doctorate" <?php echo ($faculty['highest_education'] ?? '') === 'Doctorate' ? 'selected' : ''; ?>>Doctorate</option>
-                        <option value="Post-Doctorate" <?php echo ($faculty['highest_education'] ?? '') === 'Post-Doctorate' ? 'selected' : ''; ?>>Post-Doctorate</option>
+                        <option value="High School">High School</option>
+                        <option value="Associate Degree">Associate Degree</option>
+                        <option value="Bachelor's Degree">Bachelor's Degree</option>
+                        <option value="Master's Degree">Master's Degree</option>
+                        <option value="Doctorate">Doctorate</option>
+                        <option value="Post-Doctorate">Post-Doctorate</option>
                     </select>
+                    <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Field of Study</label>
-                    <input type="text" name="field_of_study" value="<?php echo htmlspecialchars($faculty['field_of_study'] ?? ''); ?>"
+                    <input type="text" name="field_of_study" id="field_of_study"
                            class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all"
                            placeholder="Enter field of study">
+                    <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                 </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">School/University</label>
-                    <input type="text" name="school_university" value="<?php echo htmlspecialchars($faculty['school_university'] ?? ''); ?>"
+                    <input type="text" name="school_university" id="school_university"
                            class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all"
                            placeholder="Enter school/university">
+                    <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Year Graduated</label>
-                    <input type="number" name="year_graduated" value="<?php echo htmlspecialchars($faculty['year_graduated'] ?? ''); ?>" min="1950" max="2030"
+                    <input type="number" name="year_graduated" id="year_graduated" min="1950" max="2030"
                            class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all"
                            placeholder="Enter year graduated">
+                    <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                 </div>
             </div>
         </div>
@@ -610,32 +425,36 @@ include 'includes/header.php';
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">TIN Number</label>
-                    <input type="text" name="tin_number" value="<?php echo htmlspecialchars($faculty['tin_number'] ?? ''); ?>"
+                    <input type="text" name="tin_number" id="tin_number"
                            class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all"
                            placeholder="Enter TIN number">
+                    <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">SSS Number</label>
-                    <input type="text" name="sss_number" value="<?php echo htmlspecialchars($faculty['sss_number'] ?? ''); ?>"
+                    <input type="text" name="sss_number" id="sss_number"
                            class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all"
                            placeholder="Enter SSS number">
+                    <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                 </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">PhilHealth Number</label>
-                    <input type="text" name="philhealth_number" value="<?php echo htmlspecialchars($faculty['philhealth_number'] ?? ''); ?>"
+                    <input type="text" name="philhealth_number" id="philhealth_number"
                            class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all"
                            placeholder="Enter PhilHealth number">
+                    <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">PAG-IBIG Number</label>
-                    <input type="text" name="pagibig_number" value="<?php echo htmlspecialchars($faculty['pagibig_number'] ?? ''); ?>"
+                    <input type="text" name="pagibig_number" id="pagibig_number"
                            class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-seait-orange focus:ring-2 focus:ring-seait-orange/20 transition-all"
                            placeholder="Enter PAG-IBIG number">
+                    <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
                 </div>
             </div>
         </div>
@@ -643,7 +462,7 @@ include 'includes/header.php';
         <!-- Status Section -->
         <div class="bg-gray-50 rounded-xl p-6 border border-gray-200">
             <div class="flex items-center">
-                <input type="checkbox" name="is_active" id="is_active" value="1" <?php echo $faculty['is_active'] ? 'checked' : ''; ?>
+                <input type="checkbox" name="is_active" id="is_active" value="1"
                        class="h-4 w-4 text-seait-orange focus:ring-seait-orange border-gray-300 rounded">
                 <label for="is_active" class="ml-2 block text-sm text-gray-900">
                     Active Faculty Member
@@ -663,7 +482,7 @@ include 'includes/header.php';
                        class="px-8 py-3 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium border border-gray-300">
                         <i class="fas fa-times mr-2"></i>Cancel
                     </a>
-                    <button type="submit" 
+                    <button type="button" id="updateFacultyBtn"
                             class="px-8 py-3 bg-gradient-to-r from-seait-orange to-orange-500 text-white rounded-lg hover:from-orange-500 hover:to-seait-orange transform transition-all hover:scale-105 font-medium shadow-lg">
                         <i class="fas fa-save mr-2"></i>Update Faculty Member
                     </button>
@@ -673,41 +492,342 @@ include 'includes/header.php';
     </form>
 </div>
 
-<!-- Faculty Information -->
-<div class="mt-6 bg-gray-50 rounded-xl p-6">
-    <h3 class="text-lg font-medium text-gray-900 mb-4">Faculty Information</h3>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-        <div>
-            <span class="font-medium text-gray-700">Created:</span>
-            <span class="text-gray-900"><?php echo date('F j, Y g:i A', strtotime($faculty['created_at'])); ?></span>
-        </div>
-        <?php if ($faculty['updated_at']): ?>
-        <div>
-            <span class="font-medium text-gray-700">Last Updated:</span>
-            <span class="text-gray-900"><?php echo date('F j, Y g:i A', strtotime($faculty['updated_at'])); ?></span>
-        </div>
-        <?php endif; ?>
-    </div>
-</div>
-
 <script>
-// Employee ID generation
-function generateEmployeeID() {
-    fetch('get-next-employee-id.php')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                document.getElementById('employee_id_input').value = data.employee_id;
-                // Show success message
-                alert('Employee ID generated: ' + data.employee_id);
-            } else {
-                alert('Error generating employee ID: ' + data.message);
+// Ensure jGrowl is available
+function ensureJGrowl() {
+    if (typeof jQuery === 'undefined') {
+        console.error('jQuery not loaded');
+        return false;
+    }
+    if (typeof $.jGrowl === 'undefined') {
+        console.error('jGrowl not loaded');
+        return false;
+    }
+    return true;
+}
+
+// Initialize jGrowl with custom settings
+function initJGrowl() {
+    if (ensureJGrowl()) {
+        $.jGrowl.defaults = {
+            life: 5000,
+            position: 'top-right',
+            sticky: false,
+            theme: 'jGrowl-error',
+            themeState: 'error',
+            closerTemplate: '<div>[ close all ]</div>',
+            beforeOpen: function(e, m, o) {
+                $(e).hide().fadeIn(300);
+            },
+            beforeClose: function(e, m, o) {
+                $(e).fadeOut(300);
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Network error. Please try again.');
+        };
+        console.log('jGrowl initialized successfully');
+    }
+}
+
+// Global variables
+let facultyData = null;
+const facultyId = '<?php echo $_GET['id']; ?>';
+
+// Initialize the page
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize jGrowl first
+    initJGrowl();
+    
+    // Load faculty data and setup event listeners
+    loadFacultyData();
+    setupEventListeners();
+    
+
+});
+
+// Load faculty data via AJAX
+async function loadFacultyData() {
+    showLoading(true);
+    
+    try {
+        const response = await fetch(`get-faculty-data.php?id=${facultyId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            facultyData = data.faculty;
+            populateForm(facultyData);
+        } else {
+            showMessage('error', data.message || 'Failed to load faculty data');
+        }
+    } catch (error) {
+        console.error('Error loading faculty data:', error);
+        showMessage('error', 'Network error. Please try again.');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Populate form with faculty data
+function populateForm(data) {
+    // Basic Information
+    document.getElementById('first_name').value = data.first_name || '';
+    document.getElementById('middle_name').value = data.middle_name || '';
+    document.getElementById('last_name').value = data.last_name || '';
+    document.getElementById('email').value = data.email || '';
+    document.getElementById('phone').value = data.phone || '';
+    document.getElementById('position').value = data.position || '';
+    document.getElementById('department').value = data.department || '';
+    
+    // Personal Information
+    document.getElementById('date_of_birth').value = data.date_of_birth || '';
+    document.getElementById('gender').value = data.gender || '';
+    document.getElementById('civil_status').value = data.civil_status || '';
+    document.getElementById('nationality').value = data.nationality || '';
+    document.getElementById('religion').value = data.religion || '';
+    
+    // Contact Information
+    document.getElementById('emergency_contact_name').value = data.emergency_contact_name || '';
+    document.getElementById('emergency_contact_number').value = data.emergency_contact_number || '';
+    document.getElementById('address').value = data.address || '';
+    
+    // Employment Information
+    document.getElementById('employee_id').value = data.employee_id || '';
+    document.getElementById('date_of_hire').value = data.date_of_hire || '';
+    document.getElementById('employment_type').value = data.employment_type || '';
+    document.getElementById('pay_schedule').value = data.pay_schedule || '';
+    
+    // Salary Information
+    document.getElementById('basic_salary').value = data.basic_salary || '';
+    document.getElementById('salary_grade').value = data.salary_grade || '';
+    document.getElementById('allowances').value = data.allowances || '';
+    
+    // Educational Background
+    document.getElementById('highest_education').value = data.highest_education || '';
+    document.getElementById('field_of_study').value = data.field_of_study || '';
+    document.getElementById('school_university').value = data.school_university || '';
+    document.getElementById('year_graduated').value = data.year_graduated || '';
+    
+    // Government Information
+    document.getElementById('tin_number').value = data.tin_number || '';
+    document.getElementById('sss_number').value = data.sss_number || '';
+    document.getElementById('philhealth_number').value = data.philhealth_number || '';
+    document.getElementById('pagibig_number').value = data.pagibig_number || '';
+    
+    // Status
+    document.getElementById('is_active').checked = data.is_active == 1;
+}
+
+// Setup event listeners
+function setupEventListeners() {
+    // Update button
+    document.getElementById('updateFacultyBtn').addEventListener('click', handleUpdate);
+    
+    // Real-time validation
+    const requiredFields = ['first_name', 'last_name', 'email', 'position', 'department'];
+    requiredFields.forEach(fieldName => {
+        const field = document.getElementById(fieldName);
+        if (field) {
+            field.addEventListener('blur', () => validateField(field));
+            field.addEventListener('input', () => clearFieldError(field));
+        }
+    });
+}
+
+// Handle form update
+async function handleUpdate() {
+    if (!validateForm()) {
+        return;
+    }
+    
+    const updateBtn = document.getElementById('updateFacultyBtn');
+    const originalText = updateBtn.innerHTML;
+    
+    // Show loading state
+    updateBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Updating...';
+    updateBtn.disabled = true;
+    
+    try {
+        const formData = new FormData(document.getElementById('editFacultyForm'));
+        formData.append('faculty_id', facultyId);
+        
+        const response = await fetch('update-faculty-ajax.php', {
+            method: 'POST',
+            body: formData
         });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showMessage('success', data.message);
+            // Update local data
+            facultyData = { ...facultyData, ...data.data };
+        } else {
+            showMessage('error', data.message);
+        }
+    } catch (error) {
+        console.error('Update error:', error);
+        showMessage('error', 'Network error. Please try again.');
+    } finally {
+        // Reset button state
+        updateBtn.innerHTML = originalText;
+        updateBtn.disabled = false;
+    }
+}
+
+// Form validation
+function validateForm() {
+    let isValid = true;
+    clearAllErrors();
+    
+    const requiredFields = ['first_name', 'last_name', 'email', 'position', 'department'];
+    
+    requiredFields.forEach(fieldName => {
+        const field = document.getElementById(fieldName);
+        if (field && !field.value.trim()) {
+            showFieldError(field, `${fieldName.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} is required`);
+            isValid = false;
+        }
+    });
+    
+    // Email validation
+    const emailField = document.getElementById('email');
+    if (emailField && emailField.value && !isValidEmail(emailField.value)) {
+        showFieldError(emailField, 'Please enter a valid email address');
+        isValid = false;
+    }
+    
+    return isValid;
+}
+
+// Field validation
+function validateField(field) {
+    const value = field.value.trim();
+    
+    if (field.hasAttribute('required') && !value) {
+        showFieldError(field, `${field.name.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} is required`);
+        return false;
+    }
+    
+    if (field.type === 'email' && value && !isValidEmail(value)) {
+        showFieldError(field, 'Please enter a valid email address');
+        return false;
+    }
+    
+    clearFieldError(field);
+    return true;
+}
+
+// Utility functions
+function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function showFieldError(field, message) {
+    field.classList.add('border-red-500');
+    const errorDiv = field.parentNode.querySelector('.error-message');
+    if (errorDiv) {
+        errorDiv.textContent = message;
+        errorDiv.classList.remove('hidden');
+    }
+}
+
+function clearFieldError(field) {
+    field.classList.remove('border-red-500');
+    const errorDiv = field.parentNode.querySelector('.error-message');
+    if (errorDiv) {
+        errorDiv.classList.add('hidden');
+    }
+}
+
+function clearAllErrors() {
+    document.querySelectorAll('.error-message').forEach(div => {
+        div.classList.add('hidden');
+    });
+    document.querySelectorAll('input, select, textarea').forEach(field => {
+        field.classList.remove('border-red-500');
+    });
+}
+
+function showMessage(type, message) {
+    // Ensure jGrowl is initialized
+    if (!ensureJGrowl()) {
+        // If jGrowl is not available, use the custom notification
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 9999;
+            max-width: 300px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        `;
+        
+        if (type === 'success') {
+            notification.style.backgroundColor = '#16a34a';
+        } else {
+            notification.style.backgroundColor = '#dc2626';
+        }
+        
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        
+        // Animate in
+        setTimeout(() => {
+            notification.style.transform = 'translateX(0)';
+        }, 100);
+        
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            notification.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }, 5000);
+        return;
+    }
+    
+    // Use jGrowl for notifications
+    $.jGrowl(message, {
+        theme: type === 'success' ? 'jGrowl-success' : 'jGrowl-error',
+        life: 5000,
+        position: 'top-right',
+        sticky: false
+    });
+}
+
+function showLoading(show) {
+    const spinner = document.getElementById('loadingSpinner');
+    if (show) {
+        spinner.classList.remove('hidden');
+    } else {
+        spinner.classList.add('hidden');
+    }
+}
+
+
+
+// Employee ID generation
+async function generateEmployeeID() {
+    try {
+        const response = await fetch('get-next-faculty-employee-id.php');
+        const data = await response.json();
+        
+        if (data.success) {
+            document.getElementById('employee_id').value = data.employee_id;
+            showMessage('success', `Employee ID generated: ${data.employee_id}`);
+        } else {
+            showMessage('error', data.message || 'Error generating employee ID');
+        }
+    } catch (error) {
+        console.error('Error generating employee ID:', error);
+        showMessage('error', 'Network error. Please try again.');
+    }
 }
 </script>
 

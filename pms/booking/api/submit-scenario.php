@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once '../../includes/error_handler.php';
 require_once '../includes/config.php';
 require_once '../includes/functions.php';
 
@@ -15,26 +16,78 @@ $input = json_decode(file_get_contents('php://input'), true);
 
 if (!$input) {
     http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'Invalid input']);
+    echo json_encode(['success' => false, 'message' => 'Invalid input data']);
     exit();
 }
 
 try {
-    // For now, return a sample response
-    // In a real implementation, this would validate answers against the database
-    $score = rand(70, 100); // Random score for demonstration
+    // For now, we'll use sample data to calculate scores
+    // In a real implementation, this would fetch the scenario from database
+    $scenarios = [
+        'front_desk_basic' => [
+            'questions' => [
+                ['correct_answer' => 'b'],
+                ['correct_answer' => 'b'],
+                ['correct_answer' => 'b']
+            ]
+        ],
+        'customer_service' => [
+            'questions' => [
+                ['correct_answer' => 'b'],
+                ['correct_answer' => 'b'],
+                ['correct_answer' => 'b']
+            ]
+        ],
+        'problem_solving' => [
+            'questions' => [
+                ['correct_answer' => 'b'],
+                ['correct_answer' => 'b'],
+                ['correct_answer' => 'b']
+            ]
+        ]
+    ];
     
-    // Log the training attempt
-    try {
-        logActivity($_SESSION['user_id'], 'completed_training_scenario', 'Score: ' . $score . '%');
-    } catch (Exception $log_error) {
-        error_log("Error logging activity: " . $log_error->getMessage());
-        // Continue even if logging fails
+    // Calculate score based on answers
+    $totalQuestions = 0;
+    $correctAnswers = 0;
+    $scenarioId = null;
+    
+    foreach ($input as $questionKey => $answer) {
+        if (strpos($questionKey, 'q') === 0) {
+            $totalQuestions++;
+            
+            // Determine which scenario this belongs to based on the number of questions
+            if (!$scenarioId) {
+                if ($totalQuestions <= 3) {
+                    $scenarioId = 'front_desk_basic';
+                } elseif ($totalQuestions <= 6) {
+                    $scenarioId = 'customer_service';
+                } else {
+                    $scenarioId = 'problem_solving';
+                }
+            }
+            
+            // Check if answer is correct
+            $questionIndex = intval(substr($questionKey, 1));
+            if (isset($scenarios[$scenarioId]['questions'][$questionIndex])) {
+                if ($answer === $scenarios[$scenarioId]['questions'][$questionIndex]['correct_answer']) {
+                    $correctAnswers++;
+                }
+            }
+        }
     }
     
+    $score = $totalQuestions > 0 ? round(($correctAnswers / $totalQuestions) * 100) : 0;
+    
+    // In a real implementation, save the attempt to database
+    // saveTrainingAttempt($_SESSION['user_id'], $scenarioId, $score, $input);
+    
+    // Return success response
     echo json_encode([
         'success' => true,
         'score' => $score,
+        'correct_answers' => $correctAnswers,
+        'total_questions' => $totalQuestions,
         'message' => 'Scenario completed successfully!'
     ]);
     

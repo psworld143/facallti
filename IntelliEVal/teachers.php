@@ -234,7 +234,7 @@ include 'includes/header.php';
             <h3 class="text-sm font-medium text-blue-800">Faculty Management Updates</h3>
             <div class="mt-2 text-sm text-blue-700">
                 <p><strong>Faculty Integration:</strong> Teachers are now added to the faculty table for unified management across the system.</p>
-                <p class="mt-1"><strong>Login Credentials:</strong> Teachers use their email address as their login username with the default password "Seait123".</p>
+                <p class="mt-1"><strong>Login Credentials:</strong> Teachers can login using their email address or QR code as their login username with the default password "Seait123".</p>
                 <p class="mt-1"><strong>Department Selection:</strong> Department options are populated from the colleges database.</p>
             </div>
         </div>

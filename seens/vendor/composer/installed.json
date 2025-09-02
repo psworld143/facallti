@@ -1,0 +1,55 @@
+{
+    "packages": [
+        {
+            "name": "gregwar/php-serial",
+            "version": "dev-master",
+            "version_normalized": "dev-master",
+            "target-dir": "PhpSerial",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Gregwar/php-serial.git",
+                "reference": "ebad100a9f5ac003164268367833a009efd03b21"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/Gregwar/php-serial/zipball/ebad100a9f5ac003164268367833a009efd03b21",
+                "reference": "ebad100a9f5ac003164268367833a009efd03b21",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=5.3.0"
+            },
+            "time": "2014-04-03T12:53:58+00:00",
+            "default-branch": true,
+            "type": "library",
+            "installation-source": "dist",
+            "autoload": {
+                "psr-0": {
+                    "PhpSerial": ""
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "GPL-2.0"
+            ],
+            "authors": [
+                {
+                    "name": "Rémy Sanchez",
+                    "email": "thenux@gmail.com"
+                }
+            ],
+            "description": "This PHP class can be used to communicate with a serial port under Linux, OSX or Windows.",
+            "homepage": "http://code.google.com/p/php-serial/",
+            "keywords": [
+                "serial",
+                "serialport"
+            ],
+            "support": {
+                "source": "https://github.com/Gregwar/php-serial/tree/master"
+            },
+            "install-path": "../gregwar/php-serial/PhpSerial"
+        }
+    ],
+    "dev": true,
+    "dev-package-names": []
+}

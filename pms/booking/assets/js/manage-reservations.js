@@ -1,28 +1,66 @@
 // Manage Reservations JavaScript
 
-document.addEventListener('DOMContentLoaded', function() {
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeManageReservations);
+} else {
+    initializeManageReservations();
+}
+
+function initializeManageReservations() {
+    console.log('initializeManageReservations called');
     // Load reservations on page load
     loadReservations();
     
     // Initialize form handlers
     initializeEditForm();
-});
+    
+    // Debug: Check if sidebar elements exist
+    const mobileToggle = document.getElementById('mobile-sidebar-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    
+    console.log('Sidebar Debug:', {
+        mobileToggle: mobileToggle ? 'Found' : 'Not found',
+        sidebar: sidebar ? 'Found' : 'Not found',
+        overlay: overlay ? 'Found' : 'Not found'
+    });
+    
+    // Test sidebar toggle functionality
+    if (mobileToggle) {
+        console.log('Mobile toggle button found, testing click...');
+        mobileToggle.addEventListener('click', function() {
+            console.log('Mobile toggle clicked!');
+        });
+    }
+}
 
 // Load reservations
 function loadReservations() {
+    console.log('loadReservations function called');
     const container = document.getElementById('reservations-list');
-    if (!container) return;
+    if (!container) {
+        console.error('reservations-list container not found');
+        return;
+    }
     
+    console.log('Fetching reservations from API...');
     // Show loading
     container.innerHTML = '<div class="flex items-center justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>';
     
     // Fetch reservations
     fetch('../../api/get-all-reservations.php')
-        .then(response => response.json())
+        .then(response => {
+            console.log('API response received:', response);
+            return response.json();
+        })
         .then(data => {
+            console.log('API data:', data);
             if (data.success) {
+                console.log('Displaying reservations:', data.reservations);
                 displayReservations(data.reservations);
             } else {
+                console.error('API returned error:', data.message);
                 container.innerHTML = `
                     <div class="px-6 py-12 text-center">
                         <i class="fas fa-exclamation-triangle text-red-400 text-4xl mb-4"></i>
@@ -155,7 +193,7 @@ function displayReservations(reservations) {
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            $${parseFloat(reservation.total_amount).toFixed(2)}
+                            ₱${parseFloat(reservation.total_amount).toFixed(2)}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div class="flex space-x-2">
@@ -229,7 +267,7 @@ function handleEditSubmit(e) {
     e.preventDefault();
     
     if (!validateEditForm()) {
-        HotelPMS.Utils.showNotification('Please fill in all required fields', 'warning');
+                    Utils.showNotification('Please fill in all required fields', 'warning');
         return;
     }
     
@@ -253,16 +291,16 @@ function handleEditSubmit(e) {
     .then(response => response.json())
     .then(result => {
         if (result.success) {
-            HotelPMS.Utils.showNotification('Reservation updated successfully!', 'success');
+            Utils.showNotification('Reservation updated successfully!', 'success');
             closeEditModal();
             loadReservations();
         } else {
-            HotelPMS.Utils.showNotification(result.message || 'Error updating reservation', 'error');
+            Utils.showNotification(result.message || 'Error updating reservation', 'error');
         }
     })
     .catch(error => {
         console.error('Error updating reservation:', error);
-        HotelPMS.Utils.showNotification('Error updating reservation', 'error');
+        Utils.showNotification('Error updating reservation', 'error');
     })
     .finally(() => {
         // Reset button state
@@ -280,10 +318,10 @@ function validateEditForm() {
     requiredFields.forEach(field => {
         const element = document.getElementById(`edit_${field}`);
         if (!element.value.trim()) {
-            HotelPMS.FormValidator.showFieldError(element, 'This field is required');
+            FormValidator.showFieldError(element, 'This field is required');
             isValid = false;
         } else {
-            HotelPMS.FormValidator.clearFieldError(element);
+            FormValidator.clearFieldError(element);
         }
     });
     
@@ -292,7 +330,7 @@ function validateEditForm() {
     const checkOutDate = new Date(document.getElementById('edit_check_out_date').value);
     
     if (checkOutDate <= checkInDate) {
-        HotelPMS.FormValidator.showFieldError(document.getElementById('edit_check_out_date'), 'Check-out date must be after check-in date');
+        FormValidator.showFieldError(document.getElementById('edit_check_out_date'), 'Check-out date must be after check-in date');
         isValid = false;
     }
     
@@ -329,16 +367,16 @@ function confirmCancelReservation() {
     .then(response => response.json())
     .then(result => {
         if (result.success) {
-            HotelPMS.Utils.showNotification('Reservation cancelled successfully!', 'success');
+            Utils.showNotification('Reservation cancelled successfully!', 'success');
             closeCancelModal();
             loadReservations();
         } else {
-            HotelPMS.Utils.showNotification(result.message || 'Error cancelling reservation', 'error');
+            Utils.showNotification(result.message || 'Error cancelling reservation', 'error');
         }
     })
     .catch(error => {
         console.error('Error cancelling reservation:', error);
-        HotelPMS.Utils.showNotification('Error cancelling reservation', 'error');
+        Utils.showNotification('Error cancelling reservation', 'error');
     });
 }
 

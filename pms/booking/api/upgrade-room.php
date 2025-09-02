@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once '../../includes/error_handler.php';
 require_once '../includes/config.php';
 require_once '../includes/functions.php';
 
@@ -175,7 +176,7 @@ function upgradeRoom($reservation_id, $upgrade_room_type, $reason = '', $charge_
             $log_message .= " (Reason: {$reason})";
         }
         if ($charge_guest) {
-            $log_message .= " - Guest charged additional $" . number_format($price_difference, 2);
+            $log_message .= " - Guest charged additional ₱" . number_format($price_difference, 2);
         } else {
             $log_message .= " - Complimentary upgrade";
         }

@@ -138,6 +138,16 @@
             
             // Initialize on load
             initializeSidebar();
+            // Force-close on mobile in case any prior scripts/styles left it open
+            (function ensureMobileClosed() {
+                const overlay = document.getElementById('sidebar-overlay');
+                if (sidebar && window.innerWidth < 1024) {
+                    sidebar.classList.remove('sidebar-open');
+                    sidebar.setAttribute('data-mobile-open', 'false');
+                    sidebar.style.transform = 'translateX(-100%)';
+                    if (overlay) overlay.classList.add('hidden');
+                }
+            })();
             
             // Auto-expand submenus with active items
             document.querySelectorAll('#sidebar ul[id^="submenu-"]').forEach(submenu => {
@@ -167,8 +177,10 @@
                 } else {
                     // Mobile: ensure sidebar is hidden
                     if (sidebar) {
+                        sidebar.classList.remove('sidebar-open');
                         sidebar.setAttribute('data-mobile-open', 'false');
                         sidebar.style.transform = 'translateX(-100%)';
+                        if (overlay) overlay.classList.add('hidden');
                     }
                 }
             });

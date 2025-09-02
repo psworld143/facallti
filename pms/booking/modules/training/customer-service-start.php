@@ -185,7 +185,7 @@ include '../../includes/sidebar-unified.php';
                         </div>
                         <div class="flex justify-between">
                             <span class="text-gray-600">Average Score:</span>
-                            <span class="font-semibold"><?php echo number_format($scenario['avg_score'], 1); ?>%</span>
+                            <span class="font-semibold"><?php echo number_format($scenario['avg_score'] ?? 0, 1); ?>%</span>
                         </div>
                     </div>
                 </div>
@@ -287,7 +287,7 @@ include '../../includes/sidebar-unified.php';
                                         elseif ($attempt['score'] >= 60) echo 'bg-yellow-100 text-yellow-800';
                                         else echo 'bg-red-100 text-red-800';
                                         ?>">
-                                        <?php echo number_format($attempt['score'], 1); ?>%
+                                        <?php echo number_format($attempt['score'] ?? 0, 1); ?>%
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

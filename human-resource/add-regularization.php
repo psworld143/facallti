@@ -86,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Get faculty members who don't have regularization records
-$faculty_query = "SELECT f.id, f.first_name, f.last_name, f.email, f.position, f.department, fd.employee_id, fd.date_of_hire
+    $faculty_query = "SELECT f.id, f.first_name, f.last_name, f.email, f.position, f.department, f.qrcode as employee_id, fd.date_of_hire
                   FROM faculty f
                   LEFT JOIN faculty_details fd ON f.id = fd.faculty_id
                   WHERE f.is_active = 1 

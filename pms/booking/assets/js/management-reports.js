@@ -115,7 +115,7 @@ function loadRevenueChart() {
                     data: {
                         labels: data.labels,
                         datasets: [{
-                            label: 'Revenue ($)',
+                            label: 'Revenue (₱)',
                             data: data.values,
                             backgroundColor: '#10B981',
                             borderColor: '#059669',
@@ -130,7 +130,7 @@ function loadRevenueChart() {
                                 beginAtZero: true,
                                 ticks: {
                                     callback: function(value) {
-                                        return '$' + value.toLocaleString();
+                                        return '₱' + value.toLocaleString();
                                     }
                                 }
                             }
@@ -263,10 +263,10 @@ function displayDailyReports(reports) {
                                     ${report.occupancy_rate}%
                                 </span>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">$${parseFloat(report.revenue).toFixed(2)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₱${parseFloat(report.revenue).toFixed(2)}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${report.check_ins}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${report.check_outs}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">$${parseFloat(report.avg_room_rate).toFixed(2)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₱${parseFloat(report.avg_room_rate).toFixed(2)}</td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -313,10 +313,10 @@ function displayWeeklyReports(reports) {
                                     ${report.avg_occupancy}%
                                 </span>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">$${parseFloat(report.total_revenue).toFixed(2)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₱${parseFloat(report.total_revenue).toFixed(2)}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${report.total_guests}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">$${parseFloat(report.avg_room_rate).toFixed(2)}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">$${parseFloat(report.revpar).toFixed(2)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₱${parseFloat(report.avg_room_rate).toFixed(2)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₱${parseFloat(report.revpar).toFixed(2)}</td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -364,11 +364,11 @@ function displayMonthlyReports(reports) {
                                     ${report.avg_occupancy}%
                                 </span>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">$${parseFloat(report.total_revenue).toFixed(2)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₱${parseFloat(report.total_revenue).toFixed(2)}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${report.total_guests}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">$${parseFloat(report.avg_room_rate).toFixed(2)}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">$${parseFloat(report.revpar).toFixed(2)}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">$${parseFloat(report.adr).toFixed(2)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₱${parseFloat(report.avg_room_rate).toFixed(2)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₱${parseFloat(report.revpar).toFixed(2)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₱${parseFloat(report.adr).toFixed(2)}</td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -411,7 +411,7 @@ function displayInventoryReports(reports) {
                         <tr class="hover:bg-gray-50">
                             <td class="px-6 py-4">
                                 <div class="text-sm font-medium text-gray-900">${report.item_name}</div>
-                                <div class="text-sm text-gray-500">$${parseFloat(report.unit_price).toFixed(2)}</div>
+                                <div class="text-sm text-gray-500">₱${parseFloat(report.unit_price).toFixed(2)}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${report.category_name}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${report.current_stock}</td>
@@ -584,7 +584,7 @@ function displayInventoryItems(items) {
                         <tr class="hover:bg-gray-50">
                             <td class="px-6 py-4">
                                 <div class="text-sm font-medium text-gray-900">${item.item_name}</div>
-                                <div class="text-sm text-gray-500">$${parseFloat(item.unit_price).toFixed(2)}</div>
+                                <div class="text-sm text-gray-500">₱${parseFloat(item.unit_price).toFixed(2)}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.category_name}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

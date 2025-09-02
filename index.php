@@ -2,6 +2,7 @@
 #Commit by Adrianne
 session_start();
 require_once 'config/database.php';
+require_once 'includes/unified-error-handler.php';
 require_once 'includes/functions.php';
 require_once 'includes/id_encryption.php';
 
@@ -49,6 +50,9 @@ $courses_result = mysqli_query($conn, $courses_query);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SEAIT - South East Asian Institute of Technology, Inc.</title>
+    <link rel="icon" type="image/png" href="assets/images/seait-logo.png">
+    <link rel="shortcut icon" type="image/png" href="assets/images/seait-logo.png">
+    <link rel="apple-touch-icon" type="image/png" href="assets/images/seait-logo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1672,6 +1676,19 @@ $courses_result = mysqli_query($conn, $courses_query);
             if (loader) {
                 loader.style.opacity = '0';
                 setTimeout(() => loader.style.display = 'none', 500);
+            }
+        });
+
+        // Auto-open login modal if login is required
+        window.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('login') === 'required') {
+                // Wait a bit for the page to fully load, then open login modal
+                setTimeout(function() {
+                    if (typeof openLoginModal === 'function') {
+                        openLoginModal();
+                    }
+                }, 1000);
             }
         });
     </script>

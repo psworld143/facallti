@@ -36,6 +36,29 @@
                 overlay.classList.remove('open');
             }
         });
+        
+        // Initialize jGrowl
+        function initJGrowl() {
+            if (typeof jQuery !== 'undefined' && typeof $.jGrowl !== 'undefined') {
+                $.jGrowl.defaults = {
+                    life: 5000,
+                    position: 'top-right',
+                    sticky: false,
+                    theme: 'jGrowl-error',
+                    themeState: 'error',
+                    closerTemplate: '<div>[ close all ]</div>',
+                    beforeOpen: function(e, m, o) {
+                        $(e).hide().fadeIn(300);
+                    },
+                    beforeClose: function(e, m, o) {
+                        $(e).fadeOut(300);
+                    }
+                };
+            }
+        }
+        
+        // Try to initialize jGrowl after a delay
+        setTimeout(initJGrowl, 1000);
     </script>
 </body>
 </html>

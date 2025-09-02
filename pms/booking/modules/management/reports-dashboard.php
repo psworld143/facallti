@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once '../../../includes/error_handler.php';
 require_once '../../includes/config.php';
 require_once '../../includes/functions.php';
 
@@ -86,7 +87,7 @@ $management_stats = getManagementStatistics();
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-500">Monthly Revenue</p>
-                        <p class="text-2xl font-semibold text-gray-900">$<?php echo number_format($management_stats['monthly_revenue'], 2); ?></p>
+                        <p class="text-2xl font-semibold text-gray-900">₱<?php echo number_format($management_stats['monthly_revenue'], 2); ?></p>
                     </div>
                 </div>
             </div>

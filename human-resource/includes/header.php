@@ -8,6 +8,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo isset($page_title) ? $page_title . ' - Human Resource' : 'Human Resource'; ?></title>
+    
+    <!-- Favicon Configuration -->
+    <!-- Primary favicon for all browsers -->
+    <!-- Fallback to PNG if ICO not supported -->
+    <!-- Apple touch icon for iOS devices -->
+    <link rel="icon" type="image/x-icon" href="../assets/images/favicon.ico">
+    <link rel="shortcut icon" type="image/x-icon" href="../assets/images/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="../assets/images/seait-logo.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="../assets/images/seait-logo.png">
+    <link rel="apple-touch-icon" type="image/png" href="../assets/images/seait-logo.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -16,13 +26,19 @@
                     colors: {
                         'seait-orange': '#FF6B35',
                         'seait-dark': '#2C3E50',
-                        'seait-light': '#FFF8F0'
+                        'seait-light': '#FFF8F0',
+                        'hr-secondary': '#374151'
                     }
                 }
             }
         }
     </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- jQuery and jGrowl -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jgrowl/1.4.8/jquery.jgrowl.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jgrowl/1.4.8/jquery.jgrowl.min.css">
     <style>
         .sidebar {
             transform: translateX(-100%);
@@ -92,6 +108,71 @@
         .flex-1 {
             min-width: 0;
             max-width: 100%;
+        }
+
+        /* Custom jGrowl Success Theme */
+        .jGrowl-success {
+            background-color: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #16a34a;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .jGrowl-success .jGrowl-header {
+            color: #16a34a;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .jGrowl-success .jGrowl-message {
+            color: #16a34a;
+            font-size: 13px;
+        }
+        
+        .jGrowl-success .jGrowl-close {
+            color: #16a34a;
+        }
+        
+        .jGrowl-success .jGrowl-close:hover {
+            color: #15803d;
+        }
+        
+        /* Custom jGrowl Error Theme */
+        .jGrowl-error {
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .jGrowl-error .jGrowl-header {
+            color: #dc2626;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .jGrowl-error .jGrowl-message {
+            color: #dc2626;
+            font-size: 13px;
+        }
+        
+        .jGrowl-error .jGrowl-close {
+            color: #dc2626;
+        }
+        
+        .jGrowl-error .jGrowl-close:hover {
+            color: #b91c1c;
+        }
+        
+        /* jGrowl Container Styling */
+        #jGrowl {
+            z-index: 9999;
+        }
+        
+        .jGrowl-notification {
+            font-family: 'Poppins', sans-serif;
         }
 
         /* Custom animations */
@@ -353,12 +434,21 @@
                     <div class="animate-fadeInUp" style="animation-delay: 0.2s;">
                         <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Employee Management</h3>
                         <div class="space-y-1">
-                            <a href="manage-faculty.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'manage-faculty.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
-                                <i class="fas fa-chalkboard-teacher mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Faculty Management
-                            </a>
+                            
 
                             <a href="manage-colleges.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'manage-colleges.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
                                 <i class="fas fa-university mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>College Management
+                            </a>
+
+                            <a href="manage-departments.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'manage-departments.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                                <i class="fas fa-building mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Department Management
+                            </a>
+
+                            <a href="admin-employee.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'admin-employee.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                                <i class="fas fa-user-plus mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Admin Employee
+                            </a>
+                            <a href="manage-faculty.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'manage-faculty.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                                <i class="fas fa-chalkboard-teacher mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Faculty Management
                             </a>
                         </div>
                     </div>

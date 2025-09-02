@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once '../../../includes/error_handler.php';
 require_once '../../includes/config.php';
 require_once '../../includes/functions.php';
 
@@ -53,12 +54,12 @@ include '../../includes/sidebar-unified.php';
                 <div class="flex items-center">
                     <div class="flex-shrink-0">
                         <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-dollar-sign text-green-600"></i>
+                            <i class="fas fa-peso-sign text-green-600"></i>
                         </div>
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-500">Today's Revenue</p>
-                        <p class="text-2xl font-semibold text-gray-900">$<?php echo number_format($billing_stats['today_revenue'], 2); ?></p>
+                        <p class="text-2xl font-semibold text-gray-900">₱<?php echo number_format($billing_stats['today_revenue'], 2); ?></p>
                     </div>
                 </div>
             </div>
@@ -86,7 +87,7 @@ include '../../includes/sidebar-unified.php';
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-500">Total Discounts</p>
-                        <p class="text-2xl font-semibold text-gray-900">$<?php echo number_format($billing_stats['total_discounts'], 2); ?></p>
+                        <p class="text-2xl font-semibold text-gray-900">₱<?php echo number_format($billing_stats['total_discounts'], 2); ?></p>
                     </div>
                 </div>
             </div>
@@ -549,6 +550,6 @@ include '../../includes/sidebar-unified.php';
     </div>
 
     <script src="../../assets/js/main.js"></script>
-    <script src="../../assets/js/billing-payment.js"></script>
+    <script src="../../assets/js/billing-payment.js?v=<?php echo time(); ?>"></script>
     
     <?php include '../../includes/footer.php'; ?>

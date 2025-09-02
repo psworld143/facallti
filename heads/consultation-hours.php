@@ -153,29 +153,56 @@ $active_semester_query = "SELECT name, academic_year FROM semesters WHERE status
 $active_semester_result = mysqli_query($conn, $active_semester_query);
 $active_semester = mysqli_fetch_assoc($active_semester_result);
 
+// Get search parameters
+$search_query = isset($_GET['search']) ? sanitize_input($_GET['search']) : '';
+$semester_filter = isset($_GET['semester']) ? sanitize_input($_GET['semester']) : '';
+$day_filter = isset($_GET['day']) ? sanitize_input($_GET['day']) : '';
+
 // Get consultation hours (filter by active semester by default)
 $consultation_result = null;
 if ($head_info) {
-    if ($active_semester) {
-        $consultation_query = "SELECT ch.*, f.first_name, f.last_name, f.email, f.department 
-                              FROM consultation_hours ch 
-                              JOIN faculty f ON ch.teacher_id = f.id 
-                              WHERE ch.is_active = 1 AND f.department = ? AND ch.semester = ? AND ch.academic_year = ? 
-                              ORDER BY f.last_name ASC, f.first_name ASC, ch.day_of_week ASC, ch.start_time ASC";
-        $consultation_stmt = mysqli_prepare($conn, $consultation_query);
-        if ($consultation_stmt) {
-            mysqli_stmt_bind_param($consultation_stmt, "sss", $head_info['department'], $active_semester['name'], $active_semester['academic_year']);
-        }
-    } else {
-        $consultation_query = "SELECT ch.*, f.first_name, f.last_name, f.email, f.department 
-                              FROM consultation_hours ch 
-                              JOIN faculty f ON ch.teacher_id = f.id 
-                              WHERE ch.is_active = 1 AND f.department = ? 
-                              ORDER BY f.last_name ASC, f.first_name ASC, ch.day_of_week ASC, ch.start_time ASC";
-        $consultation_stmt = mysqli_prepare($conn, $consultation_query);
-        if ($consultation_stmt) {
-            mysqli_stmt_bind_param($consultation_stmt, "s", $head_info['department']);
-        }
+    // Build the base query
+    $consultation_query = "SELECT ch.*, f.first_name, f.last_name, f.email, f.department 
+                          FROM consultation_hours ch 
+                          JOIN faculty f ON ch.teacher_id = f.id 
+                          WHERE ch.is_active = 1 AND f.department = ?";
+    
+    $params = [$head_info['department']];
+    $param_types = "s";
+    
+    // Add semester filter
+    if ($semester_filter) {
+        $consultation_query .= " AND ch.semester = ?";
+        $params[] = $semester_filter;
+        $param_types .= "s";
+    } elseif ($active_semester) {
+        // Default to active semester if no filter is applied
+        $consultation_query .= " AND ch.semester = ? AND ch.academic_year = ?";
+        $params[] = $active_semester['name'];
+        $params[] = $active_semester['academic_year'];
+        $param_types .= "ss";
+    }
+    
+    // Add day filter
+    if ($day_filter) {
+        $consultation_query .= " AND ch.day_of_week = ?";
+        $params[] = $day_filter;
+        $param_types .= "s";
+    }
+    
+    // Add search filter
+    if ($search_query) {
+        $consultation_query .= " AND (f.first_name LIKE ? OR f.last_name LIKE ? OR f.email LIKE ? OR ch.room LIKE ? OR ch.notes LIKE ?)";
+        $search_param = "%$search_query%";
+        $params = array_merge($params, [$search_param, $search_param, $search_param, $search_param, $search_param]);
+        $param_types .= "sssss";
+    }
+    
+    $consultation_query .= " ORDER BY f.last_name ASC, f.first_name ASC, ch.day_of_week ASC, ch.start_time ASC";
+    
+    $consultation_stmt = mysqli_prepare($conn, $consultation_query);
+    if ($consultation_stmt) {
+        mysqli_stmt_bind_param($consultation_stmt, $param_types, ...$params);
     }
     
     if (isset($consultation_stmt) && $consultation_stmt) {
@@ -260,6 +287,9 @@ include 'includes/header.php';
             <button id="leavesViewBtn" onclick="showLeavesView()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg font-medium">
                 <i class="fas fa-calendar-times mr-2"></i>Consultation Leaves
             </button>
+            <button id="availableTodayViewBtn" onclick="showAvailableTodayView()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg font-medium">
+                <i class="fas fa-user-check mr-2"></i>Available Today
+            </button>
         </div>
     </div>
 
@@ -268,6 +298,77 @@ include 'includes/header.php';
         <div class="px-6 py-4 border-b border-gray-200">
             <h3 class="text-lg font-medium text-gray-900">Consultation Hours - List View</h3>
         </div>
+        
+        <!-- Search and Filters -->
+        <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+            <form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                    <input type="text" name="search" value="<?php echo htmlspecialchars($search_query); ?>" 
+                           placeholder="Search by name, email, room, or notes..."
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-seait-orange">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Semester</label>
+                    <select name="semester" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-seait-orange">
+                        <option value="">All Semesters</option>
+                        <option value="First Semester" <?php echo $semester_filter === 'First Semester' ? 'selected' : ''; ?>>First Semester</option>
+                        <option value="Second Semester" <?php echo $semester_filter === 'Second Semester' ? 'selected' : ''; ?>>Second Semester</option>
+                        <option value="Summer" <?php echo $semester_filter === 'Summer' ? 'selected' : ''; ?>>Summer</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Day of Week</label>
+                    <select name="day" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-seait-orange">
+                        <option value="">All Days</option>
+                        <option value="Monday" <?php echo $day_filter === 'Monday' ? 'selected' : ''; ?>>Monday</option>
+                        <option value="Tuesday" <?php echo $day_filter === 'Tuesday' ? 'selected' : ''; ?>>Tuesday</option>
+                        <option value="Wednesday" <?php echo $day_filter === 'Wednesday' ? 'selected' : ''; ?>>Wednesday</option>
+                        <option value="Thursday" <?php echo $day_filter === 'Thursday' ? 'selected' : ''; ?>>Thursday</option>
+                        <option value="Friday" <?php echo $day_filter === 'Friday' ? 'selected' : ''; ?>>Friday</option>
+                        <option value="Saturday" <?php echo $day_filter === 'Saturday' ? 'selected' : ''; ?>>Saturday</option>
+                        <option value="Sunday" <?php echo $day_filter === 'Sunday' ? 'selected' : ''; ?>>Sunday</option>
+                    </select>
+                </div>
+                <div class="flex items-end space-x-2">
+                    <button type="submit" class="flex-1 bg-seait-orange text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition flex items-center justify-center">
+                        <i class="fas fa-search mr-2"></i>Search
+                    </button>
+                    <a href="consultation-hours.php" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition flex items-center justify-center">
+                        <i class="fas fa-times mr-2"></i>Clear
+                    </a>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Results Summary -->
+        <?php if ($consultation_result && mysqli_num_rows($consultation_result) > 0): ?>
+            <div class="px-6 py-3 bg-blue-50 border-b border-blue-200">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center text-blue-800">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        <span class="text-sm font-medium">
+                            <?php 
+                            $total_results = mysqli_num_rows($consultation_result);
+                            echo $total_results . ' consultation hour' . ($total_results !== 1 ? 's' : '') . ' found';
+                            
+                            if ($search_query || $semester_filter || $day_filter) {
+                                echo ' matching your search criteria';
+                            }
+                            ?>
+                        </span>
+                    </div>
+                    <?php if ($search_query || $semester_filter || $day_filter): ?>
+                        <div class="text-sm text-blue-600">
+                            <a href="consultation-hours.php" class="hover:text-blue-800 underline">
+                                <i class="fas fa-times mr-1"></i>Clear all filters
+                            </a>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        <?php endif; ?>
+        
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
@@ -276,6 +377,7 @@ include 'includes/header.php';
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Semester</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Day</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
@@ -283,8 +385,18 @@ include 'includes/header.php';
                 <tbody class="bg-white divide-y divide-gray-200">
                     <?php if (!$consultation_result || mysqli_num_rows($consultation_result) === 0): ?>
                         <tr>
-                            <td colspan="6" class="px-6 py-4 text-center text-gray-500">
-                                <?php echo $consultation_result ? 'No consultation hours found' : 'Error loading consultation hours'; ?>
+                            <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+                                <?php 
+                                if ($consultation_result) {
+                                    if ($search_query || $semester_filter || $day_filter) {
+                                        echo 'No consultation hours found matching your search criteria.';
+                                    } else {
+                                        echo 'No consultation hours found';
+                                    }
+                                } else {
+                                    echo 'Error loading consultation hours';
+                                }
+                                ?>
                             </td>
                         </tr>
                     <?php else: ?>
@@ -304,6 +416,9 @@ include 'includes/header.php';
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     <?php echo date('g:i A', strtotime($consultation['start_time'])) . ' - ' . date('g:i A', strtotime($consultation['end_time'])); ?>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    <?php echo htmlspecialchars($consultation['room']); ?>
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-900">
                                     <?php echo $consultation['notes'] ?: '-'; ?>
@@ -1110,6 +1225,246 @@ include 'includes/header.php';
             <?php endif; ?>
         </div>
     </div>
+
+    <!-- Available Today View -->
+    <div id="availableTodayView" class="bg-white rounded-lg shadow-sm hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">Available Teachers Today - <?php echo date('l, F j, Y'); ?></h3>
+            <p class="text-sm text-gray-600 mt-1">Teachers who have consultation hours scheduled for today and are available for student consultations</p>
+        </div>
+        <div class="p-6">
+            <?php
+            // Get current day of week
+            $current_day = date('l'); // Returns Monday, Tuesday, etc.
+            $current_time = date('H:i:s'); // Current time in HH:MM:SS format
+            $current_date = date('Y-m-d'); // Current date
+            
+            // Get teachers available today (considering consultation hours and leaves)
+            // Group by teacher to avoid duplicates and concatenate time ranges
+            $available_today_query = "SELECT 
+                                        f.id,
+                                        f.first_name,
+                                        f.last_name,
+                                        f.email,
+                                        f.position,
+                                        f.department,
+                                        GROUP_CONCAT(DISTINCT ch.day_of_week) as day_of_week,
+                                        GROUP_CONCAT(DISTINCT CONCAT(TIME_FORMAT(ch.start_time, '%h:%i %p'), ' - ', TIME_FORMAT(ch.end_time, '%h:%i %p')) ORDER BY ch.start_time SEPARATOR ', ') as time_ranges,
+                                        GROUP_CONCAT(DISTINCT ch.room ORDER BY ch.start_time SEPARATOR ', ') as rooms,
+                                        GROUP_CONCAT(DISTINCT ch.notes ORDER BY ch.start_time SEPARATOR ' | ') as all_notes,
+                                        MIN(ch.start_time) as earliest_start,
+                                        MAX(ch.end_time) as latest_end,
+                                        CASE 
+                                            WHEN TIME(NOW()) BETWEEN MIN(ch.start_time) AND MAX(ch.end_time) THEN 'active'
+                                            WHEN TIME(NOW()) < MIN(ch.start_time) THEN 'upcoming'
+                                            ELSE 'ended'
+                                        END as status
+                                      FROM faculty f
+                                      JOIN consultation_hours ch ON f.id = ch.teacher_id
+                                      LEFT JOIN consultation_leave cl ON f.id = cl.teacher_id AND cl.leave_date = CURDATE()
+                                      WHERE f.department = ? 
+                                        AND f.is_active = 1 
+                                        AND ch.is_active = 1
+                                        AND ch.day_of_week = ?
+                                        AND cl.id IS NULL
+                                      GROUP BY f.id, f.first_name, f.last_name, f.email, f.position, f.department
+                                      ORDER BY 
+                                        CASE 
+                                            WHEN TIME(NOW()) BETWEEN MIN(ch.start_time) AND MAX(ch.end_time) THEN 1
+                                            WHEN TIME(NOW()) < MIN(ch.start_time) THEN 2
+                                            ELSE 3
+                                        END,
+                                        MIN(ch.start_time) ASC";
+            
+            $available_today_result = null;
+            if ($head_info) {
+                $available_today_stmt = mysqli_prepare($conn, $available_today_query);
+                if ($available_today_stmt) {
+                    mysqli_stmt_bind_param($available_today_stmt, "ss", $head_info['department'], $current_day);
+                    if (mysqli_stmt_execute($available_today_stmt)) {
+                        $available_today_result = mysqli_stmt_get_result($available_today_stmt);
+                    }
+                }
+            }
+            
+            if (!$available_today_result || mysqli_num_rows($available_today_result) === 0): ?>
+                <div class="text-center py-12">
+                    <div class="mx-auto h-16 w-16 text-gray-400 mb-4">
+                        <i class="fas fa-user-clock text-6xl"></i>
+                    </div>
+                    <h3 class="mt-2 text-lg font-medium text-gray-900">No Teachers Available Today</h3>
+                    <p class="mt-1 text-sm text-gray-500">No teachers have consultation hours scheduled for <?php echo $current_day; ?> or they may be on leave.</p>
+                    <div class="mt-6">
+                        <button onclick="openAddModal()" class="bg-seait-orange hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center mx-auto">
+                            <i class="fas fa-plus mr-2"></i>
+                            Add Consultation Hours
+                        </button>
+                    </div>
+                </div>
+            <?php else: ?>
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                    <?php
+                    $active_count = 0;
+                    $upcoming_count = 0;
+                    $ended_count = 0;
+                    
+                    // Count statuses
+                    mysqli_data_seek($available_today_result, 0);
+                    while ($teacher = mysqli_fetch_assoc($available_today_result)) {
+                        switch ($teacher['status']) {
+                            case 'active':
+                                $active_count++;
+                                break;
+                            case 'upcoming':
+                                $upcoming_count++;
+                                break;
+                            case 'ended':
+                                $ended_count++;
+                                break;
+                        }
+                    }
+                    ?>
+                    
+                    <!-- Active Now Card -->
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <div class="flex items-center">
+                            <div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mr-4">
+                                <i class="fas fa-user-check text-white text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-lg font-semibold text-green-900"><?php echo $active_count; ?></h4>
+                                <p class="text-sm text-green-700">Active Now</p>
+                                <p class="text-xs text-green-600">Available for consultation</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Upcoming Card -->
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div class="flex items-center">
+                            <div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center mr-4">
+                                <i class="fas fa-clock text-white text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-lg font-semibold text-blue-900"><?php echo $upcoming_count; ?></h4>
+                                <p class="text-sm text-blue-700">Upcoming</p>
+                                <p class="text-xs text-blue-600">Will be available later</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Ended Card -->
+                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        <div class="flex items-center">
+                            <div class="w-12 h-12 bg-gray-500 rounded-full flex items-center justify-center mr-4">
+                                <i class="fas fa-user-times text-white text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-lg font-semibold text-gray-900"><?php echo $ended_count; ?></h4>
+                                <p class="text-sm text-gray-700">Ended</p>
+                                <p class="text-xs text-gray-600">Consultation hours finished</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Teachers List -->
+                <div class="space-y-4">
+                    <?php 
+                    mysqli_data_seek($available_today_result, 0);
+                    while ($teacher = mysqli_fetch_assoc($available_today_result)): 
+                        // Determine status colors and icons
+                        switch ($teacher['status']) {
+                            case 'active':
+                                $status_color = 'bg-green-100 text-green-800 border-green-200';
+                                $status_icon = 'fas fa-circle text-green-500';
+                                $status_text = 'Available Now';
+                                $card_border = 'border-green-300';
+                                break;
+                            case 'upcoming':
+                                $status_color = 'bg-blue-100 text-blue-800 border-blue-200';
+                                $status_icon = 'fas fa-clock text-blue-500';
+                                $status_text = 'Starts at ' . date('g:i A', strtotime($teacher['earliest_start']));
+                                $card_border = 'border-blue-300';
+                                break;
+                            case 'ended':
+                                $status_color = 'bg-gray-100 text-gray-800 border-gray-200';
+                                $status_icon = 'fas fa-check-circle text-gray-500';
+                                $status_text = 'Ended at ' . date('g:i A', strtotime($teacher['latest_end']));
+                                $card_border = 'border-gray-300';
+                                break;
+                            default:
+                                $status_color = 'bg-gray-100 text-gray-800 border-gray-200';
+                                $status_icon = 'fas fa-question-circle text-gray-500';
+                                $status_text = 'Unknown';
+                                $card_border = 'border-gray-300';
+                        }
+                    ?>
+                    <div class="bg-white border-2 <?php echo $card_border; ?> rounded-lg p-6 hover:shadow-lg transition-all duration-200">
+                        <div class="flex items-start justify-between">
+                            <!-- Teacher Info -->
+                            <div class="flex items-start space-x-4 flex-1">
+                                <div class="w-12 h-12 bg-seait-orange rounded-full flex items-center justify-center flex-shrink-0">
+                                    <i class="fas fa-user-tie text-white text-lg"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex items-center space-x-3 mb-2">
+                                        <h4 class="text-lg font-semibold text-gray-900">
+                                            <?php echo $teacher['first_name'] . ' ' . $teacher['last_name']; ?>
+                                        </h4>
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border <?php echo $status_color; ?>">
+                                            <i class="<?php echo $status_icon; ?> text-xs mr-1"></i>
+                                            <?php echo $status_text; ?>
+                                        </span>
+                                    </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                                        <div class="space-y-1">
+                                            <p><i class="fas fa-envelope mr-2 text-seait-orange"></i><?php echo $teacher['email']; ?></p>
+                                            <p><i class="fas fa-briefcase mr-2 text-seait-orange"></i><?php echo $teacher['position']; ?></p>
+                                        </div>
+                                        <div class="space-y-1">
+                                            <p><i class="fas fa-clock mr-2 text-seait-orange"></i><?php echo $teacher['time_ranges']; ?></p>
+                                            <p><i class="fas fa-door-open mr-2 text-seait-orange"></i><?php echo $teacher['rooms']; ?></p>
+                                        </div>
+                                    </div>
+                                    <?php if (!empty($teacher['all_notes']) && $teacher['all_notes'] !== ''): ?>
+                                    <div class="mt-3 p-3 bg-gray-50 rounded-lg">
+                                        <p class="text-sm text-gray-700">
+                                            <i class="fas fa-sticky-note mr-2 text-seait-orange"></i>
+                                            <strong>Notes:</strong> <?php echo htmlspecialchars($teacher['all_notes']); ?>
+                                        </p>
+                                    </div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            
+                            <!-- Action Buttons -->
+                            <div class="flex flex-col space-y-2 ml-4">
+                                <?php if ($teacher['status'] === 'active'): ?>
+                                <div class="flex items-center text-green-600 text-sm font-medium">
+                                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></div>
+                                    Ready for Students
+                                </div>
+                                <?php elseif ($teacher['status'] === 'upcoming'): ?>
+                                <div class="flex items-center text-blue-600 text-sm font-medium">
+                                    <i class="fas fa-hourglass-half mr-2"></i>
+                                    Starts Soon
+                                </div>
+                                <?php else: ?>
+                                <div class="flex items-center text-gray-600 text-sm font-medium">
+                                    <i class="fas fa-check mr-2"></i>
+                                    Session Ended
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endwhile; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
 </div>
 
 <!-- Add Modal -->
@@ -1724,6 +2079,60 @@ include 'includes/header.php';
     </div>
 </div>
 
+<!-- Delete Consultation Leave Modal -->
+<div id="deleteLeaveModal" class="fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full hidden z-50 transition-all duration-300 ease-in-out backdrop-blur-sm">
+    <div class="relative top-20 mx-auto p-0 border-0 w-full max-w-md shadow-2xl rounded-xl bg-white transform scale-95 opacity-0 transition-all duration-300 ease-out" id="deleteLeaveModalContent">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-red-500 to-red-600 rounded-t-xl p-6 text-white">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <div class="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center mr-4">
+                        <i class="fas fa-exclamation-triangle text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold">Delete Consultation Leave</h3>
+                        <p class="text-red-100 text-sm">This action cannot be undone</p>
+                    </div>
+                </div>
+                <button onclick="closeDeleteLeaveModal()" class="text-white hover:text-red-200 transition-colors duration-200 p-2 rounded-full hover:bg-white hover:bg-opacity-20">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Content -->
+        <div class="p-6">
+            <div class="flex items-start">
+                <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-4 mt-1">
+                    <i class="fas fa-calendar-times text-red-600"></i>
+                </div>
+                <div class="flex-1">
+                    <h4 class="text-lg font-semibold text-gray-900 mb-2">Remove Consultation Leave</h4>
+                    <p class="text-gray-600 leading-relaxed">Are you sure you want to delete this consultation leave record? This action will permanently remove the scheduled consultation leave and cannot be undone.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="bg-gray-50 rounded-b-xl p-4 border-t border-gray-200">
+            <form method="POST">
+                <input type="hidden" name="action" value="delete_leave">
+                <input type="hidden" name="leave_id" id="deleteLeaveId" value="">
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeDeleteLeaveModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-105">
+                        <i class="fas fa-times mr-2"></i>
+                        Cancel
+                    </button>
+                    <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-105">
+                        <i class="fas fa-trash mr-2"></i>
+                        Delete Leave
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
 function openAddModal() {
     const modal = document.getElementById('consultationModal');
@@ -1781,6 +2190,20 @@ function closeLeaveModal() {
     }, 300);
 }
 
+function closeDeleteLeaveModal() {
+    const modal = document.getElementById('deleteLeaveModal');
+    const modalContent = document.getElementById('deleteLeaveModalContent');
+    
+    // Start closing animation
+    modalContent.classList.remove('scale-100', 'opacity-100');
+    modalContent.classList.add('scale-95', 'opacity-0');
+    
+    // Hide modal after animation completes
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
+}
+
 function deleteConsultation(id) {
     const modal = document.getElementById('deleteModal');
     const modalContent = document.getElementById('deleteModalContent');
@@ -1812,16 +2235,19 @@ function closeDeleteModal() {
 }
 
 function deleteLeave(leaveId) {
-    if (confirm('Are you sure you want to delete this consultation leave?')) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.innerHTML = `
-            <input type="hidden" name="action" value="delete_leave">
-            <input type="hidden" name="leave_id" value="${leaveId}">
-        `;
-        document.body.appendChild(form);
-        form.submit();
-    }
+    const modal = document.getElementById('deleteLeaveModal');
+    const modalContent = document.getElementById('deleteLeaveModalContent');
+    
+    document.getElementById('deleteLeaveId').value = leaveId;
+    
+    // Show modal
+    modal.classList.remove('hidden');
+    
+    // Trigger animation after a small delay
+    setTimeout(() => {
+        modalContent.classList.remove('scale-95', 'opacity-0');
+        modalContent.classList.add('scale-100', 'opacity-100');
+    }, 10);
 }
 
 function showListView() {
@@ -1830,6 +2256,7 @@ function showListView() {
     document.getElementById('logsView').classList.add('hidden');
     document.getElementById('reportsView').classList.add('hidden');
     document.getElementById('leavesView').classList.add('hidden');
+    document.getElementById('availableTodayView').classList.add('hidden');
     document.getElementById('listViewBtn').classList.remove('bg-gray-300', 'text-gray-700');
     document.getElementById('listViewBtn').classList.add('bg-seait-orange', 'text-white');
     document.getElementById('weekViewBtn').classList.remove('bg-seait-orange', 'text-white');
@@ -1840,6 +2267,8 @@ function showListView() {
     document.getElementById('reportsViewBtn').classList.add('bg-gray-300', 'text-gray-700');
     document.getElementById('leavesViewBtn').classList.remove('bg-seait-orange', 'text-white');
     document.getElementById('leavesViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+    document.getElementById('availableTodayViewBtn').classList.remove('bg-seait-orange', 'text-white');
+    document.getElementById('availableTodayViewBtn').classList.add('bg-gray-300', 'text-gray-700');
 }
 
 function showWeekView() {
@@ -1848,6 +2277,7 @@ function showWeekView() {
     document.getElementById('logsView').classList.add('hidden');
     document.getElementById('reportsView').classList.add('hidden');
     document.getElementById('leavesView').classList.add('hidden');
+    document.getElementById('availableTodayView').classList.add('hidden');
     document.getElementById('weekViewBtn').classList.remove('bg-gray-300', 'text-gray-700');
     document.getElementById('weekViewBtn').classList.add('bg-seait-orange', 'text-white');
     document.getElementById('listViewBtn').classList.remove('bg-seait-orange', 'text-white');
@@ -1858,6 +2288,8 @@ function showWeekView() {
     document.getElementById('reportsViewBtn').classList.add('bg-gray-300', 'text-gray-700');
     document.getElementById('leavesViewBtn').classList.remove('bg-seait-orange', 'text-white');
     document.getElementById('leavesViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+    document.getElementById('availableTodayViewBtn').classList.remove('bg-seait-orange', 'text-white');
+    document.getElementById('availableTodayViewBtn').classList.add('bg-gray-300', 'text-gray-700');
 }
 
 function showLogsView() {
@@ -1866,6 +2298,7 @@ function showLogsView() {
     document.getElementById('weekView').classList.add('hidden');
     document.getElementById('reportsView').classList.add('hidden');
     document.getElementById('leavesView').classList.add('hidden');
+    document.getElementById('availableTodayView').classList.add('hidden');
     document.getElementById('logsViewBtn').classList.remove('bg-gray-300', 'text-gray-700');
     document.getElementById('logsViewBtn').classList.add('bg-seait-orange', 'text-white');
     document.getElementById('listViewBtn').classList.remove('bg-seait-orange', 'text-white');
@@ -1876,6 +2309,8 @@ function showLogsView() {
     document.getElementById('reportsViewBtn').classList.add('bg-gray-300', 'text-gray-700');
     document.getElementById('leavesViewBtn').classList.remove('bg-seait-orange', 'text-white');
     document.getElementById('leavesViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+    document.getElementById('availableTodayViewBtn').classList.remove('bg-seait-orange', 'text-white');
+    document.getElementById('availableTodayViewBtn').classList.add('bg-gray-300', 'text-gray-700');
 }
 
 function showReportsView() {
@@ -1884,6 +2319,7 @@ function showReportsView() {
     document.getElementById('weekView').classList.add('hidden');
     document.getElementById('logsView').classList.add('hidden');
     document.getElementById('leavesView').classList.add('hidden');
+    document.getElementById('availableTodayView').classList.add('hidden');
     document.getElementById('reportsViewBtn').classList.remove('bg-gray-300', 'text-gray-700');
     document.getElementById('reportsViewBtn').classList.add('bg-seait-orange', 'text-white');
     document.getElementById('listViewBtn').classList.remove('bg-seait-orange', 'text-white');
@@ -1894,6 +2330,8 @@ function showReportsView() {
     document.getElementById('logsViewBtn').classList.add('bg-gray-300', 'text-gray-700');
     document.getElementById('leavesViewBtn').classList.remove('bg-seait-orange', 'text-white');
     document.getElementById('leavesViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+    document.getElementById('availableTodayViewBtn').classList.remove('bg-seait-orange', 'text-white');
+    document.getElementById('availableTodayViewBtn').classList.add('bg-gray-300', 'text-gray-700');
 }
 
 function showLeavesView() {
@@ -1902,6 +2340,7 @@ function showLeavesView() {
     document.getElementById('weekView').classList.add('hidden');
     document.getElementById('logsView').classList.add('hidden');
     document.getElementById('reportsView').classList.add('hidden');
+    document.getElementById('availableTodayView').classList.add('hidden');
     document.getElementById('leavesViewBtn').classList.remove('bg-gray-300', 'text-gray-700');
     document.getElementById('leavesViewBtn').classList.add('bg-seait-orange', 'text-white');
     document.getElementById('listViewBtn').classList.remove('bg-seait-orange', 'text-white');
@@ -1912,6 +2351,29 @@ function showLeavesView() {
     document.getElementById('logsViewBtn').classList.add('bg-gray-300', 'text-gray-700');
     document.getElementById('reportsViewBtn').classList.remove('bg-seait-orange', 'text-white');
     document.getElementById('reportsViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+    document.getElementById('availableTodayViewBtn').classList.remove('bg-seait-orange', 'text-white');
+    document.getElementById('availableTodayViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+}
+
+function showAvailableTodayView() {
+    document.getElementById('availableTodayView').classList.remove('hidden');
+    document.getElementById('listView').classList.add('hidden');
+    document.getElementById('weekView').classList.add('hidden');
+    document.getElementById('logsView').classList.add('hidden');
+    document.getElementById('reportsView').classList.add('hidden');
+    document.getElementById('leavesView').classList.add('hidden');
+    document.getElementById('availableTodayViewBtn').classList.remove('bg-gray-300', 'text-gray-700');
+    document.getElementById('availableTodayViewBtn').classList.add('bg-seait-orange', 'text-white');
+    document.getElementById('listViewBtn').classList.remove('bg-seait-orange', 'text-white');
+    document.getElementById('listViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+    document.getElementById('weekViewBtn').classList.remove('bg-seait-orange', 'text-white');
+    document.getElementById('weekViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+    document.getElementById('logsViewBtn').classList.remove('bg-seait-orange', 'text-white');
+    document.getElementById('logsViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+    document.getElementById('reportsViewBtn').classList.remove('bg-seait-orange', 'text-white');
+    document.getElementById('reportsViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+    document.getElementById('leavesViewBtn').classList.remove('bg-seait-orange', 'text-white');
+    document.getElementById('leavesViewBtn').classList.add('bg-gray-300', 'text-gray-700');
 }
 
 function showTeacherDetails(consultationId) {
@@ -1983,6 +2445,7 @@ window.onclick = function(event) {
     const logDetailsModal = document.getElementById('logDetailsModal');
     const declineReasonModal = document.getElementById('declineReasonModal');
     const leaveModal = document.getElementById('leaveModal');
+    const deleteLeaveModal = document.getElementById('deleteLeaveModal');
     
     if (event.target === consultationModal) {
         closeModal();
@@ -2001,6 +2464,9 @@ window.onclick = function(event) {
     }
     if (event.target === leaveModal) {
         closeLeaveModal();
+    }
+    if (event.target === deleteLeaveModal) {
+        closeDeleteLeaveModal();
     }
 }
 

@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../config/database.php';
+require_once '../includes/unified-error-handler.php';
 require_once '../includes/functions.php';
 
 check_admin();
@@ -174,6 +175,9 @@ while ($row = mysqli_fetch_assoc($users_result)) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Management - SEAIT Admin</title>
+    <link rel="icon" type="image/png" href="../assets/images/seait-logo.png">
+    <link rel="shortcut icon" type="image/png" href="../assets/images/seait-logo.png">
+    <link rel="apple-touch-icon" type="image/png" href="../assets/images/seait-logo.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {

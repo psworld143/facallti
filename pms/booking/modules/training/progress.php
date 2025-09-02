@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once '../../../includes/error_handler.php';
 require_once '../../includes/config.php';
 require_once '../../includes/functions.php';
 
@@ -165,13 +166,7 @@ include '../../includes/sidebar-unified.php';
 
         <!-- Main Content -->
         <main class="lg:ml-64 mt-16 p-4 lg:p-6 flex-1 transition-all duration-300">
-            <div class="flex justify-between items-center mb-8">
-                <h2 class="text-3xl font-semibold text-gray-800">Training Progress</h2>
-                <div class="text-right">
-                    <div id="current-date" class="text-sm text-gray-600"></div>
-                    <div id="current-time" class="text-sm text-gray-600"></div>
-                </div>
-            </div>
+            
 
             <!-- Page Header -->
             <div class="mb-6">
@@ -211,7 +206,7 @@ include '../../includes/sidebar-unified.php';
                     </div>
                     <div>
                         <p class="text-sm text-gray-600">Average Score</p>
-                        <p class="text-xl font-bold text-blue-600"><?php echo number_format($overall_stats['avg_score'], 1); ?>%</p>
+                        <p class="text-xl font-bold text-blue-600"><?php echo number_format($overall_stats['avg_score'] ?? 0, 1); ?>%</p>
                     </div>
                     <div>
                         <p class="text-sm text-gray-600">Training Time</p>
@@ -305,7 +300,7 @@ include '../../includes/sidebar-unified.php';
                         <div class="grid grid-cols-2 gap-4 text-sm">
                             <div>
                                 <p class="text-gray-600">Avg Score</p>
-                                <p class="font-semibold text-gray-900"><?php echo number_format($progress['avg_score'], 1); ?>%</p>
+                                <p class="font-semibold text-gray-900"><?php echo number_format($progress['avg_score'] ?? 0, 1); ?>%</p>
                             </div>
                             <div>
                                 <p class="text-gray-600">Time</p>
@@ -413,7 +408,7 @@ include '../../includes/sidebar-unified.php';
                                             elseif ($activity['score'] >= 70) echo 'bg-yellow-100 text-yellow-800';
                                             else echo 'bg-red-100 text-red-800';
                                             ?>">
-                                            <?php echo number_format($activity['score'], 1); ?>%
+                                            <?php echo number_format($activity['score'] ?? 0, 1); ?>%
                                         </span>
                                     </div>
                                 </div>
@@ -434,7 +429,7 @@ include '../../includes/sidebar-unified.php';
                                     <span class="text-sm text-gray-600"><?php echo date('M j', strtotime($trend['date'])); ?></span>
                                     <div class="flex items-center space-x-4">
                                         <span class="text-sm text-gray-500"><?php echo $trend['attempts']; ?> attempts</span>
-                                        <span class="text-sm font-semibold text-gray-800"><?php echo number_format($trend['avg_score'], 1); ?>%</span>
+                                        <span class="text-sm font-semibold text-gray-800"><?php echo number_format($trend['avg_score'] ?? 0, 1); ?>%</span>
                                     </div>
                                 </div>
                             <?php endforeach; ?>

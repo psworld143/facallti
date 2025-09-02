@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once '../../../includes/error_handler.php';
 require_once '../../includes/config.php';
 require_once '../../includes/functions.php';
 
@@ -124,13 +125,7 @@ include '../../includes/sidebar-unified.php';
 
         <!-- Main Content -->
         <main class="lg:ml-64 mt-16 p-4 lg:p-6 flex-1 transition-all duration-300">
-            <div class="flex justify-between items-center mb-8">
-                <h2 class="text-3xl font-semibold text-gray-800">Training Scenarios</h2>
-                <div class="text-right">
-                    <div id="current-date" class="text-sm text-gray-600"></div>
-                    <div id="current-time" class="text-sm text-gray-600"></div>
-                </div>
-            </div>
+            
 
             <!-- Page Header -->
             <div class="mb-6">
@@ -170,7 +165,7 @@ include '../../includes/sidebar-unified.php';
                         </div>
                         <div class="ml-4">
                             <p class="text-sm font-medium text-gray-600">Average Score</p>
-                            <p class="text-2xl font-bold text-gray-900"><?php echo number_format($user_stats['avg_score'], 1); ?>%</p>
+                            <p class="text-2xl font-bold text-gray-900"><?php echo number_format($user_stats['avg_score'] ?? 0, 1); ?>%</p>
                         </div>
                     </div>
                 </div>

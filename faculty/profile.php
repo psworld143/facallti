@@ -28,9 +28,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $message = "All fields are required!";
                     $message_type = "error";
                 } else {
-                    $update_query = "UPDATE users SET first_name = ?, last_name = ?, email = ? WHERE id = ?";
-                    $update_stmt = mysqli_prepare($conn, $update_query);
-                    mysqli_stmt_bind_param($update_stmt, "sssi", $first_name, $last_name, $email, $_SESSION['user_id']);
+                    // Handle photo upload
+                    $photo_path = null;
+                    if (isset($_FILES['profile_photo']) && $_FILES['profile_photo']['error'] === UPLOAD_ERR_OK) {
+                        $upload_dir = dirname(__FILE__) . '/../uploads/faculty_photos/';
+                        
+                        // Create directory if it doesn't exist
+                        if (!is_dir($upload_dir)) {
+                            mkdir($upload_dir, 0755, true);
+                        }
+                        
+                        $file_info = pathinfo($_FILES['profile_photo']['name']);
+                        $file_extension = strtolower($file_info['extension']);
+                        
+                        // Validate file type
+                        $allowed_types = ['jpg', 'jpeg', 'png', 'gif'];
+                        if (in_array($file_extension, $allowed_types)) {
+                            // Validate file size (2MB max)
+                            if ($_FILES['profile_photo']['size'] <= 2 * 1024 * 1024) {
+                                // Generate unique filename
+                                $filename = 'faculty_' . $_SESSION['user_id'] . '_' . time() . '.' . $file_extension;
+                                $upload_path = $upload_dir . $filename;
+                                
+                                if (move_uploaded_file($_FILES['profile_photo']['tmp_name'], $upload_path)) {
+                                    $photo_path = 'uploads/faculty_photos/' . $filename;
+                                } else {
+                                    $message = "Error uploading photo!";
+                                    $message_type = "error";
+                                    break;
+                                }
+                            } else {
+                                $message = "Photo size must be less than 2MB!";
+                                $message_type = "error";
+                                break;
+                            }
+                        } else {
+                            $message = "Invalid file type. Please upload JPG, PNG, or GIF!";
+                            $message_type = "error";
+                            break;
+                        }
+                    }
+                    
+                    // Update faculty table with photo if uploaded
+                    if ($photo_path) {
+                        $update_query = "UPDATE faculty SET first_name = ?, last_name = ?, email = ?, image_url = ? WHERE id = ?";
+                        $update_stmt = mysqli_prepare($conn, $update_query);
+                        mysqli_stmt_bind_param($update_stmt, "ssssi", $first_name, $last_name, $email, $photo_path, $_SESSION['faculty_id']);
+                    } else {
+                        $update_query = "UPDATE faculty SET first_name = ?, last_name = ?, email = ? WHERE id = ?";
+                        $update_stmt = mysqli_prepare($conn, $update_query);
+                        mysqli_stmt_bind_param($update_stmt, "sssi", $first_name, $last_name, $email, $_SESSION['faculty_id']);
+                    }
 
                     if (mysqli_stmt_execute($update_stmt)) {
                         // Update session data
@@ -97,9 +145,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $faculty_query = "SELECT f.*, u.username, u.email as user_email
                   FROM faculty f
                   LEFT JOIN users u ON f.email = u.email
-                  WHERE f.email = ? AND f.is_active = 1";
+                  WHERE f.id = ? AND f.is_active = 1";
 $faculty_stmt = mysqli_prepare($conn, $faculty_query);
-mysqli_stmt_bind_param($faculty_stmt, "s", $_SESSION['username']);
+mysqli_stmt_bind_param($faculty_stmt, "i", $_SESSION['faculty_id']);
 mysqli_stmt_execute($faculty_stmt);
 $faculty_result = mysqli_stmt_get_result($faculty_stmt);
 $faculty_info = mysqli_fetch_assoc($faculty_result);
@@ -161,8 +209,44 @@ include 'includes/unified-header.php';
             </div>
 
             <div class="p-6">
-                <form method="POST" class="space-y-4">
+                <form method="POST" enctype="multipart/form-data" class="space-y-4">
                     <input type="hidden" name="action" value="update_profile">
+
+                    <!-- Profile Photo Section -->
+                    <div class="flex items-center space-x-6">
+                        <div class="flex-shrink-0">
+                            <div class="relative">
+                                <div id="photoPreview" class="w-24 h-24 rounded-full bg-gray-200 border-2 border-gray-300 flex items-center justify-center overflow-hidden">
+                                    <?php if (!empty($faculty_info['image_url']) && file_exists('../' . $faculty_info['image_url'])): ?>
+                                        <img src="../<?php echo htmlspecialchars($faculty_info['image_url']); ?>" 
+                                             alt="Profile Photo" 
+                                             class="w-full h-full object-cover rounded-full">
+                                    <?php else: ?>
+                                        <i class="fas fa-user text-gray-400 text-2xl"></i>
+                                    <?php endif; ?>
+                                </div>
+                                <label for="profile_photo" class="absolute bottom-0 right-0 bg-seait-orange text-white p-1 rounded-full cursor-pointer hover:bg-orange-600 transition-colors">
+                                    <i class="fas fa-camera text-xs"></i>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="flex-1">
+                            <label for="profile_photo" class="block text-sm font-medium text-gray-700 mb-1">Profile Photo</label>
+                            <input type="file" id="profile_photo" name="profile_photo" accept="image/*" 
+                                   class="hidden" onchange="previewPhoto(this)">
+                            <div class="flex items-center space-x-2">
+                                <button type="button" onclick="document.getElementById('profile_photo').click()" 
+                                        class="bg-gray-100 text-gray-700 px-3 py-1 rounded-md text-sm hover:bg-gray-200 transition">
+                                    <i class="fas fa-upload mr-1"></i>Select Photo
+                                </button>
+                                <button type="button" id="removePhotoBtn" onclick="removePhoto()" 
+                                        class="bg-red-100 text-red-700 px-3 py-1 rounded-md text-sm hover:bg-red-200 transition hidden">
+                                    <i class="fas fa-trash mr-1"></i>Remove
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">JPG, PNG, GIF up to 2MB</p>
+                        </div>
+                    </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
@@ -302,6 +386,51 @@ include 'includes/unified-header.php';
         </div>
     </div>
 </div>
+
+<script>
+function previewPhoto(input) {
+    const preview = document.getElementById('photoPreview');
+    const removeBtn = document.getElementById('removePhotoBtn');
+    
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        
+        // Validate file type
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+        if (!allowedTypes.includes(file.type)) {
+            alert('Please select a valid image file (JPG, PNG, GIF).');
+            input.value = '';
+            return;
+        }
+        
+        // Validate file size (2MB max)
+        const maxSize = 2 * 1024 * 1024; // 2MB in bytes
+        if (file.size > maxSize) {
+            alert('Photo size must be less than 2MB.');
+            input.value = '';
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.innerHTML = `<img src="${e.target.result}" alt="Preview" class="w-full h-full object-cover rounded-full">`;
+            removeBtn.classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function removePhoto() {
+    const preview = document.getElementById('photoPreview');
+    const fileInput = document.getElementById('profile_photo');
+    const removeBtn = document.getElementById('removePhotoBtn');
+    
+    // Reset to default state
+    preview.innerHTML = '<i class="fas fa-user text-gray-400 text-2xl"></i>';
+    fileInput.value = '';
+    removeBtn.classList.add('hidden');
+}
+</script>
 
 <?php
 // Include the shared footer

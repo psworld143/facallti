@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once '../../../includes/error_handler.php';
 require_once '../../includes/config.php';
 require_once '../../includes/functions.php';
 
@@ -170,7 +171,7 @@ include '../../includes/sidebar-unified.php';
                             <div class="bg-gray-50 p-4 rounded-lg">
                                 <div class="flex justify-between items-center mb-2">
                                     <span class="text-gray-600">Room Rate (per night):</span>
-                                    <span id="room-rate" class="font-medium">$0.00</span>
+                                    <span id="room-rate" class="font-medium">₱0.00</span>
                                 </div>
                                 <div class="flex justify-between items-center mb-2">
                                     <span class="text-gray-600">Number of Nights:</span>
@@ -178,16 +179,16 @@ include '../../includes/sidebar-unified.php';
                                 </div>
                                 <div class="flex justify-between items-center mb-2">
                                     <span class="text-gray-600">Subtotal:</span>
-                                    <span id="subtotal" class="font-medium">$0.00</span>
+                                    <span id="subtotal" class="font-medium">₱0.00</span>
                                 </div>
                                 <div class="flex justify-between items-center mb-2">
                                     <span class="text-gray-600">Tax (10%):</span>
-                                    <span id="tax" class="font-medium">$0.00</span>
+                                    <span id="tax" class="font-medium">₱0.00</span>
                                 </div>
                                 <div class="border-t border-gray-300 pt-2">
                                     <div class="flex justify-between items-center">
                                         <span class="text-lg font-semibold text-gray-900">Total Amount:</span>
-                                        <span id="total-amount" class="text-lg font-semibold text-primary">$0.00</span>
+                                        <span id="total-amount" class="text-lg font-semibold text-primary">₱0.00</span>
                                     </div>
                                 </div>
                             </div>

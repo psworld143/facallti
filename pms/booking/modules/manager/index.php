@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once '../../../includes/error_handler.php';
 require_once '../../includes/config.php';
 require_once '../../includes/functions.php';
 
@@ -119,7 +120,7 @@ $stats = getManagementStats();
                             <i class="fas fa-dollar-sign text-white text-xl"></i>
                         </div>
                         <div>
-                            <h3 class="text-3xl font-bold text-gray-800">$<?php echo number_format($stats['today_revenue'], 2); ?></h3>
+                            <h3 class="text-3xl font-bold text-gray-800">₱<?php echo number_format($stats['today_revenue'], 2); ?></h3>
                             <p class="text-gray-600">Today's Revenue</p>
                         </div>
                     </div>
@@ -157,15 +158,15 @@ $stats = getManagementStats();
                     <div class="space-y-4">
                         <div class="flex justify-between items-center">
                             <span class="text-gray-600">Today's Revenue:</span>
-                            <span class="font-semibold text-green-600">$<?php echo number_format($stats['today_revenue'], 2); ?></span>
+                            <span class="font-semibold text-green-600">₱<?php echo number_format($stats['today_revenue'], 2); ?></span>
                         </div>
                         <div class="flex justify-between items-center">
                             <span class="text-gray-600">This Month's Revenue:</span>
-                            <span class="font-semibold text-blue-600">$<?php echo number_format($stats['month_revenue'], 2); ?></span>
+                            <span class="font-semibold text-blue-600">₱<?php echo number_format($stats['month_revenue'], 2); ?></span>
                         </div>
                         <div class="flex justify-between items-center">
                             <span class="text-gray-600">Average Daily Revenue:</span>
-                            <span class="font-semibold text-purple-600">$<?php echo number_format($stats['month_revenue'] / max(1, date('j')), 2); ?></span>
+                            <span class="font-semibold text-purple-600">₱<?php echo number_format($stats['month_revenue'] / max(1, date('j')), 2); ?></span>
                         </div>
                     </div>
                 </div>

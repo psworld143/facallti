@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once '../../../includes/error_handler.php';
 require_once '../../includes/config.php';
 require_once '../../includes/functions.php';
 
@@ -9,17 +10,31 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['user_role'], ['front_de
     exit();
 }
 
+$user_role = $_SESSION['user_role'];
+$user_name = $_SESSION['user_name'];
+
 // Set page title
 $page_title = 'Manage Reservations';
+$page_subtitle = 'View and manage guest reservations';
 
-// Include unified header (automatically selects appropriate navbar)
+// Include JavaScript for manage reservations functionality
+$additional_js = '<script src="../../assets/js/manage-reservations.js"></script>';
+
+// Include unified navigation (automatically selects based on user role)
 include '../../includes/header-unified.php';
-// Include unified sidebar (automatically selects appropriate sidebar)
 include '../../includes/sidebar-unified.php';
 ?>
 
         <!-- Main Content -->
         <main class="lg:ml-64 mt-16 p-4 lg:p-6 flex-1 transition-all duration-300">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-3xl font-semibold text-gray-800">Manage Reservations</h2>
+                <div class="text-right">
+                    <div id="current-date" class="text-sm text-gray-600"></div>
+                    <div id="current-time" class="text-sm text-gray-600"></div>
+                </div>
+            </div>
+
             <!-- Search and Filters -->
             <div class="bg-white rounded-lg shadow-md p-6 mb-6">
                     <h2 class="text-xl font-semibold text-gray-800 mb-4">Search Reservations</h2>
@@ -73,8 +88,8 @@ include '../../includes/sidebar-unified.php';
                         <!-- Reservations will be loaded here -->
                     </div>
                 </div>
+            </div>
         </main>
-    </div>
 
     <!-- Edit Reservation Modal -->
     <div id="edit-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
@@ -172,8 +187,6 @@ include '../../includes/sidebar-unified.php';
             </form>
         </div>
     </div>
-        </div>
-    </main>
 
     <!-- Cancel Confirmation Modal -->
     <div id="cancel-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
@@ -202,7 +215,4 @@ include '../../includes/sidebar-unified.php';
         </div>
     </div>
 
-    <script src="../../assets/js/main.js"></script>
-    <script src="../../assets/js/manage-reservations.js"></script>
-    
-    <?php include '../../includes/footer.php'; ?>
+<?php include '../../includes/footer.php'; ?>

@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once '../../../includes/error_handler.php';
 require_once '../../includes/config.php';
 require_once '../../includes/functions.php';
 
@@ -157,13 +158,7 @@ include '../../includes/sidebar-unified.php';
 
         <!-- Main Content -->
         <main class="lg:ml-64 mt-16 p-4 lg:p-6 flex-1 transition-all duration-300">
-            <div class="flex justify-between items-center mb-8">
-                <h2 class="text-3xl font-semibold text-gray-800">Training Certificates</h2>
-                <div class="text-right">
-                    <div id="current-date" class="text-sm text-gray-600"></div>
-                    <div id="current-time" class="text-sm text-gray-600"></div>
-                </div>
-            </div>
+            
 
             <!-- Page Header -->
             <div class="mb-6">
@@ -335,7 +330,7 @@ include '../../includes/sidebar-unified.php';
                                     </div>
                                     <div class="text-right">
                                         <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                                            <?php echo number_format($cert['score'], 1); ?>%
+                                            <?php echo number_format($cert['score'] ?? 0, 1); ?>%
                                         </span>
                                         <button onclick="downloadCertificate(<?php echo $cert['id']; ?>)" class="ml-2 text-blue-600 hover:text-blue-800">
                                             <i class="fas fa-download"></i>
@@ -371,7 +366,7 @@ include '../../includes/sidebar-unified.php';
                                         elseif ($achievement['score'] >= 90) echo 'bg-green-100 text-green-800';
                                         else echo 'bg-blue-100 text-blue-800';
                                         ?>">
-                                        <?php echo number_format($achievement['score'], 1); ?>%
+                                        <?php echo number_format($achievement['score'] ?? 0, 1); ?>%
                                     </span>
                                 </div>
                             <?php endforeach; ?>
