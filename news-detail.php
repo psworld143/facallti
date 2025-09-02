@@ -2,16 +2,15 @@
 session_start();
 require_once 'config/database.php';
 require_once 'includes/functions.php';
-require_once 'includes/id_encryption.php';
 
 if (!isset($_GET['id'])) {
     header("Location: index.php");
     exit();
 }
 
-$post_id = safe_decrypt_id($_GET['id']);
+$post_id = (int)$_GET['id'];
 $query = "SELECT p.*, u.first_name, u.last_name FROM posts p
-          JOIN users u ON p.author_id = u.id
+          LEFT JOIN users u ON p.author_id = u.id
           WHERE p.id = ? AND p.status = 'approved'";
 $stmt = mysqli_prepare($conn, $query);
 mysqli_stmt_bind_param($stmt, "i", $post_id);
@@ -55,7 +54,7 @@ if (!$post = mysqli_fetch_assoc($result)) {
 
     <!-- Article Meta Tags -->
     <meta property="article:published_time" content="<?php echo $post['created_at']; ?>">
-    <meta property="article:author" content="<?php echo htmlspecialchars($post['first_name'] . ' ' . $post['last_name']); ?>">
+    <meta property="article:author" content="<?php echo htmlspecialchars($post['author'] ?? $post['first_name'] . ' ' . $post['last_name']); ?>">
     <meta property="article:section" content="<?php echo ucfirst($post['type']); ?>">
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -171,6 +170,44 @@ if (!$post = mysqli_fetch_assoc($result)) {
         .navbar-link-active:hover {
             color: #FF6B35 !important;
         }
+
+        /* Enhanced image styles for news detail - Landscape */
+        .article-header-image {
+            background-size: cover !important;
+            background-position: center center !important;
+            background-repeat: no-repeat !important;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+            image-rendering: high-quality;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
+            aspect-ratio: 16/9 !important;
+            width: 100% !important;
+        }
+
+        /* Responsive landscape image sizing */
+        @media (min-width: 768px) {
+            .article-header-image {
+                aspect-ratio: 21/9 !important;
+                min-height: 60vh !important;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .article-header-image {
+                aspect-ratio: 21/9 !important;
+                min-height: 70vh !important;
+            }
+        }
+
+        @media (min-width: 1280px) {
+            .article-header-image {
+                aspect-ratio: 21/9 !important;
+                min-height: 80vh !important;
+            }
+        }
     </style>
 </head>
 <body class="bg-gray-50 dark-mode" data-theme="light">
@@ -189,7 +226,7 @@ if (!$post = mysqli_fetch_assoc($result)) {
                     : "";
             ?>
             <!-- DEBUG: image_url = <?php echo $post['image_url']; ?>, hasImage = <?php echo $hasImage ? 'true' : 'false'; ?>, imagePath = <?php echo $imagePath; ?> -->
-            <div class="<?php echo $hasImage ? '' : 'bg-gradient-to-r from-seait-orange to-orange-600'; ?> text-white relative" style="<?php echo $headerStyle; ?> min-height:350px; min-height:40vh;">
+            <div class="<?php echo $hasImage ? 'article-header-image' : 'bg-gradient-to-r from-seait-orange to-orange-600'; ?> text-white relative" style="<?php echo $headerStyle; ?> min-height:400px; min-height:50vh;">
                 <div class="absolute left-0 bottom-0 z-10 max-w-3xl w-full p-4 md:p-6">
                     <div class="flex items-center space-x-4 mb-2">
                         <span class="px-3 py-1 bg-white/20 rounded-full text-xs font-medium">
@@ -201,17 +238,244 @@ if (!$post = mysqli_fetch_assoc($result)) {
                     </div>
                     <h1 class="text-xl md:text-2xl lg:text-3xl font-bold mb-1"><?php echo htmlspecialchars($post['title']); ?></h1>
                     <p class="text-sm md:text-base opacity-90 mb-0">
-                        By <?php echo htmlspecialchars($post['first_name'] . ' ' . $post['last_name']); ?>
+                        <?php echo htmlspecialchars($post['author'] ?? $post['first_name'] . ' ' . $post['last_name']); ?>
                     </p>
                 </div>
             </div>
 
-            <!-- Article Content -->
-            <div class="p-8 md:p-12">
-                <div class="prose prose-lg md:prose-xl max-w-none">
-                    <?php echo $post['content']; ?>
-                </div>
-            </div>
+                         <!-- Article Content -->
+             <div class="p-8 md:p-12">
+                 <div class="prose prose-lg md:prose-xl max-w-none">
+                     <?php echo $post['content']; ?>
+                 </div>
+                 
+                                   <!-- Additional Images Section -->
+                  <?php 
+                  $additional_images = [];
+                  if (!empty($post['additional_image_url'])) {
+                      $decoded = json_decode($post['additional_image_url'], true);
+                      if (json_last_error() === JSON_ERROR_NONE) {
+                          $additional_images = $decoded;
+                      } else {
+                          $additional_images = [$post['additional_image_url']];
+                      }
+                  }
+                  
+                  // Debug: Check what's in the additional_image_url field
+                  echo "<!-- DEBUG: additional_image_url = " . htmlspecialchars($post['additional_image_url']) . " -->";
+                  echo "<!-- DEBUG: additional_images count = " . count($additional_images) . " -->";
+                  echo "<!-- DEBUG: additional_images = " . htmlspecialchars(json_encode($additional_images)) . " -->";
+                  ?>
+                  <div class="mt-8 border-t border-gray-200 pt-8">
+                      <div class="flex items-center justify-between mb-4">
+                          <h3 class="text-xl font-semibold text-seait-dark">Additional Images</h3>
+                          <?php if (!empty($additional_images)): ?>
+                          <button onclick="openImageGallery(0)" class="bg-seait-orange hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center space-x-2">
+                              <i class="fas fa-images"></i>
+                              <span>View All Images (<?php echo count($additional_images); ?>)</span>
+                          </button>
+                          <?php else: ?>
+                          <div class="text-gray-500 text-sm">
+                              <i class="fas fa-info-circle"></i>
+                              <span>No additional images available</span>
+                          </div>
+                          <?php endif; ?>
+                      </div>
+                      <?php if (!empty($additional_images)): ?>
+                      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                          <?php foreach ($additional_images as $index => $image_url): ?>
+                          <div class="relative group">
+                              <img src="<?php echo htmlspecialchars($image_url); ?>" 
+                                   alt="<?php echo htmlspecialchars($post['title']); ?> - Image <?php echo $index + 1; ?>" 
+                                   class="w-full h-40 object-cover rounded-lg shadow-md transition-all duration-200 hover:shadow-lg border-2 border-gray-100">
+                              <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-200 rounded-lg flex items-center justify-center">
+                                  <i class="fas fa-image text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-lg"></i>
+                              </div>
+                              <div class="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                                  <?php echo htmlspecialchars(substr($post['title'], 0, 20)); ?><?php echo strlen($post['title']) > 20 ? '...' : ''; ?>
+                              </div>
+                          </div>
+                          <?php endforeach; ?>
+                      </div>
+                      <?php else: ?>
+                      <div class="text-center py-8 text-gray-500">
+                          <i class="fas fa-images text-4xl mb-4"></i>
+                          <p>No additional images for this post</p>
+                      </div>
+                      <?php endif; ?>
+                  </div>
+                 
+                                   <!-- Hidden data for JavaScript -->
+                  <script>
+                      window.imageGalleryData = {
+                          images: <?php echo json_encode($additional_images); ?>,
+                          title: <?php echo json_encode($post['title']); ?>,
+                          totalImages: <?php echo count($additional_images); ?>
+                      };
+                      
+                      // Debug logging
+                      console.log('Image gallery data loaded:', window.imageGalleryData);
+                      console.log('Additional images count:', <?php echo count($additional_images); ?>);
+                      console.log('Additional images:', <?php echo json_encode($additional_images); ?>);
+                      
+                      // Enhanced Image Gallery with Navigation Controls - Define functions immediately
+                      let currentImageIndex = 0;
+                      let imageGalleryData = null;
+
+                      function openImageGallery(startIndex = 0) {
+                          console.log('openImageGallery called with startIndex:', startIndex);
+                          console.log('window.imageGalleryData:', window.imageGalleryData);
+                          
+                          if (!window.imageGalleryData) {
+                              console.error('Image gallery data not found');
+                              return;
+                          }
+
+                          imageGalleryData = window.imageGalleryData;
+                          currentImageIndex = startIndex;
+                          console.log('Gallery opened with image index:', currentImageIndex);
+                          
+                          // Remove any existing modal
+                          const existingModal = document.querySelector('.image-gallery-modal');
+                          if (existingModal) {
+                              existingModal.remove();
+                          }
+                          
+                          // Create modal HTML with navigation controls
+                          const modalHTML = `
+                              <div class="image-gallery-modal fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-50" onclick="closeImageGallery()">
+                                  <div class="relative w-full h-full flex items-center justify-center p-4" onclick="event.stopPropagation()">
+                                      <!-- Close button -->
+                                      <button onclick="closeImageGallery()" class="absolute top-4 right-4 bg-white text-gray-800 rounded-full w-10 h-10 flex items-center justify-center hover:bg-gray-200 transition z-10 shadow-lg">
+                                          <i class="fas fa-times"></i>
+                                      </button>
+                                      
+                                      <!-- Previous button -->
+                                      <button onclick="navigateImage(-1)" class="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white text-gray-800 rounded-full w-12 h-12 flex items-center justify-center hover:bg-gray-200 transition z-10 shadow-lg ${currentImageIndex === 0 ? 'opacity-50 cursor-not-allowed' : ''}">
+                                          <i class="fas fa-chevron-left"></i>
+                                      </button>
+                                      
+                                      <!-- Next button -->
+                                      <button onclick="navigateImage(1)" class="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white text-gray-800 rounded-full w-12 h-12 flex items-center justify-center hover:bg-gray-200 transition z-10 shadow-lg ${currentImageIndex === imageGalleryData.totalImages - 1 ? 'opacity-50 cursor-not-allowed' : ''}">
+                                          <i class="fas fa-chevron-right"></i>
+                                      </button>
+                                      
+                                      <!-- Image container -->
+                                      <div class="max-w-6xl max-h-full flex flex-col items-center">
+                                          <div class="text-white text-center mb-4">
+                                              <h3 class="text-xl font-semibold">${imageGalleryData.title}</h3>
+                                              <p class="text-sm opacity-75">Image ${currentImageIndex + 1} of ${imageGalleryData.totalImages}</p>
+                                          </div>
+                                          <img src="${imageGalleryData.images[currentImageIndex]}" 
+                                               alt="${imageGalleryData.title} - Image ${currentImageIndex + 1}" 
+                                               class="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl transition-opacity duration-300">
+                                      </div>
+                                      
+                                      <!-- Thumbnail navigation -->
+                                      <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2 max-w-full overflow-x-auto px-4">
+                                          ${imageGalleryData.images.map((img, index) => `
+                                              <img src="${img}" 
+                                                   alt="Thumbnail ${index + 1}" 
+                                                   class="w-16 h-16 object-cover rounded cursor-pointer border-2 transition-all duration-200 ${index === currentImageIndex ? 'border-white' : 'border-transparent hover:border-gray-300'}"
+                                                   onclick="goToImage(${index})">
+                                          `).join('')}
+                                      </div>
+                                  </div>
+                              </div>
+                          `;
+                          
+                          // Add modal to page
+                          document.body.insertAdjacentHTML('beforeend', modalHTML);
+                          
+                          // Add keyboard listeners
+                          document.addEventListener('keydown', handleGalleryKeydown);
+                      }
+                      
+                      function navigateImage(direction) {
+                          if (!imageGalleryData) return;
+                          
+                          const newIndex = currentImageIndex + direction;
+                          if (newIndex >= 0 && newIndex < imageGalleryData.totalImages) {
+                              currentImageIndex = newIndex;
+                              updateGalleryDisplay();
+                          }
+                      }
+                      
+                      function goToImage(index) {
+                          if (!imageGalleryData || index < 0 || index >= imageGalleryData.totalImages) return;
+                          
+                          currentImageIndex = index;
+                          updateGalleryDisplay();
+                      }
+                      
+                      function updateGalleryDisplay() {
+                          if (!imageGalleryData) return;
+                          
+                          const modal = document.querySelector('.image-gallery-modal');
+                          if (!modal) return;
+                          
+                          // Update main image
+                          const mainImage = modal.querySelector('img[class*="max-w-full"]');
+                          if (mainImage) {
+                              mainImage.src = imageGalleryData.images[currentImageIndex];
+                              mainImage.alt = `${imageGalleryData.title} - Image ${currentImageIndex + 1}`;
+                          }
+                          
+                          // Update counter
+                          const counter = modal.querySelector('p[class*="text-sm opacity-75"]');
+                          if (counter) {
+                              counter.textContent = `Image ${currentImageIndex + 1} of ${imageGalleryData.totalImages}`;
+                          }
+                          
+                          // Update navigation buttons
+                          const prevButton = modal.querySelector('button[onclick="navigateImage(-1)"]');
+                          const nextButton = modal.querySelector('button[onclick="navigateImage(1)"]');
+                          
+                          if (prevButton) {
+                              prevButton.className = `absolute left-4 top-1/2 transform -translate-y-1/2 bg-white text-gray-800 rounded-full w-12 h-12 flex items-center justify-center hover:bg-gray-200 transition z-10 shadow-lg ${currentImageIndex === 0 ? 'opacity-50 cursor-not-allowed' : ''}`;
+                          }
+                          
+                          if (nextButton) {
+                              nextButton.className = `absolute right-4 top-1/2 transform -translate-y-1/2 bg-white text-gray-800 rounded-full w-12 h-12 flex items-center justify-center hover:bg-gray-200 transition z-10 shadow-lg ${currentImageIndex === imageGalleryData.totalImages - 1 ? 'opacity-50 cursor-not-allowed' : ''}`;
+                          }
+                          
+                          // Update thumbnails
+                          const thumbnails = modal.querySelectorAll('img[class*="w-16 h-16"]');
+                          thumbnails.forEach((thumb, index) => {
+                              thumb.className = `w-16 h-16 object-cover rounded cursor-pointer border-2 transition-all duration-200 ${index === currentImageIndex ? 'border-white' : 'border-transparent hover:border-gray-300'}`;
+                          });
+                      }
+                      
+                      function handleGalleryKeydown(e) {
+                          if (!imageGalleryData) return;
+                          
+                          switch(e.key) {
+                              case 'Escape':
+                                  closeImageGallery();
+                                  break;
+                              case 'ArrowLeft':
+                                  if (currentImageIndex > 0) {
+                                      navigateImage(-1);
+                                  }
+                                  break;
+                              case 'ArrowRight':
+                                  if (currentImageIndex < imageGalleryData.totalImages - 1) {
+                                      navigateImage(1);
+                                  }
+                                  break;
+                          }
+                      }
+                      
+                      function closeImageGallery() {
+                          const modal = document.querySelector('.image-gallery-modal');
+                          if (modal) {
+                              modal.remove();
+                          }
+                          // Remove keyboard listener
+                          document.removeEventListener('keydown', handleGalleryKeydown);
+                      }
+                  </script>
+             </div>
 
             <!-- Article Footer -->
             <div class="border-t border-gray-200 p-8 md:p-12 bg-gray-50">
@@ -223,7 +487,7 @@ if (!$post = mysqli_fetch_assoc($result)) {
                         </div>
                         <div class="flex items-center space-x-2 text-gray-600">
                             <i class="fas fa-user"></i>
-                            <span><?php echo htmlspecialchars($post['first_name'] . ' ' . $post['last_name']); ?></span>
+                            <span><?php echo htmlspecialchars($post['author'] ?? $post['first_name'] . ' ' . $post['last_name']); ?></span>
                         </div>
                     </div>
                     <div class="flex space-x-3">
@@ -278,7 +542,7 @@ if (!$post = mysqli_fetch_assoc($result)) {
                 <div class="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition">
                     <div class="p-6">
                         <h3 class="text-lg font-semibold mb-2 text-seait-dark">
-                            <a href="news-detail.php?id=<?php echo encrypt_id($related['id']); ?>" class="hover:text-seait-orange transition">
+                            <a href="news-detail.php?id=<?php echo $related['id']; ?>" class="hover:text-seait-orange transition">
                                 <?php echo htmlspecialchars($related['title']); ?>
                             </a>
                         </h3>
@@ -409,10 +673,13 @@ if (!$post = mysqli_fetch_assoc($result)) {
             document.querySelector('.fixed.inset-0.bg-black.bg-opacity-50').addEventListener('click', closeShareOptions);
         }
 
-        // Function to close the share options modal
-        function closeShareOptions() {
-            document.querySelector('.fixed.inset-0.bg-black.bg-opacity-50').remove();
-        }
-    </script>
+                                   // Function to close the share options modal
+          function closeShareOptions() {
+              document.querySelector('.fixed.inset-0.bg-black.bg-opacity-50').remove();
+          }
+          
+         
+         
+     </script>
 </body>
 </html>

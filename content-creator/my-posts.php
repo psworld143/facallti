@@ -342,18 +342,48 @@ $stats = mysqli_fetch_assoc($stats_result);
                                             </span>
                                         </div>
                                         <p class="text-sm text-gray-600 mb-2">
+                                            <?php echo htmlspecialchars($post['author'] ?? ($_SESSION['first_name'] . ' ' . $_SESSION['last_name'])); ?> |
                                             Created: <?php echo date('M d, Y H:i', strtotime($post['created_at'])); ?>
                                             <?php if ($post['updated_at'] != $post['created_at']): ?>
                                                 | Updated: <?php echo date('M d, Y H:i', strtotime($post['updated_at'])); ?>
                                             <?php endif; ?>
                                         </p>
-                                        <div class="text-gray-700 prose prose-sm max-w-none">
-                                            <?php
-                                            // Display HTML content safely, but limit length for preview
-                                            $content = strip_tags($post['content']);
-                                            echo htmlspecialchars(substr($content, 0, 200)) . (strlen($content) > 200 ? '...' : '');
-                                            ?>
-                                        </div>
+                                                                                 <div class="text-gray-700 prose prose-sm max-w-none">
+                                             <?php
+                                             // Display HTML content safely, but limit length for preview
+                                             $content = strip_tags($post['content']);
+                                             echo htmlspecialchars(substr($content, 0, 200)) . (strlen($content) > 200 ? '...' : '');
+                                             ?>
+                                         </div>
+                                         
+                                                                                   <?php 
+                                          $additional_images = [];
+                                          if (!empty($post['additional_image_url'])) {
+                                              $decoded = json_decode($post['additional_image_url'], true);
+                                              if (json_last_error() === JSON_ERROR_NONE) {
+                                                  $additional_images = $decoded;
+                                              } else {
+                                                  $additional_images = [$post['additional_image_url']];
+                                              }
+                                          }
+                                          ?>
+                                          <?php if (!empty($additional_images)): ?>
+                                          <div class="mt-3">
+                                              <div class="text-xs text-gray-500 mb-2">Additional Images (<?php echo count($additional_images); ?>):</div>
+                                              <div class="grid grid-cols-3 gap-1">
+                                                  <?php foreach (array_slice($additional_images, 0, 3) as $index => $image_url): ?>
+                                                      <img src="../<?php echo htmlspecialchars($image_url); ?>" 
+                                                           alt="Additional Image <?php echo $index + 1; ?>" 
+                                                           class="w-full h-16 object-cover rounded border">
+                                                  <?php endforeach; ?>
+                                                  <?php if (count($additional_images) > 3): ?>
+                                                      <div class="w-full h-16 bg-gray-100 rounded border flex items-center justify-center">
+                                                          <span class="text-xs text-gray-500">+<?php echo count($additional_images) - 3; ?> more</span>
+                                                      </div>
+                                                  <?php endif; ?>
+                                              </div>
+                                          </div>
+                                          <?php endif; ?>
 
                                         <!-- Edit Status Information -->
                                         <?php if ($post['status'] === 'approved'): ?>

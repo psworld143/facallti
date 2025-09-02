@@ -32,6 +32,10 @@ $post = mysqli_fetch_assoc($post_result);
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    // Enable error reporting for debugging
+    error_reporting(E_ALL);
+    ini_set('display_errors', 1);
+    
     $title = sanitize_input($_POST['title']);
     $content = $_POST['content']; // Don't sanitize HTML content from CKEditor
     $type = sanitize_input($_POST['type']);
@@ -73,9 +77,71 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
-    $query = "UPDATE posts SET title = ?, content = ?, type = ?, status = ?, image_url = ?, updated_at = NOW() WHERE id = ? AND author_id = ?";
+    // Author name is taken from the logged-in content creator; no separate author field stored
+    
+    // Handle additional images upload
+    $additional_images_urls = [];
+    
+    // Get existing images
+    if (!empty($post['additional_image_url'])) {
+        $decoded = json_decode($post['additional_image_url'], true);
+        if (json_last_error() === JSON_ERROR_NONE) {
+            $additional_images_urls = $decoded;
+        } else {
+            $additional_images_urls = [$post['additional_image_url']];
+        }
+    }
+    
+    // Handle deleted images
+    if (!empty($_POST['deleted_images'])) {
+        $deleted_images = json_decode($_POST['deleted_images'], true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($deleted_images)) {
+            // Remove deleted images from the array
+            $additional_images_urls = array_filter($additional_images_urls, function($image_url) use ($deleted_images) {
+                return !in_array($image_url, $deleted_images);
+            });
+            // Re-index the array
+            $additional_images_urls = array_values($additional_images_urls);
+        }
+    }
+    
+    // Handle new image uploads
+    if (isset($_FILES['additional_images']) && is_array($_FILES['additional_images']['name'])) {
+        $upload_dir = '../assets/images/news/';
+        $max_images = 5; // Maximum 5 additional images
+        
+        // Check if upload directory exists, if not create it
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0755, true);
+        }
+        
+        for ($i = 0; $i < count($_FILES['additional_images']['name']) && count($additional_images_urls) < $max_images; $i++) {
+            // Check if file was uploaded successfully
+            if (isset($_FILES['additional_images']['error'][$i]) && $_FILES['additional_images']['error'][$i] === UPLOAD_ERR_OK) {
+                $file_tmp = $_FILES['additional_images']['tmp_name'][$i];
+                $file_name = basename($_FILES['additional_images']['name'][$i]);
+                $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+                $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+                
+                if (in_array($file_ext, $allowed_exts)) {
+                    $new_name = uniqid('additional_' . count($additional_images_urls) . '_', true) . '.' . $file_ext;
+                    $dest_path = $upload_dir . $new_name;
+                    
+                    // Check if file is actually uploaded
+                    if (is_uploaded_file($file_tmp) && move_uploaded_file($file_tmp, $dest_path)) {
+                        $additional_images_urls[] = 'assets/images/news/' . $new_name;
+                    }
+                }
+            }
+        }
+    }
+    
+    // Convert array to JSON string for database storage
+    $additional_images_json = !empty($additional_images_urls) ? json_encode($additional_images_urls) : NULL;
+    
+    $query = "UPDATE posts SET title = ?, content = ?, type = ?, status = ?, image_url = ?, additional_image_url = ?, updated_at = NOW() WHERE id = ? AND author_id = ?";
     $stmt = mysqli_prepare($conn, $query);
-    mysqli_stmt_bind_param($stmt, "ssssssi", $title, $content, $type, $status, $image_url, $post_id, $_SESSION['user_id']);
+    mysqli_stmt_bind_param($stmt, "ssssssii", $title, $content, $type, $status, $image_url, $additional_images_json, $post_id, $_SESSION['user_id']);
 
     if (mysqli_stmt_execute($stmt)) {
         // Update the post data for display
@@ -83,7 +149,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $post['content'] = $content;
         $post['type'] = $type;
         $post['status'] = $status;
+        // No separate author field maintained
         $post['image_url'] = $image_url;
+        $post['additional_image_url'] = $additional_images_json;
     } else {
         $message = display_message('Error updating post. Please try again.', 'error');
     }
@@ -292,6 +360,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         </select>
                     </div>
 
+                    <!-- Author input removed: author inferred from logged-in content creator -->
+
                     <div>
                         <label for="post_image" class="block text-sm font-medium text-gray-700 mb-2">
                             Post Main Image
@@ -308,14 +378,65 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <div id="imagePreview" class="mt-2"></div>
                     </div>
 
-                    <div>
-                        <label for="content" class="block text-sm font-medium text-gray-700 mb-2">
-                            Content *
-                        </label>
-                        <textarea id="content" name="content" rows="12" required
-                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange focus:border-transparent"
-                                  placeholder="Write your content here..."><?php echo htmlspecialchars($post['content']); ?></textarea>
-                    </div>
+                                         <div>
+                         <label for="content" class="block text-sm font-medium text-gray-700 mb-2">
+                             Content *
+                         </label>
+                         <textarea id="content" name="content" rows="12" required
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange focus:border-transparent"
+                                   placeholder="Write your content here..."><?php echo htmlspecialchars($post['content']); ?></textarea>
+                     </div>
+
+                     <div>
+                         <label for="additional_images" class="block text-sm font-medium text-gray-700 mb-2">
+                             Additional Images
+                         </label>
+                         <?php 
+                         $current_images = [];
+                         if (!empty($post['additional_image_url'])) {
+                             // Check if it's JSON (new format) or single image (old format)
+                             $decoded = json_decode($post['additional_image_url'], true);
+                             if (json_last_error() === JSON_ERROR_NONE) {
+                                 $current_images = $decoded;
+                             } else {
+                                 $current_images = [$post['additional_image_url']];
+                             }
+                         }
+                         ?>
+                         
+                         <!-- Hidden input to track deleted images -->
+                         <input type="hidden" id="deleted_images" name="deleted_images" value="">
+                         
+                         <?php if (!empty($current_images)): ?>
+                              <div class="mb-4">
+                                  <div class="text-sm font-medium text-gray-700 mb-2">Current Additional Images:</div>
+                                  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                                      <?php foreach ($current_images as $index => $image_url): ?>
+                                          <div class="relative group" id="image-container-<?php echo $index; ?>">
+                                              <img src="../<?php echo htmlspecialchars($image_url); ?>" 
+                                                   alt="Additional Image <?php echo $index + 1; ?>" 
+                                                   class="w-full h-32 object-cover rounded-lg border-2 border-gray-200 hover:border-seait-orange transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer"
+                                                   onclick="openImageModal('../<?php echo htmlspecialchars($image_url); ?>', 'Additional Image <?php echo $index + 1; ?>')">
+                                              
+                                              <!-- Delete button -->
+                                              <button type="button" 
+                                                      onclick="deleteImage(<?php echo $index; ?>, '<?php echo htmlspecialchars($image_url); ?>')"
+                                                      class="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs transition-all duration-200 opacity-0 group-hover:opacity-100 shadow-lg">
+                                                  <i class="fas fa-times"></i>
+                                              </button>
+                                              
+                                              <div class="text-xs text-gray-500 mt-1 text-center">Image <?php echo $index + 1; ?></div>
+                                          </div>
+                                      <?php endforeach; ?>
+                                  </div>
+                              </div>
+                          <?php endif; ?>
+                         <input type="file" id="additional_images" name="additional_images[]" accept="image/*" multiple
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange focus:border-transparent"
+                                onchange="previewAdditionalImages(event)">
+                         <div id="additionalImagesPreview" class="mt-2 grid grid-cols-2 md:grid-cols-3 gap-2"></div>
+                         <p class="text-xs text-gray-500 mt-1">Upload multiple additional images to display below the content (max 5 images)</p>
+                     </div>
 
                     <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                         <div class="flex">
@@ -567,6 +688,109 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 img.className = 'image-preview-auto-fit';
                 img.onload = function() { URL.revokeObjectURL(img.src); };
                 preview.appendChild(img);
+            }
+        }
+
+        function previewAdditionalImages(event) {
+            const preview = document.getElementById('additionalImagesPreview');
+            const files = event.target.files;
+            
+            // Clear previous preview
+            preview.innerHTML = '';
+            
+            if (!files || files.length === 0) return;
+            
+            const container = document.createElement('div');
+            container.className = 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2';
+            
+            Array.from(files).forEach((file, index) => {
+                if (!file || !file.type.startsWith('image/')) return;
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file);
+                img.alt = `Additional Image ${index + 1}`;
+                img.className = 'w-full h-24 object-cover rounded border';
+                img.onload = function() { URL.revokeObjectURL(img.src); };
+                container.appendChild(img);
+            });
+            
+            preview.appendChild(container);
+        }
+
+        // Function to delete an additional image
+        function deleteImage(index, imageUrl) {
+            if (confirm('Are you sure you want to delete this image? This action cannot be undone.')) {
+                // Hide the image container
+                const container = document.getElementById(`image-container-${index}`);
+                if (container) {
+                    container.style.display = 'none';
+                }
+                
+                // Add to deleted images list
+                const deletedImagesInput = document.getElementById('deleted_images');
+                let deletedImages = [];
+                
+                if (deletedImagesInput.value) {
+                    try {
+                        deletedImages = JSON.parse(deletedImagesInput.value);
+                    } catch (e) {
+                        deletedImages = [];
+                    }
+                }
+                
+                if (!deletedImages.includes(imageUrl)) {
+                    deletedImages.push(imageUrl);
+                    deletedImagesInput.value = JSON.stringify(deletedImages);
+                }
+                
+                console.log('Image deleted:', imageUrl);
+                console.log('Deleted images list:', deletedImages);
+            }
+        }
+
+        // Function to open image modal
+        function openImageModal(imageSrc, imageTitle) {
+            // Remove any existing modal
+            const existingModal = document.querySelector('.image-modal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // Create modal HTML
+            const modalHTML = `
+                <div class="image-modal fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50" onclick="closeImageModal()">
+                    <div class="relative w-full h-full flex items-center justify-center p-4" onclick="event.stopPropagation()">
+                        <!-- Close button -->
+                        <button onclick="closeImageModal()" class="absolute top-4 right-4 bg-white text-gray-800 rounded-full w-10 h-10 flex items-center justify-center hover:bg-gray-200 transition z-10">
+                            <i class="fas fa-times"></i>
+                        </button>
+                        
+                        <!-- Image container -->
+                        <div class="max-w-4xl max-h-full flex flex-col items-center">
+                            <div class="text-white text-center mb-4">
+                                <h3 class="text-lg font-semibold">${imageTitle}</h3>
+                            </div>
+                            <img src="${imageSrc}" alt="${imageTitle}" class="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl">
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Add modal to page
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            
+            // Add keyboard listener for escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeImageModal();
+                }
+            });
+        }
+        
+        // Function to close image modal
+        function closeImageModal() {
+            const modal = document.querySelector('.image-modal');
+            if (modal) {
+                modal.remove();
             }
         }
     </script>

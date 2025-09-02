@@ -8,9 +8,26 @@ check_content_creator();
 $message = '';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $title = sanitize_input($_POST['title']);
-    $content = $_POST['content']; // Don't sanitize HTML content from CKEditor
-    $type = sanitize_input($_POST['type']);
+    // Enable error reporting for debugging
+    error_reporting(E_ALL);
+    ini_set('display_errors', 1);
+
+    // Detect oversized POST (when PHP discards body, $_POST becomes empty)
+    if (empty($_POST) && !empty($_SERVER['CONTENT_LENGTH'])) {
+        $message = display_message('Upload too large. Please reduce file sizes or increase post_max_size and upload_max_filesize in php.ini, then restart Apache.', 'error');
+        // Stop further processing
+        return;
+    }
+
+    $title = isset($_POST['title']) ? sanitize_input($_POST['title']) : '';
+    $content = isset($_POST['content']) ? $_POST['content'] : '';
+    $type = isset($_POST['type']) ? sanitize_input($_POST['type']) : '';
+
+    // Server-side required validation
+    if (trim($title) === '' || trim($type) === '' || trim($content) === '') {
+        $message = display_message('Please complete Title, Type, and Content before submitting.', 'error');
+        return;
+    }
 
     // Handle image upload
     $image_url = NULL;
@@ -38,9 +55,46 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $message = display_message('Post created successfully and submitted for approval!', 'success');
     }
 
-    $query = "INSERT INTO posts (title, content, type, status, author_id, image_url) VALUES (?, ?, ?, ?, ?, ?)";
+    // Author name is taken from the logged-in content creator; no separate author field stored
+    
+    // Handle additional images upload
+    $additional_images_urls = [];
+    if (isset($_FILES['additional_images']) && is_array($_FILES['additional_images']['name'])) {
+        $upload_dir = '../assets/images/news/';
+        $max_images = 5; // Maximum 5 additional images
+        
+        // Check if upload directory exists, if not create it
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0755, true);
+        }
+        
+        for ($i = 0; $i < count($_FILES['additional_images']['name']) && $i < $max_images; $i++) {
+            // Check if file was uploaded successfully
+            if (isset($_FILES['additional_images']['error'][$i]) && $_FILES['additional_images']['error'][$i] === UPLOAD_ERR_OK) {
+                $file_tmp = $_FILES['additional_images']['tmp_name'][$i];
+                $file_name = basename($_FILES['additional_images']['name'][$i]);
+                $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+                $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+                
+                if (in_array($file_ext, $allowed_exts)) {
+                    $new_name = uniqid('additional_' . $i . '_', true) . '.' . $file_ext;
+                    $dest_path = $upload_dir . $new_name;
+                    
+                    // Check if file is actually uploaded
+                    if (is_uploaded_file($file_tmp) && move_uploaded_file($file_tmp, $dest_path)) {
+                        $additional_images_urls[] = 'assets/images/news/' . $new_name;
+                    }
+                }
+            }
+        }
+    }
+    
+    // Convert array to JSON string for database storage
+    $additional_images_json = !empty($additional_images_urls) ? json_encode($additional_images_urls) : NULL;
+    
+    $query = "INSERT INTO posts (title, content, type, status, author_id, image_url, additional_image_url) VALUES (?, ?, ?, ?, ?, ?, ?)";
     $stmt = mysqli_prepare($conn, $query);
-    mysqli_stmt_bind_param($stmt, "ssssis", $title, $content, $type, $status, $_SESSION['user_id'], $image_url);
+    mysqli_stmt_bind_param($stmt, "ssssiss", $title, $content, $type, $status, $_SESSION['user_id'], $image_url, $additional_images_json);
 
     if (mysqli_stmt_execute($stmt)) {
         // Message is already set above based on action
@@ -188,6 +242,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         </select>
                     </div>
 
+                    <!-- Author input removed: author inferred from logged-in content creator -->
+
                     <div>
                         <label for="post_image" class="block text-sm font-medium text-gray-700 mb-2">
                             Post Main Image
@@ -198,14 +254,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <div id="imagePreview" class="mt-2"></div>
                     </div>
 
-                    <div>
-                        <label for="content" class="block text-sm font-medium text-gray-700 mb-2">
-                            Content *
-                        </label>
-                        <textarea id="content" name="content" rows="12" required
-                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange focus:border-transparent"
-                                  placeholder="Write your content here..."></textarea>
-                    </div>
+                                         <div>
+                         <label for="content" class="block text-sm font-medium text-gray-700 mb-2">
+                             Content *
+                         </label>
+                         <textarea id="content" name="content" rows="12" required
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange focus:border-transparent"
+                                   placeholder="Write your content here..."></textarea>
+                     </div>
+
+                                           <div>
+                          <label for="additional_images" class="block text-sm font-medium text-gray-700 mb-2">
+                              Additional Images
+                          </label>
+                          <input type="file" id="additional_images" name="additional_images[]" accept="image/*" multiple
+                                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange focus:border-transparent"
+                                 onchange="previewAdditionalImages(event)">
+                          <div id="additionalImagesPreview" class="mt-2"></div>
+                          <p class="text-xs text-gray-500 mt-1">Upload multiple additional images to display below the content (max 5 images)</p>
+                      </div>
 
                     <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                         <div class="flex">
@@ -456,6 +523,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 img.onload = function() { URL.revokeObjectURL(img.src); };
                 preview.appendChild(img);
             }
+        }
+
+        function previewAdditionalImages(event) {
+            const preview = document.getElementById('additionalImagesPreview');
+            const files = event.target.files;
+            
+            // Clear previous preview
+            preview.innerHTML = '';
+            
+            if (!files || files.length === 0) return;
+            
+            const container = document.createElement('div');
+            container.className = 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2';
+            
+            Array.from(files).forEach((file, index) => {
+                if (!file || !file.type.startsWith('image/')) return;
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file);
+                img.alt = `Additional Image ${index + 1}`;
+                img.className = 'w-full h-24 object-cover rounded border';
+                img.onload = function() { URL.revokeObjectURL(img.src); };
+                container.appendChild(img);
+            });
+            
+            preview.appendChild(container);
         }
     </script>
 </body>

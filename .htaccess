@@ -1,3 +1,17 @@
+<IfModule mod_php.c>
+    php_value upload_max_filesize 128M
+    php_value post_max_size 128M
+    php_value memory_limit 256M
+    php_value max_execution_time 180
+    php_value max_input_time 180
+</IfModule>
+
+# Fallback for environments using PHP via CGI/FastCGI that ignore php_value
+<IfModule !mod_php.c>
+    <IfModule mod_env.c>
+        SetEnv PHP_VALUE "upload_max_filesize=128M\npost_max_size=128M\nmemory_limit=256M\nmax_execution_time=180\nmax_input_time=180"
+    </IfModule>
+</IfModule>
 # Enable URL rewriting
 RewriteEngine On
 
