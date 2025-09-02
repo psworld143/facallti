@@ -129,6 +129,47 @@ try {
     
     echo json_encode($response);
     
+    // Trigger immediate notification to student via SSE
+    if ($request_data['session_id']) {
+        // Send a background request to trigger notification
+        $notification_url = 'http://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['REQUEST_URI']) . '/student-notification-stream.php?session_id=' . urlencode($request_data['session_id']);
+        
+        // Use cURL to send background notification (non-blocking)
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $notification_url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 1); // Very short timeout
+        curl_setopt($ch, CURLOPT_NOSIGNAL, 1);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        
+        // Log notification attempt
+        error_log("NOTIFICATION TRIGGERED: Session ID " . $request_data['session_id'] . " - Status: " . $status);
+        
+        // Also try to send a direct database update to ensure immediate status change
+        $immediate_update_query = "UPDATE consultation_requests 
+                                  SET status = ?, 
+                                      response_time = ?, 
+                                      response_duration_seconds = ?,
+                                      updated_at = NOW()
+                                  WHERE session_id = ? AND status = 'pending'";
+        
+        $immediate_stmt = mysqli_prepare($conn, $immediate_update_query);
+        if ($immediate_stmt) {
+            if ($action === 'decline' && $decline_reason) {
+                mysqli_stmt_bind_param($immediate_stmt, "ssis", $status, $response_time, $response_duration, $request_data['session_id']);
+            } else {
+                mysqli_stmt_bind_param($immediate_stmt, "ssis", $status, $response_time, $response_duration, $request_data['session_id']);
+            }
+            mysqli_stmt_execute($immediate_stmt);
+            mysqli_stmt_close($immediate_stmt);
+            
+            error_log("IMMEDIATE STATUS UPDATE: Session ID " . $request_data['session_id'] . " updated to " . $status);
+        }
+    }
+    
     // Enhanced logging for teacher responses
     $log_data = [
         'timestamp' => date('Y-m-d H:i:s'),

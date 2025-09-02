@@ -1670,13 +1670,44 @@ $office_session_id = uniqid('office_', true);
             })
             .then(response => response.json())
             .then(data => {
-                if (!data.success) {
+                if (data.success) {
+                    console.log('✅ Request status updated to accepted successfully');
+                    // Trigger immediate notification to student
+                    triggerStudentNotification(requestId, 'accepted');
+                } else {
                     console.error('Failed to update request status:', data.error);
                 }
             })
             .catch(error => {
                 console.error('Error updating request status:', error);
             });
+        }
+        
+        // Function to trigger immediate notification to student
+        function triggerStudentNotification(requestId, status) {
+            // Get the session ID for this request
+            fetch(`get-request-session.php?request_id=${requestId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.session_id) {
+                        console.log('🔔 Triggering immediate notification for session:', data.session_id);
+                        
+                        // Send a background request to trigger the notification stream
+                        const notificationUrl = `student-notification-stream.php?session_id=${encodeURIComponent(data.session_id)}`;
+                        
+                        // Use fetch with a very short timeout to trigger notification
+                        fetch(notificationUrl, {
+                            method: 'GET',
+                            signal: AbortSignal.timeout(1000) // 1 second timeout
+                        }).catch(error => {
+                            // Ignore timeout errors, this is expected
+                            console.log('Notification trigger completed');
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error getting session ID for notification:', error);
+                });
         }
         
         // Close consultation modal

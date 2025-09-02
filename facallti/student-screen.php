@@ -2957,16 +2957,22 @@ if (empty($teachers) && empty($selected_department)) {
                         // Store new session ID for reference
                         sessionStorage.setItem('currentSessionId', data.session_id);
                         
-                        // Start checking for teacher response
-                        startStatusChecking(data.session_id);
-                        
-                        // Show pending request indicator
-                        showPendingRequest(teacherName);
-                        
-                        // Clear the student ID input field and reset student info
-                        clearStudentIdField();
-                        
-                        console.log('Consultation request sent successfully');
+                                // Start checking for teacher response
+        startStatusChecking(data.session_id);
+        
+        // Show pending request indicator
+        showPendingRequest(teacherName);
+        
+        // Clear the student ID input field and reset student info
+        clearStudentIdField();
+        
+        // Start automatic status checking for when teacher responds
+        startAutomaticStatusCheck(data.session_id, teacherName);
+        
+        // Store teacher name in session storage for status checking
+        sessionStorage.setItem('currentTeacherName', teacherName);
+        
+        console.log('Consultation request sent successfully');
                     } else {
                     console.log(`Error: ${data.error || 'Failed to notify teacher'}`);
                     }
@@ -2984,6 +2990,168 @@ if (empty($teachers) && empty($selected_department)) {
         // Make functions globally accessible
         window.closeConfirmationModal = closeConfirmationModal;
         window.confirmConsultationRequest = confirmConsultationRequest;
+        
+        // Global variables for automatic status checking
+        let automaticStatusCheckInterval = null;
+        let isAutomaticStatusChecking = false;
+        
+        // Function to start automatic status checking after consultation request is sent
+        function startAutomaticStatusCheck(sessionId, teacherName) {
+            if (!sessionId || isAutomaticStatusChecking) {
+                return;
+            }
+            
+            console.log('🚀 Starting automatic status check for session:', sessionId);
+            isAutomaticStatusChecking = true;
+            
+            // Check status every 2 seconds until we get a response
+            automaticStatusCheckInterval = setInterval(() => {
+                checkAutomaticStatus(sessionId, teacherName);
+            }, 2000);
+            
+            // Set a maximum timeout (5 minutes) to prevent infinite checking
+            setTimeout(() => {
+                if (isAutomaticStatusChecking) {
+                    console.log('⏰ Automatic status check timeout reached, stopping...');
+                    stopAutomaticStatusCheck();
+                    showEnhancedNotification('⏰ Status check timeout. Please refresh the page to check manually.', 'warning');
+                }
+            }, 300000); // 5 minutes
+        }
+        
+        // Function to check status automatically
+        function checkAutomaticStatus(sessionId, teacherName) {
+            if (!sessionId) {
+                stopAutomaticStatusCheck();
+                return;
+            }
+            
+            console.log('🔍 Checking automatic status for session:', sessionId);
+            
+            // Add cache busting parameter to prevent browser caching
+            const timestamp = new Date().getTime();
+            fetch(`check-consultation-status.php?session_id=${encodeURIComponent(sessionId)}&t=${timestamp}`, {
+                method: 'GET',
+                headers: {
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('🔍 Automatic status check response:', data);
+                
+                if (data.success === false) {
+                    console.log('❌ No request found or error:', data.error);
+                    return;
+                }
+                
+                if (data.status === 'accepted') {
+                    console.log('✅ Request accepted! Stopping automatic status check...');
+                    stopAutomaticStatusCheck();
+                    hidePendingRequest();
+                    showConsultationResponse('accepted', teacherName, data);
+                    // Clear the session ID to prevent further checking
+                    sessionStorage.removeItem('currentSessionId');
+                    // Play success sound
+                    playSuccessSound();
+                    // Show success notification
+                    showEnhancedNotification('🎉 Your consultation request has been accepted!', 'success');
+                } else if (data.status === 'declined') {
+                    console.log('❌ Consultation declined! Stopping automatic status check...');
+                    stopAutomaticStatusCheck();
+                    hidePendingRequest();
+                    showConsultationResponse('declined', teacherName, data);
+                    // Clear the session ID to prevent further checking
+                    sessionStorage.removeItem('currentSessionId');
+                    // Play notification sound
+                    playNotificationSound();
+                    // Show decline notification
+                    showEnhancedNotification('❌ Your consultation request was declined.', 'warning');
+                } else if (data.status === 'pending') {
+                    console.log('⏳ Request still pending, continuing to check...');
+                    // Update the wait time display if function exists
+                    if (typeof updateWaitTimeDisplay === 'function') {
+                        updateWaitTimeDisplay();
+                    }
+                } else {
+                    console.log('❓ Unknown status:', data.status);
+                }
+            })
+            .catch(error => {
+                console.error('❌ Error in automatic status check:', error);
+                // Don't stop checking on network errors, just log them
+            });
+        }
+        
+        // Function to stop automatic status checking
+        function stopAutomaticStatusCheck() {
+            if (automaticStatusCheckInterval) {
+                clearInterval(automaticStatusCheckInterval);
+                automaticStatusCheckInterval = null;
+                console.log('🛑 Automatic status checking stopped');
+            }
+            isAutomaticStatusChecking = false;
+        }
+        
+        // Enhanced notification function for student screen
+        function showEnhancedNotification(message, type = 'info') {
+            console.log(`[${type.toUpperCase()}] ${message}`);
+            
+            // Create notification element
+            const notification = document.createElement('div');
+            let bgColor = 'blue';
+            let icon = 'info-circle';
+            
+            // Set colors based on type
+            switch (type) {
+                case 'success':
+                    bgColor = 'green';
+                    icon = 'check-circle';
+                    break;
+                case 'warning':
+                    bgColor = 'yellow';
+                    icon = 'exclamation-triangle';
+                    break;
+                case 'error':
+                    bgColor = 'red';
+                    icon = 'times-circle';
+                    break;
+                default:
+                    bgColor = 'blue';
+                    icon = 'info-circle';
+            }
+            
+            notification.className = `fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-${bgColor}-600 text-white px-6 py-4 rounded-xl shadow-2xl z-50 transform transition-all duration-500 animate-bounce`;
+            notification.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fas fa-${icon} mr-3 text-xl"></i>
+                    <span class="font-semibold">${message}</span>
+                </div>
+            `;
+            document.body.appendChild(notification);
+            
+            // Remove bounce animation after 1 second
+            setTimeout(() => {
+                notification.classList.remove('animate-bounce');
+            }, 1000);
+            
+            // Remove notification after 5 seconds
+            setTimeout(() => {
+                notification.classList.add('opacity-0', 'transform', 'scale-95');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }, 5000);
+        }
         
         // Enhanced consultation response notification with audio - following teacher screen pattern
         function showConsultationResponse(response, teacherName, data = null) {
@@ -4555,6 +4723,33 @@ if (empty($teachers) && empty($selected_department)) {
             animate();
             console.log('Canvas animation started with', particle_count, 'particles');
         }
+        
+        // Handle page visibility changes to continue status checking
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible') {
+                // Page is visible again, check status immediately if we have an active session
+                const currentSessionId = sessionStorage.getItem('currentSessionId');
+                if (currentSessionId && isAutomaticStatusChecking) {
+                    console.log('🔄 Page became visible, checking status immediately...');
+                    // Trigger an immediate status check
+                    setTimeout(() => {
+                        if (isAutomaticStatusChecking) {
+                            checkAutomaticStatus(currentSessionId, sessionStorage.getItem('currentTeacherName') || 'Teacher');
+                        }
+                    }, 500);
+                }
+            }
+        });
+        
+        // Ensure status checking continues even when page is not visible
+        // This is important for mobile devices and when switching tabs
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(function(err) {
+                console.log('ServiceWorker registration failed: ', err);
+            });
+        }
+        
+        console.log('✅ Student screen fully initialized with automatic status checking');
     </script>
 </body>
 </html>
