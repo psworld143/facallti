@@ -492,7 +492,10 @@ $available_screens = [
                 <div id="loadingState" class="loading text-center py-8">
                     <div class="inline-flex items-center">
                         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-seait-orange"></div>
-                        <span class="ml-3 text-gray-600">Redirecting to selected screen...</span>
+                        <span class="ml-3 text-gray-600">Updating consultation requests...</span>
+                    </div>
+                    <div class="mt-4 text-sm text-gray-500">
+                        <p>Please wait while we process your department selection...</p>
                     </div>
                 </div>
             </div>
@@ -674,11 +677,66 @@ $available_screens = [
             sessionStorage.setItem('selectedDepartment', selectedDepartment);
             sessionStorage.setItem('selectedScreen', selectedScreen);
             
-            // Redirect to selected screen with department parameter
-            setTimeout(() => {
-                const url = selectedScreenUrl + '?dept=' + encodeURIComponent(selectedDepartment);
-                window.location.href = url;
-            }, 1500);
+            // Update consultation requests status for selected department
+            updateConsultationRequests(selectedDepartment, function() {
+                // Redirect to selected screen with department parameter after update
+                setTimeout(() => {
+                    const url = selectedScreenUrl + '?dept=' + encodeURIComponent(selectedDepartment);
+                    window.location.href = url;
+                }, 1500);
+            });
+        }
+        
+        // Update consultation requests status
+        function updateConsultationRequests(department, callback) {
+            const formData = new FormData();
+            formData.append('department', department);
+            formData.append('action', 'update_status');
+            
+            // Update loading message to show what's happening
+            const loadingText = document.querySelector('#loadingState .text-gray-600');
+            if (loadingText) {
+                loadingText.textContent = 'Updating consultation requests for ' + department + '...';
+            }
+            
+            fetch('update-consultation-requests-status.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('✅ Consultation requests updated successfully for department:', department);
+                    console.log('📊 Updated requests count:', data.updated_count);
+                    
+                    // Show success message
+                    if (data.updated_count > 0) {
+                        showAutoAdvanceMessage(`✅ Updated ${data.updated_count} consultation requests for ${department}`);
+                    } else {
+                        showAutoAdvanceMessage(`ℹ️ No pending consultation requests found for ${department}`);
+                    }
+                    
+                    // Update loading message for redirect
+                    if (loadingText) {
+                        loadingText.textContent = 'Redirecting to selected screen...';
+                    }
+                    
+                    if (callback) callback();
+                } else {
+                    console.error('❌ Failed to update consultation requests:', data.error);
+                    showAutoAdvanceMessage('⚠️ Warning: Could not update consultation requests');
+                    
+                    // Continue with redirect even if update fails
+                    if (callback) callback();
+                }
+            })
+            .catch(error => {
+                console.error('❌ Error updating consultation requests:', error);
+                showAutoAdvanceMessage('⚠️ Warning: Error updating consultation requests');
+                
+                // Continue with redirect even if update fails
+                if (callback) callback();
+            });
         }
 
         // Reset selection
