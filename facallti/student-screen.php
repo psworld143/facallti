@@ -3226,7 +3226,7 @@ if (empty($teachers) && empty($selected_department)) {
                                         </span>
                                     </div>
                                     <div class="mt-4 text-center">
-                                        <div class="text-xs text-gray-500 mb-2">Modal will close and teachers will become clickable in <span id="modalCountdownTimer" class="font-bold text-blue-600">10</span> seconds</div>
+                                        <div class="text-xs text-gray-500 mb-2">Modal will close and page will reload in <span id="modalCountdownTimer" class="font-bold text-blue-600">10</span> seconds</div>
                                         <div class="w-full bg-gray-200 rounded-full h-1">
                                             <div id="modalCountdownProgress" class="bg-blue-500 h-1 rounded-full transition-all duration-1000 ease-linear" style="width: 100%"></div>
                                         </div>
@@ -3397,14 +3397,14 @@ if (empty($teachers) && empty($selected_department)) {
                     }
                 }
                 
-                // Auto-close when countdown reaches 0
+                // Auto-close and reload when countdown reaches 0
                 if (modalSecondsLeft <= 0) {
                     clearInterval(modalCountdownInterval);
                     closeConsultationModal();
-                    // Re-enable teacher cards after modal closes
+                    // Reload the page after closing the modal
                     setTimeout(() => {
-                        console.log('✅ Re-enabling teacher cards after consultation request...');
-                        reEnableTeacherCards();
+                        console.log('🔄 Reloading page after consultation request...');
+                        window.location.reload();
                     }, 500); // Small delay to ensure modal is fully closed
                 }
             }, 1000);
@@ -3622,15 +3622,10 @@ if (empty($teachers) && empty($selected_department)) {
             
             // Clear student ID field after consultation response
             setTimeout(() => {
-                            clearStudentIdField();
-        }, 200);
-        
-        // Re-enable teacher cards when modal is closed
-        setTimeout(() => {
-            reEnableTeacherCards();
-        }, 300);
-        
-        // Reset flag after a short delay
+                clearStudentIdField();
+            }, 200);
+            
+            // Reset flag after a short delay
             setTimeout(() => {
                 window.isClosingModal = false;
             }, 100);
@@ -3655,10 +3650,8 @@ if (empty($teachers) && empty($selected_department)) {
             cleanupBlurEffects();
             // Clear student ID field for fresh start
             clearStudentIdField();
-            // Re-enable teacher cards instead of reloading page
-            setTimeout(() => {
-                reEnableTeacherCards();
-            }, 500);
+            // Refresh the page to show available teachers
+            window.location.reload();
         }
         
         // Make function globally accessible
@@ -4134,7 +4127,7 @@ if (empty($teachers) && empty($selected_department)) {
                             <i class="fas fa-info-circle mr-1"></i>Teacher will contact you when ready
                         </div>
                         <div class="mt-3 text-center">
-                            <div class="text-xs text-blue-100 mb-1">Teachers will become clickable in <span id="countdownTimer" class="font-bold">10</span> seconds</div>
+                            <div class="text-xs text-blue-100 mb-1">Page will reload in <span id="countdownTimer" class="font-bold">10</span> seconds</div>
                             <div class="w-full bg-blue-400 bg-opacity-30 rounded-full h-1">
                                 <div id="countdownProgress" class="bg-white h-1 rounded-full transition-all duration-1000 ease-linear" style="width: 100%"></div>
                             </div>
@@ -4181,14 +4174,14 @@ if (empty($teachers) && empty($selected_department)) {
                     }
                 }
                 
-                // Auto-hide when countdown reaches 0
+                // Auto-hide and reload when countdown reaches 0
                 if (secondsLeft <= 0) {
                     clearInterval(countdownInterval);
                     hidePendingRequest();
-                    // Re-enable teacher cards after hiding the pending request
+                    // Reload the page after hiding the pending request
                     setTimeout(() => {
-                        console.log('✅ Re-enabling teacher cards after pending request auto-hide...');
-                        reEnableTeacherCards();
+                        console.log('🔄 Reloading page after pending request auto-hide...');
+                        window.location.reload();
                     }, 500); // Small delay to ensure pending request is fully hidden
                 }
             }, 1000);
@@ -4201,32 +4194,12 @@ if (empty($teachers) && empty($selected_department)) {
             }
             
             // Re-enable all teacher cards
-            reEnableTeacherCards();
-        }
-        
-        // Function to re-enable teacher cards and make them clickable
-        function reEnableTeacherCards() {
-            console.log('🔄 Re-enabling teacher cards...');
-            
-            // Re-enable all teacher cards
             const teacherCards = document.querySelectorAll('.teacher-card');
             teacherCards.forEach(card => {
                 card.style.opacity = '1';
                 card.style.pointerEvents = 'auto';
                 card.style.cursor = 'pointer';
-                
-                // Remove any disabled styling
-                card.classList.remove('opacity-50', 'cursor-not-allowed');
-                card.classList.add('hover:scale-105', 'transition-transform');
-                
-                // Re-enable click events if they were disabled
-                card.onclick = null; // Remove any disabled click handlers
             });
-            
-            // Show a brief notification that teachers are now clickable
-            showEnhancedNotification('✅ Teachers are now available for new consultation requests!', 'success');
-            
-            console.log('✅ Teacher cards re-enabled successfully');
         }
 
         // Track user interaction to enable audio playback
