@@ -5,6 +5,9 @@ include('configuration.php');
 include('database_init.php');
 include('headers.php');
 
+// Include and auto-start RFID services
+include('rfid_service_manager.php');
+
 // Enhanced database connection check with user permission
 function checkAndInitializeDatabase() {
     global $conn, $host, $username, $password, $dbname;
@@ -529,6 +532,8 @@ if (!$conn || $conn->connect_error) {
 			<div class="w-16 sm:w-24 h-1 bg-gradient-to-r from-orange-500 to-amber-600 mx-auto mt-4 rounded-full"></div>
 		</div>
 		
+
+
 		<div class="mt-6 sm:mt-8">
 			        <div class="scanner-container mb-6 sm:mb-8 animate-slide-up">
             <div class="scanner-content p-4 sm:p-8">
@@ -978,7 +983,26 @@ if (!$conn || $conn->connect_error) {
 			
 		</div>
 
-		
+		<!-- Minimal RFID System Status (Bottom) -->
+		<div class="mt-8 sm:mt-12 mb-4">
+			<div class="bg-white/80 backdrop-blur-sm rounded-lg border border-gray-200 p-3">
+				<div class="flex items-center justify-between">
+					<div class="flex items-center space-x-3">
+						<div id="rfid-status-container" class="flex items-center space-x-4">
+							<!-- Status will be populated by JavaScript -->
+						</div>
+					</div>
+					<div class="flex items-center space-x-2">
+						<a href="rfid-writer/new_interface.php" target="_blank" class="text-xs bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded transition-colors duration-200">
+							<i class="fa fa-external-link mr-1"></i> RFID Writer
+						</a>
+						<button onclick="refreshRFIDStatus()" class="text-xs bg-orange-500 hover:bg-orange-600 text-white px-2 py-1 rounded transition-colors duration-200">
+							<i class="fa fa-refresh mr-1"></i> Refresh
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
 		
 	</div>
 	<footer class="bg-gradient-to-r from-gray-900 to-gray-800 text-white py-6 sm:py-8 px-4 mt-8 sm:mt-12">
@@ -2119,6 +2143,65 @@ if (!$conn || $conn->connect_error) {
 			}
 		});
 	}
+
+	// RFID Service Status Management
+	function refreshRFIDStatus() {
+		$.ajax({
+			url: 'rfid_service_manager.php',
+			method: 'POST',
+			data: {
+				'action': 'get_status'
+			},
+			dataType: 'json',
+			success: function(response) {
+				updateRFIDStatusDisplay(response);
+			},
+			error: function(xhr, status, error) {
+				console.error('Failed to get RFID status:', error);
+				showRFIDStatusError();
+			}
+		});
+	}
+
+	function updateRFIDStatusDisplay(status) {
+		const container = document.getElementById('rfid-status-container');
+		
+		container.innerHTML = `
+			<div class="flex items-center space-x-2">
+				<span class="text-xs text-gray-600">Python API:</span>
+				<span class="w-2 h-2 rounded-full ${status.python_api.running ? 'bg-green-500' : 'bg-red-500'}"></span>
+				<span class="text-xs ${status.python_api.running ? 'text-green-600' : 'text-red-600'}">${status.python_api.running ? 'Running' : 'Stopped'}</span>
+			</div>
+			
+			<div class="flex items-center space-x-2">
+				<span class="text-xs text-gray-600">Arduino:</span>
+				<span class="w-2 h-2 rounded-full ${status.arduino_connection ? 'bg-green-500' : 'bg-red-500'}"></span>
+				<span class="text-xs ${status.arduino_connection ? 'text-green-600' : 'text-red-600'}">${status.arduino_connection ? 'Connected' : 'Disconnected'}</span>
+			</div>
+			
+			<div class="flex items-center space-x-2">
+				<span class="text-xs text-gray-500">${status.last_check}</span>
+			</div>
+		`;
+	}
+
+	function showRFIDStatusError() {
+		const container = document.getElementById('rfid-status-container');
+		container.innerHTML = `
+			<div class="flex items-center space-x-2">
+				<span class="w-2 h-2 rounded-full bg-red-500"></span>
+				<span class="text-xs text-red-600">Status unavailable</span>
+			</div>
+		`;
+	}
+
+	// Auto-refresh RFID status every 30 seconds
+	setInterval(refreshRFIDStatus, 30000);
+
+	// Initial RFID status check
+	$(document).ready(function() {
+		refreshRFIDStatus();
+	});
 
 	// Check RFID card status
 	function checkRfidStatus(studentId) {

@@ -5,7 +5,7 @@ require_once '../config/database.php';
 // Set page title
 $page_title = 'Teacher Office Screen';
 
-// Get selected department from URL parameter
+// Get selected department from URL parameters
 $selected_department = $_GET['dept'] ?? '';
 
 // If no department is specified, redirect to department selection
@@ -172,120 +172,30 @@ $office_session_id = uniqid('office_', true);
             pointer-events: none;
         }
 
-        /* Standby Mode Background Video Styles */
-        .standby-video-container {
+        /* Background Video Styles */
+        .background-video-container {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 10000;
-            display: none;
-            opacity: 0;
-            transition: opacity 1s ease-in-out;
-        }
-        
-        .standby-video-container.active {
-            display: flex;
+            z-index: -1;
+            display: block;
             opacity: 1;
         }
         
-        .standby-video {
+        .background-video {
             width: 100%;
             height: 100%;
             object-fit: cover;
             object-position: center;
         }
         
-        .standby-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.4);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 3rem;
-            font-weight: 600;
-            text-align: center;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-        }
-        
-        .standby-text {
-            background: rgba(0, 0, 0, 0.8);
-            padding: 20px 40px;
-            border-radius: 15px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
-        
-        .standby-indicator {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.9);
-            color: white;
-            padding: 12px 20px;
-            border-radius: 25px;
-            font-size: 14px;
-            font-weight: 600;
-            z-index: 10001;
-            display: none;
-            opacity: 0;
-            transition: opacity 0.5s ease;
-        }
-        
-        .standby-indicator.active {
-            display: block;
-            opacity: 1;
-        }
-        
-        .standby-countdown {
-            position: fixed;
-            top: 60px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.9);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            z-index: 10001;
-            display: none;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-        
-        .standby-countdown.active {
-            display: block;
-            opacity: 1;
-        }
 
-        .main-container {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px);
-            border-radius: 16px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            position: relative;
-            z-index: 1;
-        }
 
-        .clock {
-            font-size: 4rem;
-            font-weight: 700;
-            color: #374151;
-            letter-spacing: -0.02em;
-            margin-bottom: 0.5rem;
-        }
 
-        .date-display {
-            color: #6b7280;
-            font-weight: 500;
-        }
+
+
 
         .status-indicator {
             width: 20px;
@@ -393,76 +303,9 @@ $office_session_id = uniqid('office_', true);
 
 
 
-        .teacher-card {
-            background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            border: 1px solid #e5e7eb;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
 
-        .teacher-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: #fb923c;
-            transform: scaleX(0);
-            transition: transform 0.3s ease;
-        }
 
-        .teacher-card:hover::before {
-            transform: scaleX(1);
-        }
 
-        .teacher-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-            border-color: #fb923c;
-        }
-
-        .department-icon {
-            background: transparent;
-            border-radius: 0;
-            width: auto;
-            height: auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 1rem;
-            box-shadow: none;
-            border: none;
-        }
-
-        .section-title {
-            color: #1f2937;
-            font-weight: 700;
-            position: relative;
-            display: inline-block;
-        }
-
-        .section-title::after {
-            content: '';
-            position: absolute;
-            bottom: -4px;
-            left: 0;
-            width: 60px;
-            height: 3px;
-            background: #fb923c;
-            border-radius: 2px;
-        }
-
-        .clock {
-            font-family: 'Courier New', monospace;
-            font-size: 2rem;
-            font-weight: bold;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-        }
 
         .loading {
             display: none;
@@ -890,23 +733,15 @@ $office_session_id = uniqid('office_', true);
     <!-- Canvas Background Animation -->
     <canvas id="canvas"></canvas>
 
-    <!-- Standby Mode Background Video -->
-    <div id="standbyVideoContainer" class="standby-video-container">
-        <video id="standbyVideo" class="standby-video" autoplay muted loop>
+            <!-- Background Video (Always Playing) -->
+    <div id="backgroundVideoContainer" class="background-video-container">
+        <video id="backgroundVideo" class="background-video" autoplay muted loop>
             <source src="background-video/developers.mp4" type="video/mp4">
             Your browser does not support the video tag.
         </video>
     </div>
     
-    <!-- Standby Mode Indicator -->
-    <div id="standbyIndicator" class="standby-indicator">
-        <i class="fas fa-video mr-2"></i>Standby Mode
-    </div>
     
-    <!-- Standby Countdown Indicator -->
-    <div id="standbyCountdown" class="standby-countdown">
-                                    <i class="fas fa-clock mr-1"></i>Standby in <span id="countdownTimer">30</span>s
-    </div>
 
     <!-- Fullscreen Button -->
     <button id="fullscreenBtn" class="fullscreen-btn" title="Toggle Fullscreen">
@@ -915,188 +750,7 @@ $office_session_id = uniqid('office_', true);
 
     <!-- QR Scanner Modal Removed - Using form-only approach -->
 
-    <!-- Main Content -->
-    <main class="flex-1 flex items-center justify-center p-4 sm:p-8 mobile-main">
-        <div class="main-container text-center text-gray-800 w-full max-w-6xl p-8">
-            <!-- Clock and Date -->
-            <div class="mb-6 sm:mb-8 mobile-mb-8">
-                <div class="clock mb-2" id="clock"><?php echo date('H:i:s'); ?></div>
-                <div class="date-display text-lg sm:text-xl" id="date"><?php echo date('l, F j, Y'); ?></div>
-            </div>
 
-            <!-- Department Monitor Screen -->
-            <div class="mb-6 sm:mb-8 mobile-mb-8" id="standbyScreen">
-                <div class="department-icon">
-                    <img src="../assets/images/seait-logo.png" alt="SEAIT Logo" class="w-12 h-12 sm:w-16 sm:h-16 object-contain drop-shadow-lg">
-                </div>
-                <h2 class="text-2xl sm:text-3xl font-bold mb-2 mobile-text-3xl text-gray-800"><?php echo htmlspecialchars($selected_department); ?></h2>
-                <p class="text-lg sm:text-xl mb-1 mobile-text-xl text-gray-700">Department Consultation Monitor</p>
-                <p class="text-base sm:text-lg text-gray-600">
-                    <?php echo count($department_teachers); ?> Active Teachers
-                </p>
-            </div>
-
-            <!-- Available Teachers List -->
-            <div class="mb-6 sm:mb-8 mobile-mb-8">
-                <div class="consultation-request">
-                    <h3 class="section-title text-xl sm:text-2xl font-bold mb-3 sm:mb-4 mobile-text-2xl">Available Teachers</h3>
-                    
-
-                        
-                        <?php if (empty($department_teachers)): ?>
-                            <div class="text-center py-8">
-                                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <i class="fas fa-clock text-gray-400 text-2xl"></i>
-                                </div>
-                                <h4 class="text-lg font-semibold text-gray-700 mb-2">No Teachers Available</h4>
-                                <p class="text-gray-500">There are no teachers with consultation hours at this time.</p>
-                                <p class="text-sm text-gray-400 mt-2">Please check back during consultation hours.</p>
-                            </div>
-                        <?php else: ?>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mobile-grid">
-                            <?php foreach ($department_teachers as $teacher): ?>
-                                <?php
-                                // Determine teacher availability status
-                                $is_available = ($teacher['availability_status'] === 'available' && !empty($teacher['scan_time']));
-                                $card_bg_class = $is_available ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-300' : 'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-300';
-                                $status_text = $is_available ? 'Available' : 'Not Scanned';
-                                $status_color = $is_available ? 'text-green-700' : 'text-gray-600';
-                                $status_icon = $is_available ? 'fas fa-check-circle text-green-500' : 'fas fa-clock text-gray-500';
-                                $avatar_border = $is_available ? 'border-green-500' : 'border-gray-400';
-                                ?>
-                        <div class="teacher-card <?php echo $card_bg_class; ?> border-2">
-                            <div class="flex items-center space-x-2 sm:space-x-3 mb-2">
-                                <div class="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full flex items-center justify-center flex-shrink-0 border-2 <?php echo $avatar_border; ?>">
-                    <?php if ($teacher['image_url']): ?>
-                                        <img src="../<?php echo htmlspecialchars($teacher['image_url']); ?>" 
-                                             alt="Teacher" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover">
-                    <?php else: ?>
-                                        <i class="fas fa-user text-gray-600 text-sm sm:text-base"></i>
-                    <?php endif; ?>
-                </div>
-                                <div class="min-w-0 flex-1">
-                                    <h4 class="text-gray-800 font-semibold text-sm sm:text-base truncate">
-                    <?php echo htmlspecialchars($teacher['first_name'] . ' ' . $teacher['last_name']); ?>
-                                    </h4>
-                                    <p class="text-gray-600 text-xs sm:text-sm truncate">
-                    <?php echo htmlspecialchars($teacher['position']); ?>
-                </p>
-                                </div>
-                            </div>
-                            
-                            <!-- Status Indicator -->
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center space-x-2">
-                                    <i class="<?php echo $status_icon; ?> text-xs sm:text-sm"></i>
-                                    <span class="<?php echo $status_color; ?> text-xs sm:text-sm font-medium"><?php echo $status_text; ?></span>
-                                </div>
-                                <?php if ($is_available && $teacher['scan_time']): ?>
-                                    <span class="text-xs text-green-600">
-                                        <?php echo date('g:i A', strtotime($teacher['scan_time'])); ?>
-                                    </span>
-                                <?php endif; ?>
-                            </div>
-                            
-                            <!-- Consultation Hours -->
-                            <?php if (isset($teacher['start_time']) && isset($teacher['end_time'])): ?>
-                            <div class="mt-2 pt-2 border-t border-gray-200">
-                                <div class="flex items-center text-xs text-gray-600">
-                                    <i class="fas fa-clock mr-1"></i>
-                                    <span>
-                                        <?php 
-                                        echo date('g:i A', strtotime($teacher['start_time'])) . ' - ' . 
-                                             date('g:i A', strtotime($teacher['end_time']));
-                                        if (isset($teacher['room']) && !empty($teacher['room'])) {
-                                            echo ' | ' . htmlspecialchars($teacher['room']);
-                                        }
-                                        ?>
-                                    </span>
-                                </div>
-                            </div>
-                            <?php endif; ?>
-                        </div>
-                        <?php endforeach; ?>
-                        </div>
-                        <?php endif; ?>
-                </div>
-            </div>
-
-
-
-            <!-- Status Message -->
-            <div class="mb-6 sm:mb-8 mobile-mb-8">
-                <div class="consultation-request">
-                    <h3 class="text-xl sm:text-2xl font-bold mb-2 mobile-text-2xl text-gray-800">Monitor Status</h3>
-                    <p class="text-base sm:text-lg text-gray-600 mb-3 sm:mb-4 mobile-text-xl">Department Monitor - Waiting for student consultation requests in <?php echo htmlspecialchars($selected_department); ?></p>
-                    <div class="flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-4 text-xs sm:text-sm mobile-status-group">
-                        <span class="flex items-center" style="color: #fb923c;">
-                            <i class="fas fa-clock mr-1 sm:mr-2"></i>
-                            Monitoring Active
-                        </span>
-                        <?php
-                        $available_count = 0;
-                        $not_scanned_count = 0;
-                        foreach ($department_teachers as $teacher) {
-                            if ($teacher['availability_status'] === 'available' && !empty($teacher['scan_time'])) {
-                                $available_count++;
-                            } else {
-                                $not_scanned_count++;
-                            }
-                        }
-                        ?>
-                        <span class="flex items-center text-green-600">
-                            <i class="fas fa-check-circle mr-1 sm:mr-2"></i>
-                            <?php echo $available_count; ?> available
-                        </span>
-                        <span class="flex items-center text-gray-600">
-                            <i class="fas fa-clock mr-1 sm:mr-2"></i>
-                            <?php echo $not_scanned_count; ?> not scanned
-                        </span>
-                    <span class="flex items-center" style="color: #fb923c;" id="pendingRequestsCount">
-                        <i class="fas fa-clock mr-1 sm:mr-2"></i>
-                        <span id="pendingCount"> 0 </span> pending requests
-                        </span>
-                        <span class="flex items-center text-gray-500 text-xs" id="lastRefreshTime">
-                            <i class="fas fa-sync-alt mr-1"></i>
-                            Last updated: <span id="refreshTimeDisplay"><?php echo date('H:i:s'); ?></span>
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-
-
-            <!-- Office Controls -->
-            <div class="flex flex-col sm:flex-row justify-center space-y-3 sm:space-y-0 sm:space-x-4 mobile-btn-group">
-                <button id="toggleStatusBtn" class="bg-orange-500 hover:bg-orange-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg transition-all duration-300 mobile-btn shadow-lg hover:shadow-xl transform hover:scale-105">
-                    <i class="fas fa-toggle-on mr-1 sm:mr-2"></i>
-                    Toggle Status
-                </button>
-                <button id="standbyToggleBtn" class="bg-purple-500 hover:bg-purple-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg transition-all duration-300 mobile-btn shadow-lg hover:shadow-xl transform hover:scale-105">
-                    <i class="fas fa-video mr-1 sm:mr-2"></i>
-                    Standby Mode
-                </button>
-                <button id="refreshBtn" class="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg transition-all duration-300 mobile-btn shadow-lg hover:shadow-xl transform hover:scale-105">
-                    <i class="fas fa-sync-alt mr-1 sm:mr-2"></i>
-                    Refresh
-                </button>
-                <button onclick="testSound()" class="bg-green-500 hover:bg-green-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg transition-all duration-300 mobile-btn shadow-lg hover:shadow-xl transform hover:scale-105">
-                    <i class="fas fa-volume-up mr-1 sm:mr-2"></i>
-                    Test Sound
-                </button>
-            </div>
-
-            <!-- Session Info -->
-            <div class="mt-6 sm:mt-8 text-xs sm:text-sm text-gray-600 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-3 border border-gray-200 shadow-sm">
-                <p class="mb-1">Session ID: <span class="font-mono text-xs text-gray-700"><?php echo $office_session_id; ?></span></p>
-                <p class="mb-1">Last updated: <span id="lastUpdated" class="text-gray-700"><?php echo date('H:i:s'); ?></span></p>
-                <p class="text-xs text-gray-500">
-                    <i class="fas fa-info-circle mr-1"></i>
-                    Auto-standby after 30s inactivity | Press <kbd class="bg-gray-200 px-1 py-0.5 rounded text-xs">V</kbd> to toggle manually
-                </p>
-            </div>
-        </div>
-    </main>
 
     <!-- Background Overlay -->
     <div id="notificationOverlay" class="notification-overlay"></div>
@@ -1112,56 +766,7 @@ $office_session_id = uniqid('office_', true);
     </div>
 
     <script>
-        // Clock functionality
-        function updateClock() {
-            const now = new Date();
-            const timeString = now.toLocaleTimeString();
-            const dateString = now.toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-            });
-            
-            document.getElementById('clock').textContent = timeString;
-            document.getElementById('date').textContent = dateString;
-            document.getElementById('lastUpdated').textContent = timeString;
-        }
 
-        // Update clock every second
-        setInterval(updateClock, 1000);
-        updateClock();
-
-        // Status toggle functionality
-        const toggleStatusBtn = document.getElementById('toggleStatusBtn');
-        const statusIndicator = document.querySelector('.status-indicator');
-        let isAvailable = true;
-
-        toggleStatusBtn.addEventListener('click', function() {
-            isAvailable = !isAvailable;
-            
-            if (isAvailable) {
-                statusIndicator.className = 'status-indicator status-available';
-                toggleStatusBtn.innerHTML = '<i class="fas fa-toggle-on mr-2"></i>Toggle Status';
-                showNotification('Status changed to Available', 'info');
-            } else {
-                statusIndicator.className = 'status-indicator status-busy';
-                toggleStatusBtn.innerHTML = '<i class="fas fa-toggle-off mr-2"></i>Toggle Status';
-                showNotification('Status changed to Busy', 'info');
-            }
-        });
-
-        // Refresh functionality (now uses AJAX)
-        const refreshBtn = document.getElementById('refreshBtn');
-        refreshBtn.addEventListener('click', function() {
-            // Check for new requests immediately
-            checkForConsultationRequests();
-            
-            // Also refresh the teacher list
-            refreshTeacherList();
-            
-            showNotification('Refreshed consultation requests and teacher list', 'info');
-        });
 
         // Notification functionality
         const notificationOverlay = document.getElementById('notificationOverlay');
@@ -1425,20 +1030,7 @@ $office_session_id = uniqid('office_', true);
             });
         }
         
-        // Add sound toggle button only
-        function addTestButton() {
-            // Add sound toggle button - default to ON
-            const toggleBtn = document.createElement('button');
-            toggleBtn.textContent = '🔊 Sound On';
-            toggleBtn.className = 'fixed bottom-4 left-4 bg-orange-500 text-white px-4 py-2 rounded-lg z-50 shadow-lg hover:bg-orange-600 transition-colors';
-            toggleBtn.onclick = toggleSound;
-            toggleBtn.id = 'soundToggle';
-            toggleBtn.style.position = 'fixed';
-            toggleBtn.style.bottom = '1rem';
-            toggleBtn.style.left = '1rem';
-            toggleBtn.style.zIndex = '9999';
-            document.body.appendChild(toggleBtn);
-        }
+
         
         // Toggle sound on/off
         function toggleSound() {
@@ -1566,7 +1158,7 @@ $office_session_id = uniqid('office_', true);
             showEnhancedNotification(message, type);
         }
 
-        // Standby mode - no automatic simulation
+
         // Consultation requests will only come from actual student selections
 
         // Global variables for request queue
@@ -1576,17 +1168,32 @@ $office_session_id = uniqid('office_', true);
 
         // Check for real consultation requests via AJAX
         function checkForConsultationRequests() {
-            const department = '<?php echo htmlspecialchars($selected_department); ?>';
+            console.log('🚀 checkForConsultationRequests function called');
             
-
+            const department = '<?php echo htmlspecialchars($selected_department); ?>';
+            console.log('🔍 Department parameter:', department);
+            
+            if (!department) {
+                console.error('❌ No department specified, cannot check for requests');
+                return;
+            }
+            
+            console.log('🔍 Checking for consultation requests in department:', department);
+            console.log('🌐 Making fetch request to:', `check-consultation-requests.php?dept=${encodeURIComponent(department)}`);
             
             fetch(`check-consultation-requests.php?dept=${encodeURIComponent(department)}`)
-                .then(response => response.json())
+                .then(response => {
+                    console.log('📡 Raw response received:', response);
+                    console.log('📡 Response status:', response.status);
+                    console.log('📡 Response ok:', response.ok);
+                    return response.json();
+                })
                 .then(data => {
-
+                    console.log('📡 Consultation request response parsed:', data);
                     
                     if (data.has_request) {
-                        console.log(`Found ${data.total_requests} consultation request(s)`);
+                        console.log(`✅ Found ${data.total_requests} consultation request(s)`);
+                        console.log('📋 Requests:', data.requests);
                         
                         // Update pending count
                         const pendingCountElement = document.getElementById('pendingCount');
@@ -1594,9 +1201,13 @@ $office_session_id = uniqid('office_', true);
                             pendingCountElement.textContent = data.total_requests;
                         }
                         
+
+                        
                         // Update request queue with new requests
                         updateRequestQueue(data.requests);
                     } else {
+                        console.log('❌ No pending consultation requests found');
+                        
                         // No pending requests
                         const pendingCountElement = document.getElementById('pendingCount');
                         if (pendingCountElement) {
@@ -1608,17 +1219,28 @@ $office_session_id = uniqid('office_', true);
                             requestQueue = [];
                             shownRequestIds.clear();
                             closeConsultationModal();
+                            
+
                         }
                     }
                 })
                 .catch(error => {
-                    console.error('Error checking for consultation requests:', error);
+                    console.error('❌ Error checking for consultation requests:', error);
+                    console.error('❌ Error details:', {
+                        name: error.name,
+                        message: error.message,
+                        stack: error.stack
+                    });
                     // Don't show alerts for AJAX errors
                 });
         }
 
         // Update request queue and show next request if modal is closed
         function updateRequestQueue(newRequests) {
+            console.log('🔄 Updating request queue with:', newRequests);
+            console.log('📊 Current queue length:', requestQueue.length);
+            console.log('🔒 Modal open status:', isModalOpen);
+            
             let hasNewRequests = false;
             
             // Add new requests to queue (avoid duplicates)
@@ -1627,6 +1249,9 @@ $office_session_id = uniqid('office_', true);
                 if (!exists) {
                     requestQueue.push(newRequest);
                     hasNewRequests = true;
+                    console.log('➕ Added new request to queue:', newRequest);
+                } else {
+                    console.log('🔄 Request already exists in queue:', newRequest.request_id);
                 }
             });
             
@@ -1635,41 +1260,63 @@ $office_session_id = uniqid('office_', true);
                 newRequests.find(newReq => newReq.request_id === req.request_id)
             );
             
+            console.log('📋 Updated queue length:', requestQueue.length);
+            console.log('📋 Current queue:', requestQueue);
+            
             // Only play sound and show notifications for truly new requests
             if (hasNewRequests) {
+                console.log('🔊 Playing notification sound for new requests');
                 playNotificationSound();
                 showEnhancedNotification(`📋 ${newRequests.length} consultation request(s) received!`, 'success');
             }
             
             // Show next request if modal is not open
             if (!isModalOpen && requestQueue.length > 0) {
+                console.log('🎯 Modal not open, showing next request');
                 showNextRequest();
+            } else {
+                console.log('⏸️ Modal is open or no requests, not showing next request');
             }
         }
         
+
+        
         // Show the next request in the queue
         function showNextRequest() {
+            console.log('🎯 showNextRequest called');
+            console.log('📊 Queue length:', requestQueue.length);
+            console.log('🔒 Modal open:', isModalOpen);
+            
             if (requestQueue.length === 0 || isModalOpen) {
+                console.log('⏸️ Cannot show next request - queue empty or modal open');
                 return;
             }
             
             const request = requestQueue[0];
+            console.log('📋 Showing request:', request);
             
             // Check if this request has already been shown
             if (shownRequestIds.has(request.request_id)) {
+                console.log('🔄 Request already shown:', request.request_id);
                 return;
             }
             
+            console.log('✅ Showing consultation modal for request:', request.request_id);
             shownRequestIds.add(request.request_id); // Mark as shown
             showConsultationModal(request);
         }
         
         // Show consultation modal for single request
         function showConsultationModal(request) {
+            console.log('🎭 showConsultationModal called with request:', request);
+            console.log('🔒 Current modal open status:', isModalOpen);
+            
             if (isModalOpen) {
+                console.log('⏸️ Modal already open, cannot show new one');
                 return; // Don't show if modal is already open
             }
             
+            console.log('✅ Setting modal open status to true');
             isModalOpen = true;
             
             // Remove any existing modal
@@ -2054,6 +1701,8 @@ $office_session_id = uniqid('office_', true);
                 setTimeout(() => {
                     showNextRequest();
                 }, 500);
+            } else {
+
             }
         }
         
@@ -2196,6 +1845,8 @@ $office_session_id = uniqid('office_', true);
                         pendingCountElement.textContent = requestQueue.length;
                     }
                     
+
+                    
                     // Log the response for debugging
                     console.log('Consultation declined successfully with reason:', data);
                 } else {
@@ -2291,13 +1942,25 @@ $office_session_id = uniqid('office_', true);
         });
         
         // Check for requests every 3 seconds (reduced from 1 second to prevent excessive polling)
-        setInterval(checkForConsultationRequests, 3000);
+        console.log('⏰ Setting up consultation request interval...');
+        const consultationInterval = setInterval(checkForConsultationRequests, 3000);
+        console.log('✅ Consultation request interval set with ID:', consultationInterval);
+        
+        // Test interval is working
+        setTimeout(() => {
+            console.log('🧪 Testing if interval is working...');
+            checkForConsultationRequests();
+        }, 1000);
         
         // Refresh teacher list every 30 seconds for automatic updates
         setInterval(() => refreshTeacherList(true), 30000);
         
         // Also check immediately when page loads
         console.log('Teacher screen loaded, checking for requests immediately...');
+        console.log('🔍 Department:', '<?php echo htmlspecialchars($selected_department); ?>');
+        console.log('📊 Initial queue length:', requestQueue.length);
+        console.log('🔒 Initial modal status:', isModalOpen);
+        
         try {
             checkForConsultationRequests();
         } catch (error) {
@@ -2305,7 +1968,7 @@ $office_session_id = uniqid('office_', true);
         }
         
         // Add test button for debugging
-        addTestButton();
+
         
 
 
@@ -2320,14 +1983,7 @@ $office_session_id = uniqid('office_', true);
                 case 'S':
                     toggleStatusBtn.click();
                     break;
-                case 'v':
-                case 'V':
-                    // Toggle standby mode with 'V' key (Video)
-                    const standbyBtn = document.getElementById('standbyToggleBtn');
-                    if (standbyBtn) {
-                        standbyBtn.click();
-                    }
-                    break;
+
             }
         });
 
@@ -2647,208 +2303,21 @@ $office_session_id = uniqid('office_', true);
             }
         });
 
-        // =====================================================
-        // STANDBY MODE FUNCTIONALITY
-        // =====================================================
 
-        // Standby Mode Functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Initializing Standby Mode for Teacher Screen');
+
+
             
-            const standbyVideoContainer = document.getElementById('standbyVideoContainer');
-            const standbyVideo = document.getElementById('standbyVideo');
-            const standbyIndicator = document.getElementById('standbyIndicator');
-            const standbyCountdown = document.getElementById('standbyCountdown');
-            const countdownTimer = document.getElementById('countdownTimer');
-            const standbyToggleBtn = document.getElementById('standbyToggleBtn');
+
             
-            let standbyTimeout;
-            let countdownInterval;
-            let isStandbyActive = false;
-            let isManualStandby = false;
-            let lastActivityTime = Date.now();
-            const STANDBY_DELAY = 30000; // 30 seconds of inactivity
+
             
-            // Function to start standby mode
-            function startStandbyMode(manual = false) {
-                if (isStandbyActive) return;
-                
-                console.log('Starting standby mode', manual ? '(manual)' : '(automatic)');
-                isStandbyActive = true;
-                isManualStandby = manual;
-                
-                // Hide countdown
-                standbyCountdown.classList.remove('active');
-                
-                // Show standby video
-                standbyVideoContainer.classList.add('active');
-                standbyIndicator.classList.add('active');
-                
-                // Play video
-                if (standbyVideo) {
-                    standbyVideo.play().catch(e => {
-                        console.log('Video autoplay failed:', e);
-                    });
-                }
-                
-                // Update button text
-                if (standbyToggleBtn) {
-                    standbyToggleBtn.innerHTML = '<i class="fas fa-desktop mr-1 sm:mr-2"></i>Exit Standby';
-                    standbyToggleBtn.classList.remove('bg-purple-500', 'hover:bg-purple-600');
-                    standbyToggleBtn.classList.add('bg-red-500', 'hover:bg-red-600');
-                }
-                
-                // Stop notification sound if playing
-                stopNotificationSound();
-            }
+
             
-            // Function to stop standby mode
-            function stopStandbyMode() {
-                if (!isStandbyActive) return;
-                
-                console.log('Stopping standby mode');
-                isStandbyActive = false;
-                isManualStandby = false;
-                
-                // Hide standby video
-                standbyVideoContainer.classList.remove('active');
-                standbyIndicator.classList.remove('active');
-                
-                // Pause video
-                if (standbyVideo) {
-                    standbyVideo.pause();
-                }
-                
-                // Update button text
-                if (standbyToggleBtn) {
-                    standbyToggleBtn.innerHTML = '<i class="fas fa-video mr-1 sm:mr-2"></i>Standby Mode';
-                    standbyToggleBtn.classList.remove('bg-red-500', 'hover:bg-red-600');
-                    standbyToggleBtn.classList.add('bg-purple-500', 'hover:bg-purple-600');
-                }
-                
-                // Reset activity timer if not manual
-                if (!isManualStandby) {
-                    resetActivityTimer();
-                }
-            }
+
             
-            // Function to reset activity timer
-            function resetActivityTimer() {
-                lastActivityTime = Date.now();
-                
-                // Clear existing timeout and countdown
-                if (standbyTimeout) {
-                    clearTimeout(standbyTimeout);
-                }
-                if (countdownInterval) {
-                    clearInterval(countdownInterval);
-                }
-                
-                // Hide countdown
-                standbyCountdown.classList.remove('active');
-                
-                // Stop standby mode if active and not manual
-                if (isStandbyActive && !isManualStandby) {
-                    stopStandbyMode();
-                }
-                
-                // Don't set new timeout if in manual standby mode
-                if (isManualStandby) {
-                    return;
-                }
-                
-                // Set new timeout
-                standbyTimeout = setTimeout(() => {
-                    startStandbyMode(false);
-                }, STANDBY_DELAY);
-                
-                // Start countdown 5 seconds before standby
-                setTimeout(() => {
-                    if (!isStandbyActive && !isManualStandby) {
-                        startCountdown();
-                    }
-                }, STANDBY_DELAY - 5000);
-            }
+
             
-            // Function to start countdown
-            function startCountdown() {
-                if (isStandbyActive || isManualStandby) return;
-                
-                let timeLeft = 30;
-                standbyCountdown.classList.add('active');
-                countdownTimer.textContent = timeLeft;
-                
-                countdownInterval = setInterval(() => {
-                    timeLeft--;
-                    countdownTimer.textContent = timeLeft;
-                    
-                    if (timeLeft <= 0 || isStandbyActive) {
-                        clearInterval(countdownInterval);
-                        standbyCountdown.classList.remove('active');
-                    }
-                }, 1000);
-            }
-            
-            // Manual standby toggle
-            if (standbyToggleBtn) {
-                standbyToggleBtn.addEventListener('click', function() {
-                    if (isStandbyActive) {
-                        stopStandbyMode();
-                    } else {
-                        // Clear any pending automatic standby
-                        if (standbyTimeout) {
-                            clearTimeout(standbyTimeout);
-                        }
-                        if (countdownInterval) {
-                            clearInterval(countdownInterval);
-                        }
-                        standbyCountdown.classList.remove('active');
-                        
-                        startStandbyMode(true);
-                    }
-                });
-            }
-            
-            // Event listeners for user activity (only if not in manual standby)
-            const activityEvents = ['click', 'mousemove', 'keypress', 'scroll', 'touchstart'];
-            activityEvents.forEach(event => {
-                document.addEventListener(event, function() {
-                    if (!isManualStandby) {
-                        resetActivityTimer();
-                    }
-                });
-            });
-            
-            // Special handling for consultation modal interactions
-            document.addEventListener('click', function(e) {
-                // If clicking on modal elements, reset activity timer
-                if (e.target.closest('#consultationModal') || 
-                    e.target.closest('.notification-panel') ||
-                    e.target.closest('button')) {
-                    if (!isManualStandby) {
-                        resetActivityTimer();
-                    }
-                }
-            });
-            
-            // Handle consultation requests - exit standby when new request comes
-            // Override the showConsultationModal function to exit standby
-            if (typeof showConsultationModal !== 'undefined') {
-                const originalShowConsultationModal = showConsultationModal;
-                showConsultationModal = function(request) {
-                    // Exit standby when consultation request comes
-                    if (isStandbyActive && !isManualStandby) {
-                        stopStandbyMode();
-                    }
-                    return originalShowConsultationModal.call(this, request);
-                };
-            }
-            
-            // Initialize activity timer
-            resetActivityTimer();
-            
-            console.log('Standby mode initialized for Teacher Screen');
-        });
+
 
         // =====================================================
         // CANVAS PARTICLE ANIMATION
