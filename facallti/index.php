@@ -492,7 +492,7 @@ $available_screens = [
                 <div id="loadingState" class="loading text-center py-8">
                     <div class="inline-flex items-center">
                         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-seait-orange"></div>
-                        <span class="ml-3 text-gray-600">Updating consultation requests...</span>
+                        <span class="ml-3 text-gray-600">Processing department selection...</span>
                     </div>
                     <div class="mt-4 text-sm text-gray-500">
                         <p>Please wait while we process your department selection...</p>
@@ -696,7 +696,7 @@ $available_screens = [
             // Update loading message to show what's happening
             const loadingText = document.querySelector('#loadingState .text-gray-600');
             if (loadingText) {
-                loadingText.textContent = 'Updating consultation requests for ' + department + '...';
+                loadingText.textContent = 'Processing department selection for ' + department + '...';
             }
             
             fetch('update-consultation-requests-status.php', {
@@ -706,15 +706,11 @@ $available_screens = [
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    console.log('✅ Consultation requests updated successfully for department:', department);
-                    console.log('📊 Updated requests count:', data.updated_count);
+                    console.log('✅ Consultation requests processed successfully for department:', department);
+                    console.log('📊 Status:', data.status, 'Updated count:', data.updated_count);
                     
-                    // Show success message
-                    if (data.updated_count > 0) {
-                        showAutoAdvanceMessage(`✅ Updated ${data.updated_count} consultation requests for ${department}`);
-                    } else {
-                        showAutoAdvanceMessage(`ℹ️ No pending consultation requests found for ${department}`);
-                    }
+                    // No notifications shown to user - silent processing
+                    // Log to console for debugging only
                     
                     // Update loading message for redirect
                     if (loadingText) {
@@ -723,8 +719,8 @@ $available_screens = [
                     
                     if (callback) callback();
                 } else {
-                    console.error('❌ Failed to update consultation requests:', data.error);
-                    showAutoAdvanceMessage('⚠️ Warning: Could not update consultation requests');
+                    console.error('❌ Failed to process consultation requests:', data.error);
+                    // No warning shown to user - silent error handling
                     
                     // Continue with redirect even if update fails
                     if (callback) callback();
@@ -732,7 +728,7 @@ $available_screens = [
             })
             .catch(error => {
                 console.error('❌ Error updating consultation requests:', error);
-                showAutoAdvanceMessage('⚠️ Warning: Error updating consultation requests');
+                // No error notification shown to user - silent error handling
                 
                 // Continue with redirect even if update fails
                 if (callback) callback();

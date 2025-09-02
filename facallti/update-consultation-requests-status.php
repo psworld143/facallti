@@ -63,17 +63,34 @@ try {
     // Close the statement
     mysqli_stmt_close($update_stmt);
     
-    // Log the update for debugging
-    error_log("Updated $updated_count consultation requests from 'pending' to 'accepted' for department: $department");
-    
-    // Return success response
-    echo json_encode([
-        'success' => true,
-        'message' => "Successfully updated $updated_count consultation requests for department: $department",
-        'updated_count' => $updated_count,
-        'department' => $department,
-        'timestamp' => date('Y-m-d H:i:s')
-    ]);
+    // Check if any requests were updated
+    if ($updated_count > 0) {
+        // Log the update for debugging
+        error_log("Updated $updated_count consultation requests from 'pending' to 'accepted' for department: $department");
+        
+        // Return success response with update count
+        echo json_encode([
+            'success' => true,
+            'message' => "Successfully updated $updated_count consultation requests for department: $department",
+            'updated_count' => $updated_count,
+            'department' => $department,
+            'status' => 'updated',
+            'timestamp' => date('Y-m-d H:i:s')
+        ]);
+    } else {
+        // No pending requests found - this is not an error
+        error_log("No pending consultation requests found for department: $department");
+        
+        // Return success response indicating no updates needed
+        echo json_encode([
+            'success' => true,
+            'message' => "No pending consultation requests found for department: $department",
+            'updated_count' => 0,
+            'department' => $department,
+            'status' => 'no_pending',
+            'timestamp' => date('Y-m-d H:i:s')
+        ]);
+    }
     
 } catch (Exception $e) {
     // Log the error
