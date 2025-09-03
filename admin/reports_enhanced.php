@@ -321,11 +321,7 @@ if ($semester_start_date && $semester_end_date) {
 <body class="bg-gray-50 reports-page">
     <?php include 'includes/admin-header.php'; ?>
 
-    <div class="flex pt-16">
-        <?php include 'includes/admin-sidebar.php'; ?>
 
-        <!-- Main Content -->
-        <div class="flex-1 ml-64 p-8 overflow-y-auto h-screen">
             <div class="mb-8">
                 <h1 class="text-3xl font-bold text-seait-dark mb-2">Reports & Analytics</h1>
                 <p class="text-gray-600">Website statistics and performance insights with semester filtering</p>
@@ -682,8 +678,7 @@ if ($semester_start_date && $semester_end_date) {
                     </a>
                 </div>
             </div>
-        </div>
-    </div>
+     
 
     <script>
         // Prevent multiple chart creation

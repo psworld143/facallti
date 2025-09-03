@@ -89,63 +89,38 @@ $query = "SELECT * FROM academic_programs ORDER BY name ASC";
 $programs_result = mysqli_query($conn, $query);
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Academic Programs - Admin Dashboard</title>
-    <link rel="icon" type="image/png" href="../assets/images/seait-logo.png">
-    <link rel="shortcut icon" type="image/png" href="../assets/images/seait-logo.png">
-    <link rel="apple-touch-icon" type="image/png" href="../assets/images/seait-logo.png">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'seait-orange': '#FF6B35',
-                        'seait-dark': '#2C3E50',
-                        'seait-light': '#FFF8F0'
-                    }
-                }
-            }
-        }
-    </script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://cdn.ckeditor.com/ckeditor5/27.1.0/classic/ckeditor.js"></script>
-    <style>
-        @keyframes bounce-in {
-            0% {
-                opacity: 0;
-                transform: scale(0.3);
-            }
-            50% {
-                opacity: 1;
-                transform: scale(1.05);
-            }
-            70% {
-                transform: scale(0.9);
-            }
-            100% {
-                opacity: 1;
-                transform: scale(1);
-            }
-        }
+<?php
+// Set page title for the header
+$page_title = 'Academic Programs';
 
-        .animate-bounce-in {
-            animation: bounce-in 0.6s ease-out;
+// Include the admin header
+include 'includes/admin-header.php';
+?>
+
+<script src="https://cdn.ckeditor.com/ckeditor5/27.1.0/classic/ckeditor.js"></script>
+<style>
+    @keyframes bounce-in {
+        0% {
+            opacity: 0;
+            transform: scale(0.3);
         }
-    </style>
-</head>
-<body class="bg-gray-50">
-    <?php include 'includes/admin-header.php'; ?>
+        50% {
+            opacity: 1;
+            transform: scale(1.05);
+        }
+        70% {
+            transform: scale(0.9);
+        }
+        100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
 
-    <div class="flex pt-16">
-        <?php include 'includes/admin-sidebar.php'; ?>
-
-        <!-- Main Content -->
-        <div class="flex-1 ml-64 p-8 overflow-y-auto h-screen">
+    .animate-bounce-in {
+        animation: bounce-in 0.6s ease-out;
+    }
+</style>
             <div class="mb-8">
                 <div class="flex items-center justify-between">
                     <div>
@@ -211,7 +186,6 @@ $programs_result = mysqli_query($conn, $query);
                 <?php endwhile; ?>
             </div>
         </div>
-    </div>
 
     <!-- Add/Edit Program Modal -->
     <div id="programModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">

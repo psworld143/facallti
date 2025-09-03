@@ -8,32 +8,10 @@ require_once '../includes/functions.php';
 check_admin();
 
 $page_title = 'Database Synchronization';
-?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $page_title; ?> - SEAIT Admin</title>
-    <link rel="icon" type="image/png" href="../assets/images/seait-logo.png">
-    <link rel="shortcut icon" type="image/png" href="../assets/images/seait-logo.png">
-    <link rel="apple-touch-icon" type="image/png" href="../assets/images/seait-logo.png">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'seait-orange': '#FF6B35',
-                        'seait-dark': '#2C3E50',
-                        'seait-light': '#FFF8F0'
-                    }
-                }
-            }
-        }
-    </script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+// Include the new admin header
+include 'includes/admin-header.php';
+?>
     <style>
         .sync-card {
             background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
@@ -103,15 +81,7 @@ $page_title = 'Database Synchronization';
         .mismatch { background-color: #fef2f2; color: #991b1b; }
         .missing { background-color: #fef3c7; color: #92400e; }
     </style>
-</head>
-<body class="bg-gray-50">
-    <?php include 'includes/admin-header.php'; ?>
-    
-    <div class="flex">
-        <?php include 'includes/admin-sidebar.php'; ?>
-        
-        <!-- Main Content -->
-        <div class="flex-1 lg:ml-64 pt-16">
+
             <div class="p-6">
                 <!-- Page Header -->
                 <div class="mb-8">
@@ -364,7 +334,8 @@ $page_title = 'Database Synchronization';
                 </div>
             </div>
         </div>
-    </div>
+    </main>
+</div>
     
     <!-- Confirmation Modal -->
     <div id="confirmModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">

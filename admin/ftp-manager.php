@@ -230,11 +230,7 @@ $ftp_accounts = require_once '../config/ftp-accounts.php';
 <body class="bg-gray-50">
     <?php include 'includes/admin-header.php'; ?>
     
-    <div class="flex">
-        <?php include 'includes/admin-sidebar.php'; ?>
-        
-        <!-- Main Content -->
-        <div class="flex-1 lg:ml-64 pt-16">
+   
             <div class="p-6">
                 <!-- Page Header -->
                 <div class="mb-8">
@@ -464,8 +460,7 @@ $ftp_accounts = require_once '../config/ftp-accounts.php';
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
+     
     
     <!-- Upload Modal -->
     <div id="uploadModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">

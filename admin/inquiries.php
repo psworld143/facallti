@@ -125,11 +125,7 @@ echo "<!-- Debug: Test count: " . $test_data['test_count'] . " -->";
 <body class="bg-gray-50">
     <?php include 'includes/admin-header.php'; ?>
 
-    <div class="flex pt-16">
-        <?php include 'includes/admin-sidebar.php'; ?>
 
-        <!-- Main Content -->
-        <div class="flex-1 ml-64 p-8 overflow-y-auto h-screen">
             <div class="flex justify-between items-center mb-8">
                 <h1 class="text-3xl font-bold text-seait-dark">User Inquiries</h1>
                 <div class="text-sm text-gray-600">
@@ -252,8 +248,7 @@ echo "<!-- Debug: Test count: " . $test_data['test_count'] . " -->";
                 </div>
             </div>
             <?php endif; ?>
-        </div>
-    </div>
+      
 
     <!-- View Inquiry Modal -->
     <div id="inquiry-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">

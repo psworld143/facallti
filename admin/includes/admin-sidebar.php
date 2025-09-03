@@ -1,387 +1,243 @@
 <?php
+// Unified Sidebar for Admin Portal
+// This file provides a consistent sidebar across all admin pages
+// Usage: include this file and set $sidebar_context before including
+
+// Default context if not set
+if (!isset($sidebar_context)) {
+    $sidebar_context = 'main'; // 'main' for regular admin pages
+}
+
 // Get current page name for active state
+if (!isset($current_page)) {
 $current_page = basename($_SERVER['PHP_SELF']);
+}
+
+// Debug: Log current page for troubleshooting
+error_log("Admin Sidebar Debug - Current Page: " . $current_page);
 ?>
 
-<!-- Mobile Menu Button -->
-<div class="lg:hidden">
-    <button id="mobile-menu-button" class="fixed top-4 left-4 z-50 bg-seait-dark text-white p-3 rounded-md shadow-lg">
-        <i class="fas fa-bars"></i>
-    </button>
-</div>
-
-<!-- Mobile Overlay -->
-<div id="mobile-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden hidden transition-opacity duration-300 ease-in-out"></div>
+<!-- Sidebar Overlay -->
+<div id="sidebarOverlay" class="sidebar-overlay fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden transition-opacity duration-300 ease-in-out opacity-0 pointer-events-none" onclick="toggleSidebar()"></div>
 
 <!-- Sidebar -->
-<div id="sidebar" class="w-64 bg-gradient-to-b from-seait-dark to-gray-800 text-white fixed left-0 top-16 h-screen shadow-xl transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out lg:transition-none">
-    <div class="flex flex-col h-full">
-        <!-- Mobile Close Button -->
-        <div class="lg:hidden flex justify-end p-4">
-            <button id="close-sidebar" class="text-white hover:text-gray-300 transition-colors duration-200">
-                <i class="fas fa-times text-xl"></i>
-            </button>
+<div id="sidebar" class="sidebar fixed top-0 left-0 h-full w-64 bg-seait-dark z-50 lg:relative lg:translate-x-0 lg:z-auto transform transition-transform duration-300 ease-in-out -translate-x-full lg:translate-x-0">
+    <!-- Sidebar Header -->
+    <div class="sidebar-header flex items-center justify-center p-4 border-b border-gray-700 bg-gradient-to-r from-gray-800 to-gray-700">
+        <div class="flex items-center transform transition-transform duration-200 hover:scale-105">
+            <img src="../assets/images/seait-logo.png" alt="SEAIT Logo" class="h-8 w-auto mr-2 transition-all duration-200 hover:rotate-12">
+            <span class="text-white font-semibold">Admin Portal</span>
         </div>
+    </div>
 
-        <div class="h-full overflow-y-auto">
-            <div class="p-6">
-                <!-- Admin Panel Header -->
-                <div class="mb-8 animate-fadeInUp" style="animation-delay: 0.1s;">
-                    <div class="flex items-center space-x-3 mb-2 transform transition-transform duration-200 hover:scale-105">
-                        <div class="w-8 h-8 bg-seait-orange rounded-lg flex items-center justify-center transition-all duration-300 hover:bg-orange-500 hover:scale-110 hover:shadow-md">
-                            <i class="fas fa-shield-alt text-white text-sm transition-transform duration-200 hover:rotate-12"></i>
-                        </div>
-                        <h2 class="text-lg font-bold text-white">Admin Panel</h2>
-                    </div>
-                    <p class="text-gray-300 text-xs">Manage your website</p>
+    <!-- Navigation Menu - Scrollable Content -->
+    <div class="sidebar-content">
+        <!-- User Profile Section -->
+        <div class="mb-6 p-4 bg-gray-800 rounded-lg mx-3 transform transition-all duration-300 hover:bg-gray-700 hover:scale-105 hover:shadow-lg">
+            <div class="flex items-center">
+                <div class="h-12 w-12 rounded-full bg-seait-orange flex items-center justify-center mr-3 transition-all duration-300 hover:bg-orange-500 hover:scale-110 hover:shadow-md overflow-hidden">
+                    <?php 
+                    // Debug: Log session data
+                    error_log("Admin Sidebar Debug - Session profile_photo: " . ($_SESSION['profile_photo'] ?? 'NOT SET'));
+                    error_log("Admin Sidebar Debug - Session user_id: " . ($_SESSION['user_id'] ?? 'NOT SET'));
+                    
+                    if (!empty($_SESSION['profile_photo'])): ?>
+                        <img src="../<?php echo htmlspecialchars($_SESSION['profile_photo']); ?>" 
+                             alt="Profile Photo" 
+                             class="w-full h-full rounded-full object-cover">
+                    <?php else: ?>
+                        <span class="text-white font-semibold text-lg"><?php echo strtoupper(substr($_SESSION['first_name'], 0, 1) . substr($_SESSION['last_name'], 0, 1)); ?></span>
+                    <?php endif; ?>
                 </div>
-
-                <!-- Navigation Menu -->
-                <nav class="space-y-6">
-                    <!-- Dashboard Section -->
-                    <div class="animate-fadeInUp" style="animation-delay: 0.1s;">
-                        <a href="dashboard.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'dashboard.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
-                            <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'dashboard.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
-                                <i class="fas fa-tachometer-alt text-sm transition-transform duration-200 hover:rotate-12"></i>
-                            </div>
-                            <span class="font-medium">Dashboard</span>
-                        </a>
-                    </div>
-
-                    <!-- User Management Section -->
-                    <div class="animate-fadeInUp" style="animation-delay: 0.2s;">
-                        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-4">User Management</h3>
-                        <div class="space-y-1">
-                            <a href="users.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'users.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
-                                <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'users.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
-                                    <i class="fas fa-users text-sm transition-transform duration-200 hover:rotate-12"></i>
-                                </div>
-                                <span class="font-medium">Users</span>
-                            </a>
-                            
-                            <a href="faculty.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'faculty.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
-                                <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'faculty.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
-                                    <i class="fas fa-chalkboard-teacher text-sm transition-transform duration-200 hover:rotate-12"></i>
-                                </div>
-                                <span class="font-medium">Faculty</span>
-                            </a>
-                            
-                            <a href="students.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'students.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
-                                <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'students.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
-                                    <i class="fas fa-user-graduate text-sm transition-transform duration-200 hover:rotate-12"></i>
-                                </div>
-                                <span class="font-medium">Student Registration</span>
-                            </a>
-                        </div>
-                    </div>
-
-                    <!-- Content Management Section -->
-                    <div class="animate-fadeInUp" style="animation-delay: 0.3s;">
-                        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-4">Content Management</h3>
-                        <div class="space-y-1">
-                            <a href="posts.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'posts.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
-                                <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'posts.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
-                                    <i class="fas fa-newspaper text-sm transition-transform duration-200 hover:rotate-12"></i>
-                                </div>
-                                <span class="font-medium">Posts</span>
-                            </a>
-                            
-                            <a href="programs.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'programs.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
-                                <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'programs.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
-                                    <i class="fas fa-graduation-cap text-sm transition-transform duration-200 hover:rotate-12"></i>
-                                </div>
-                                <span class="font-medium">Academic Programs</span>
-                            </a>
-                            
-                            <a href="manage-faqs.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'manage-faqs.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
-                                <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'manage-faqs.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
-                                    <i class="fas fa-question-circle text-sm transition-transform duration-200 hover:rotate-12"></i>
-                                </div>
-                                <span class="font-medium">FAQ Management</span>
-                            </a>
-                        </div>
-                    </div>
-
-                    <!-- Communication Section -->
-                    <div class="animate-fadeInUp" style="animation-delay: 0.4s;">
-                        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-4">Communication</h3>
-                        <div class="space-y-1">
-                            <a href="inquiries.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'inquiries.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
-                                <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'inquiries.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
-                                    <i class="fas fa-comments text-sm transition-transform duration-200 hover:rotate-12"></i>
-                                </div>
-                                <span class="font-medium">View Inquiries</span>
-                            </a>
-                        </div>
-                    </div>
-
-                    <!-- Reports & Analytics Section -->
-                    <div class="animate-fadeInUp" style="animation-delay: 0.5s;">
-                        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-4">Reports & Analytics</h3>
-                        <div class="space-y-1">
-                            <a href="reports.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'reports.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
-                                <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'reports.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
-                                    <i class="fas fa-chart-bar text-sm transition-transform duration-200 hover:rotate-12"></i>
-                                </div>
-                                <span class="font-medium">Reports</span>
-                            </a>
-                        </div>
-                    </div>
-
-                    <!-- System Management Section -->
-                    <div class="animate-fadeInUp" style="animation-delay: 0.6s;">
-                        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-4">System</h3>
-                        <div class="space-y-1">
-                            <a href="database-sync.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'database-sync.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
-                                <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'database-sync.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
-                                    <i class="fas fa-sync-alt text-sm transition-transform duration-200 hover:rotate-12"></i>
-                                </div>
-                                <span class="font-medium">Database Sync</span>
-                            </a>
-                            
-                            <a href="ftp-manager.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'ftp-manager.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
-                                <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'ftp-manager.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
-                                    <i class="fas fa-server text-sm transition-transform duration-200 hover:scale-110"></i>
-                                </div>
-                                <span class="font-medium">FTP Manager</span>
-                            </a>
-                            
-                            <a href="settings.php" class="group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md <?php echo basename($_SERVER['PHP_SELF']) == 'settings.php' ? 'bg-seait-orange text-white shadow-lg' : 'hover:bg-gray-700 rounded transition'; ?>">
-                                <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 <?php echo basename($_SERVER['PHP_SELF']) == 'settings.php' ? 'bg-white bg-opacity-20' : 'bg-gray-700 group-hover:bg-seait-orange group-hover:bg-opacity-20'; ?>">
-                                    <i class="fas fa-cog text-sm transition-transform duration-200 hover:rotate-12"></i>
-                                </div>
-                                <span class="font-medium">Settings</span>
-                            </a>
-                        </div>
-                    </div>
-                </nav>
-
-                <!-- Quick Stats -->
-                <div class="mt-8 p-4 bg-white bg-opacity-5 rounded-xl border border-white border-opacity-10 animate-fadeInUp" style="animation-delay: 1.2s;">
-                    <h3 class="text-sm font-semibold text-gray-300 mb-3">Quick Stats</h3>
-                    <div class="space-y-2">
-                        <?php
-                        // Get real statistics
-                        $users_count = 0;
-                        $posts_count = 0;
-                        $inquiries_count = 0;
-                        $students_count = 0;
-
-                        // Count users
-                        $users_query = "SELECT COUNT(*) as total FROM users";
-                        $users_result = mysqli_query($conn, $users_query);
-                        if ($users_result) {
-                            $users_count = mysqli_fetch_assoc($users_result)['total'];
-                        }
-
-                        // Count posts
-                        $posts_query = "SELECT COUNT(*) as total FROM posts";
-                        $posts_result = mysqli_query($conn, $posts_query);
-                        if ($posts_result) {
-                            $posts_count = mysqli_fetch_assoc($posts_result)['total'];
-                        }
-
-                        // Count unresolved inquiries
-                        $inquiries_query = "SELECT COUNT(*) as total FROM user_inquiries WHERE is_resolved = 0";
-                        $inquiries_result = mysqli_query($conn, $inquiries_query);
-                        if ($inquiries_result) {
-                            $inquiries_count = mysqli_fetch_assoc($inquiries_result)['total'];
-                        }
-
-                        // Count active students
-                        $students_count_query = "SELECT COUNT(*) as total FROM students WHERE status = 'active'";
-                        $students_count_result = mysqli_query($conn, $students_count_query);
-                        if ($students_count_result) {
-                            $students_count = mysqli_fetch_assoc($students_count_result)['total'];
-                        }
-                        ?>
-                        <div class="flex justify-between text-xs">
-                            <span class="text-gray-400">Active Users</span>
-                            <span class="text-seait-orange font-medium"><?php echo $users_count; ?></span>
-                        </div>
-                        <div class="flex justify-between text-xs">
-                            <span class="text-gray-400">Total Posts</span>
-                            <span class="text-seait-orange font-medium"><?php echo $posts_count; ?></span>
-                        </div>
-                        <div class="flex justify-between text-xs">
-                            <span class="text-gray-400">Active Students</span>
-                            <span class="text-seait-orange font-medium"><?php echo $students_count; ?></span>
-                        </div>
-                        <div class="flex justify-between text-xs">
-                            <span class="text-gray-400">New Inquiries</span>
-                            <span class="text-seait-orange font-medium"><?php echo $inquiries_count; ?></span>
-                        </div>
+                <div class="flex-1">
+                    <p class="text-white font-semibold text-sm"><?php echo htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']); ?></p>
+                    <p class="text-gray-400 text-xs">Administrator</p>
+                    <div class="flex items-center mt-1">
+                        <div class="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></div>
+                        <span class="text-green-400 text-xs">Online</span>
                     </div>
                 </div>
             </div>
         </div>
+
+        <div class="space-y-6">
+            <!-- Dashboard Section -->
+            <div class="animate-fadeInUp" style="animation-delay: 0.1s;">
+                <a href="dashboard.php" class="flex items-center <?php echo $current_page === 'dashboard.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                    <i class="fas fa-tachometer-alt mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Dashboard
+                </a>
+            </div>
+
+            <!-- User Management Section -->
+            <div class="animate-fadeInUp" style="animation-delay: 0.2s;">
+                <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">User Management</h3>
+                <div class="space-y-1">
+                    <a href="users.php" class="flex items-center <?php echo $current_page === 'users.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                        <i class="fas fa-users mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Users
+                    </a>
+
+                    <a href="faculty.php" class="flex items-center <?php echo $current_page === 'faculty.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                        <i class="fas fa-chalkboard-teacher mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Faculty
+                    </a>
+
+                    <a href="students.php" class="flex items-center <?php echo $current_page === 'students.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                        <i class="fas fa-user-graduate mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Student Registration
+                    </a>
+                </div>
+            </div>
+
+            <!-- Content Management Section -->
+            <div class="animate-fadeInUp" style="animation-delay: 0.3s;">
+                <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Content Management</h3>
+                <div class="space-y-1">
+                    <a href="posts.php" class="flex items-center <?php echo $current_page === 'posts.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                        <i class="fas fa-newspaper mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Posts
+                    </a>
+
+                    <a href="programs.php" class="flex items-center <?php echo $current_page === 'programs.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                        <i class="fas fa-graduation-cap mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Academic Programs
+                    </a>
+
+                    <a href="manage-faqs.php" class="flex items-center <?php echo $current_page === 'manage-faqs.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                        <i class="fas fa-question-circle mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>FAQ Management
+                    </a>
+
+                    <a href="manage-services.php" class="flex items-center <?php echo $current_page === 'manage-services.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                        <i class="fas fa-cogs mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Services Management
+                    </a>
+
+                    <a href="manage-teacher-availability.php" class="flex items-center <?php echo $current_page === 'manage-teacher-availability.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                        <i class="fas fa-calendar-check mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Teacher Availability
+                    </a>
+                </div>
+            </div>
+
+            <!-- Communication Section -->
+            <div class="animate-fadeInUp" style="animation-delay: 0.4s;">
+                <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Communication</h3>
+                <div class="space-y-1">
+                    <a href="inquiries.php" class="flex items-center <?php echo $current_page === 'inquiries.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                        <i class="fas fa-comments mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>View Inquiries
+                    </a>
+                </div>
+            </div>
+
+            <!-- Reports & Analytics Section -->
+            <div class="animate-fadeInUp" style="animation-delay: 0.5s;">
+                <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Reports & Analytics</h3>
+                <div class="space-y-1">
+                    <a href="reports.php" class="flex items-center <?php echo $current_page === 'reports.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                        <i class="fas fa-chart-bar mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Reports
+                    </a>
+
+                    <a href="reports_enhanced.php" class="flex items-center <?php echo $current_page === 'reports_enhanced.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                        <i class="fas fa-chart-line mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Enhanced Reports
+                    </a>
+
+                    <a href="export_reports.php" class="flex items-center <?php echo $current_page === 'export_reports.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                        <i class="fas fa-file-export mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Export Reports
+                    </a>
+
+                    <a href="export_excel_reports.php" class="flex items-center <?php echo $current_page === 'export_excel_reports.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                        <i class="fas fa-file-excel mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Excel Reports
+                    </a>
+                </div>
+            </div>
+
+            <!-- System Management Section -->
+            <div class="animate-fadeInUp" style="animation-delay: 0.6s;">
+                <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">System</h3>
+                <div class="space-y-1">
+                    <a href="database-sync.php" class="flex items-center <?php echo $current_page === 'database-sync.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                        <i class="fas fa-sync-alt mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Database Sync
+                    </a>
+
+                    <a href="ftp-manager.php" class="flex items-center <?php echo $current_page === 'ftp-manager.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                        <i class="fas fa-server mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>FTP Manager
+                    </a>
+
+                    <a href="error-logs.php" class="flex items-center <?php echo $current_page === 'error-logs.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                        <i class="fas fa-exclamation-triangle mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Error Logs
+                    </a>
+
+                    <a href="settings.php" class="flex items-center <?php echo $current_page === 'settings.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                        <i class="fas fa-cog mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Settings
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar Footer -->
+    <div class="sidebar-footer p-4 border-t border-gray-700">
+        <a href="logout.php" class="flex items-center justify-center w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+            <i class="fas fa-sign-out-alt mr-2"></i>Logout
+        </a>
     </div>
 </div>
 
-<style>
-/* Custom animations */
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.animate-fadeInUp {
-    animation: fadeInUp 0.6s ease-out forwards;
-    opacity: 0;
-}
-
-/* Sidebar open/close animations */
-.sidebar.open {
-    transform: translateX(0);
-}
-
-/* Smooth transitions for all interactive elements */
-.sidebar a {
-    position: relative;
-    overflow: hidden;
-}
-
-.sidebar a::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-    transition: left 0.5s;
-}
-
-.sidebar a:hover::before {
-    left: 100%;
-}
-
-/* Active state animations */
-.sidebar a.bg-seait-orange {
-    animation: activePulse 2s infinite;
-}
-
-@keyframes activePulse {
-    0%, 100% {
-        box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.7);
-    }
-    50% {
-        box-shadow: 0 0 0 10px rgba(249, 115, 22, 0);
-    }
-}
-</style>
-
 <script>
-// Mobile sidebar functionality
-document.addEventListener('DOMContentLoaded', function() {
-    const mobileMenuButton = document.getElementById('mobile-menu-button');
-    const closeSidebarButton = document.getElementById('close-sidebar');
+// Sidebar functionality
+function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('mobile-overlay');
-    const sidebarLinks = document.querySelectorAll('#sidebar a:not([href^="#"])'); // Exclude anchor links
-    const sidebarContent = document.querySelector('.h-full.overflow-y-auto');
-
-    // Store scroll position in sessionStorage
-    function saveScrollPosition() {
-        if (sidebarContent) {
-            sessionStorage.setItem('adminSidebarScrollPosition', sidebarContent.scrollTop);
+    const overlay = document.getElementById('sidebarOverlay');
+    
+    if (sidebar && overlay) {
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('open');
+        
+        // Update overlay pointer events
+        if (overlay.classList.contains('open')) {
+            overlay.style.pointerEvents = 'auto';
+        } else {
+            overlay.style.pointerEvents = 'none';
         }
     }
+}
 
-    // Restore scroll position from sessionStorage
-    function restoreScrollPosition() {
-        if (sidebarContent) {
-            const savedPosition = sessionStorage.getItem('adminSidebarScrollPosition');
-            if (savedPosition !== null) {
-                setTimeout(() => {
-                    sidebarContent.scrollTop = parseInt(savedPosition);
-                }, 100);
-            }
-        }
-    }
+// Close sidebar when clicking on a link (mobile)
+document.addEventListener('DOMContentLoaded', function() {
+    const sidebarLinks = document.querySelectorAll('#sidebar a');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
 
-    // Save scroll position when scrolling
-    if (sidebarContent) {
-        sidebarContent.addEventListener('scroll', function() {
-            saveScrollPosition();
-        });
-    }
-
-    // Restore scroll position on page load
-    restoreScrollPosition();
-
-    function openSidebar() {
-        sidebar.classList.remove('-translate-x-full');
-        overlay.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closeSidebar() {
-        sidebar.classList.add('-translate-x-full');
-        overlay.classList.add('hidden');
-        document.body.style.overflow = '';
-    }
-
-    // Open sidebar
-    mobileMenuButton.addEventListener('click', openSidebar);
-
-    // Close sidebar
-    closeSidebarButton.addEventListener('click', closeSidebar);
-    overlay.addEventListener('click', closeSidebar);
-
-    // Handle link clicks - NO MOVEMENT
-    sidebarLinks.forEach(link => {
-        link.addEventListener('click', (e) => {
-            // Save current scroll position before navigation
-            saveScrollPosition();
-
-            // Prevent any default behavior that might cause movement
-            e.preventDefault();
-
-            // Get the href and navigate immediately without any delays or animations
-            const href = link.getAttribute('href');
-            if (href) {
-                // Navigate immediately - no delays, no animations, no sidebar movement
-                window.location.href = href;
-            }
-        });
-    });
-
-    // Close sidebar on window resize if switching to desktop
-    window.addEventListener('resize', function() {
-        if (window.innerWidth >= 1024) { // lg breakpoint
-            closeSidebar();
-        }
-    });
-
-    // Prevent unwanted sidebar interactions on desktop
+    // Ensure sidebar is in correct state on load
     if (sidebar) {
-        sidebar.addEventListener('click', (e) => {
-            // Prevent event bubbling on desktop
-            if (window.innerWidth >= 1024) {
-                e.stopPropagation();
+        if (window.innerWidth >= 1024) {
+            sidebar.classList.remove('open');
+            if (overlay) overlay.classList.remove('open');
+        }
+    }
+
+    // Handle link clicks
+    sidebarLinks.forEach(link => {
+        link.addEventListener('click', function() {
+            // Close sidebar on mobile after link click
+            if (window.innerWidth < 1024) {
+                sidebar.classList.remove('open');
+                if (overlay) overlay.classList.remove('open');
+            }
+        });
+    });
+
+    // Handle overlay clicks
+    if (overlay) {
+        overlay.addEventListener('click', function() {
+            if (window.innerWidth < 1024) {
+                toggleSidebar();
             }
         });
     }
 });
 
-// Prevent any zooming or scaling issues
-document.addEventListener('DOMContentLoaded', function() {
-    // Ensure viewport meta tag is properly set
-    const viewport = document.querySelector('meta[name="viewport"]');
-    if (!viewport) {
-        const meta = document.createElement('meta');
-        meta.name = 'viewport';
-        meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
-        document.head.appendChild(meta);
-    } else {
-        viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+// Handle window resize
+window.addEventListener('resize', function() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    
+    if (window.innerWidth >= 1024) {
+        if (sidebar) sidebar.classList.remove('open');
+        if (overlay) overlay.classList.remove('open');
     }
 });
 </script>

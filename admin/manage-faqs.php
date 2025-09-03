@@ -185,11 +185,7 @@ $categories_result = mysqli_query($conn, $categories_query);
 <body class="bg-gray-50">
     <?php include 'includes/admin-header.php'; ?>
 
-    <div class="flex pt-16">
-        <?php include 'includes/admin-sidebar.php'; ?>
 
-        <!-- Main Content -->
-        <div class="flex-1 ml-64 p-8 overflow-y-auto h-screen">
             <div class="flex justify-between items-center mb-8">
                 <h1 class="text-3xl font-bold text-seait-dark">Manage FAQs</h1>
                 <button onclick="openAddModal()" class="bg-seait-orange text-white px-6 py-2 rounded-lg hover:bg-orange-600 transition">
@@ -298,8 +294,7 @@ $categories_result = mysqli_query($conn, $categories_query);
                     </table>
                 </div>
             </div>
-        </div>
-    </div>
+     
 
     <!-- Add FAQ Modal -->
     <div id="add-faq-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">

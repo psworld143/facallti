@@ -249,118 +249,174 @@ while ($row = mysqli_fetch_assoc($colleges_result)) {
         .animate-bounce-in {
             animation: bounce-in 0.6s ease-out;
         }
+
+        /* Line clamp utility for consistent text heights */
+        .line-clamp-3 {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* Ensure consistent card heights */
+        .faculty-card {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .faculty-card .card-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .faculty-card .card-actions {
+            margin-top: auto;
+        }
+
+        /* Smooth transitions */
+        .transition-all {
+            transition: all 0.2s ease-in-out;
+        }
+
+        /* Consistent spacing */
+        .space-y-2 > * + * {
+            margin-top: 0.5rem;
+        }
+
+        .space-y-3 > * + * {
+            margin-top: 0.75rem;
+        }
     </style>
 </head>
 <body class="bg-gray-50">
     <?php include 'includes/admin-header.php'; ?>
 
-    <div class="flex pt-16">
-        <?php include 'includes/admin-sidebar.php'; ?>
-
+    <!-- Main Container -->
+    
         <!-- Main Content -->
-        <div class="flex-1 ml-64 p-8 overflow-y-auto h-screen">
-            <div class="mb-8">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h1 class="text-3xl font-bold text-seait-dark mb-2">Faculty Management</h1>
-                        <p class="text-gray-600">Manage faculty members and staff</p>
-                    </div>
-                    <div class="flex space-x-3">
-                        <button onclick="showAddModal()" class="bg-seait-orange text-white px-4 py-2 rounded-md hover:bg-orange-600 transition">
-                            <i class="fas fa-plus mr-2"></i>Add Faculty Member
-                        </button>
-                        <a href="debug_faculty.php" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
-                            <i class="fas fa-bug mr-2"></i>Debug
-                        </a>
-                        <a href="test_db_connection.php" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition">
-                            <i class="fas fa-database mr-2"></i>Test DB
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <?php if ($message): ?>
-            <div class="mb-6 p-4 rounded-lg <?php echo $message_type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'; ?>">
-                <?php echo $message; ?>
-            </div>
-            <?php endif; ?>
-
-            <!-- Information Alert -->
-            <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <div class="flex">
-                    <div class="flex-shrink-0">
-                        <i class="fas fa-info-circle text-blue-400"></i>
-                    </div>
-                    <div class="ml-3">
-                        <h3 class="text-sm font-medium text-blue-800">Faculty Management Updates</h3>
-                        <div class="mt-2 text-sm text-blue-700">
-                            <p><strong>Department Selection:</strong> Department options are now populated from the colleges database. Each option shows the full college name with its abbreviation in parentheses.</p>
-                            <p class="mt-1"><strong>Login Credentials:</strong> Faculty members can login using their email address or QR code as their login username with the default password "Seait123" which can be changed during editing.</p>
+        
+                <!-- Header Section -->
+                <div class="mb-8">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h1 class="text-3xl font-bold text-seait-dark mb-2">Faculty Management</h1>
+                            <p class="text-gray-600">Manage faculty members and staff</p>
+                        </div>
+                        <div class="flex space-x-3">
+                            <button onclick="showAddModal()" class="bg-seait-orange text-white px-4 py-2 rounded-md hover:bg-orange-600 transition">
+                                <i class="fas fa-plus mr-2"></i>Add Faculty Member
+                            </button>
+                            <a href="debug_faculty.php" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
+                                <i class="fas fa-bug mr-2"></i>Debug
+                            </a>
+                            <a href="test_db_connection.php" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition">
+                                <i class="fas fa-database mr-2"></i>Test DB
+                            </a>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Faculty Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <?php while ($faculty = mysqli_fetch_assoc($faculty_result)): ?>
-                <div class="bg-white rounded-lg shadow-md overflow-hidden">
-                    <div class="p-6">
-                        <div class="flex items-center mb-4">
-                            <div class="w-16 h-16 rounded-full overflow-hidden mr-4">
-                                <?php if (!empty($faculty['image_url'])): ?>
-                                <img src="../<?php echo htmlspecialchars($faculty['image_url']); ?>"
-                                     alt="<?php echo htmlspecialchars($faculty['first_name'] . ' ' . $faculty['last_name']); ?>"
-                                     class="w-full h-full object-cover">
-                                <?php else: ?>
-                                <div class="w-full h-full bg-gray-300 flex items-center justify-center">
-                                    <i class="fas fa-user text-gray-500 text-xl"></i>
+                <!-- Message Display -->
+                <?php if ($message): ?>
+                <div class="mb-6 p-4 rounded-lg <?php echo $message_type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'; ?>">
+                    <?php echo $message; ?>
+                </div>
+                <?php endif; ?>
+
+                <!-- Information Alert -->
+                <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-info-circle text-blue-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-blue-800">Faculty Management Updates</h3>
+                            <div class="mt-2 text-sm text-blue-700">
+                                <p><strong>Department Selection:</strong> Department options are now populated from the colleges database. Each option shows the full college name with its abbreviation in parentheses.</p>
+                                <p class="mt-1"><strong>Login Credentials:</strong> Faculty members can login using their email address or QR code as their login username with the default password "Seait123" which can be changed during editing.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Faculty Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <?php while ($faculty = mysqli_fetch_assoc($faculty_result)): ?>
+                    <div class="faculty-card bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-200">
+                        <div class="card-content p-6">
+                            <div class="flex items-center mb-4">
+                                <div class="w-16 h-16 rounded-full overflow-hidden mr-4 flex-shrink-0">
+                                    <?php if (!empty($faculty['image_url'])): ?>
+                                    <img src="../<?php echo htmlspecialchars($faculty['image_url']); ?>"
+                                         alt="<?php echo htmlspecialchars($faculty['first_name'] . ' ' . $faculty['last_name']); ?>"
+                                         class="w-full h-full object-cover">
+                                    <?php else: ?>
+                                    <div class="w-full h-full bg-gray-300 flex items-center justify-center">
+                                        <i class="fas fa-user text-gray-500 text-xl"></i>
+                                    </div>
+                                    <?php endif; ?>
                                 </div>
-                                <?php endif; ?>
+                                <div class="flex-1 min-w-0">
+                                    <h3 class="text-lg font-semibold text-gray-900 truncate"><?php echo htmlspecialchars($faculty['first_name'] . ' ' . $faculty['last_name']); ?></h3>
+                                    <p class="text-sm text-gray-600 truncate"><?php echo htmlspecialchars($faculty['position']); ?></p>
+                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full mt-1
+                                        <?php echo $faculty['is_active'] ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'; ?>">
+                                        <?php echo $faculty['is_active'] ? 'Active' : 'Inactive'; ?>
+                                    </span>
+                                </div>
                             </div>
-                            <div class="flex-1">
-                                <h3 class="text-lg font-semibold text-gray-900"><?php echo htmlspecialchars($faculty['first_name'] . ' ' . $faculty['last_name']); ?></h3>
-                                <p class="text-sm text-gray-600"><?php echo htmlspecialchars($faculty['position']); ?></p>
-                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full
-                                    <?php echo $faculty['is_active'] ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'; ?>">
-                                    <?php echo $faculty['is_active'] ? 'Active' : 'Inactive'; ?>
-                                </span>
-                            </div>
-                        </div>
 
-                        <div class="space-y-2 text-sm text-gray-600 mb-4">
-                            <div class="flex justify-between">
-                                <span>Department:</span>
-                                <span class="font-medium"><?php echo htmlspecialchars($faculty['department']); ?></span>
+                            <div class="space-y-2 text-sm text-gray-600 mb-4">
+                                <div class="flex justify-between">
+                                    <span class="font-medium text-gray-700">Department:</span>
+                                    <span class="font-medium text-gray-900 truncate ml-2"><?php echo htmlspecialchars($faculty['department']); ?></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="font-medium text-gray-700">Email:</span>
+                                    <span class="font-medium text-gray-900 truncate ml-2"><?php echo htmlspecialchars($faculty['email']); ?></span>
+                                </div>
                             </div>
-                            <div class="flex justify-between">
-                                <span>Email:</span>
-                                <span class="font-medium"><?php echo htmlspecialchars($faculty['email']); ?></span>
+
+                            <?php if (!empty($faculty['bio'])): ?>
+                            <div class="text-sm text-gray-600 mb-4">
+                                <p class="line-clamp-3"><?php echo substr(strip_tags($faculty['bio']), 0, 100) . '...'; ?></p>
                             </div>
-                        </div>
+                            <?php endif; ?>
 
-                        <?php if (!empty($faculty['bio'])): ?>
-                        <div class="text-sm text-gray-600 mb-4">
-                            <?php echo substr(strip_tags($faculty['bio']), 0, 100) . '...'; ?>
-                        </div>
-                        <?php endif; ?>
-
-                        <div class="flex space-x-2">
-                            <button onclick="editFaculty(<?php echo $faculty['id']; ?>)"
-                                    class="flex-1 bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 transition text-sm">
-                                <i class="fas fa-edit mr-1"></i>Edit
-                            </button>
-                            <button onclick="deleteFaculty(<?php echo $faculty['id']; ?>)"
-                                    class="flex-1 bg-red-600 text-white px-3 py-2 rounded-md hover:bg-red-700 transition text-sm">
-                                <i class="fas fa-trash mr-1"></i>Delete
-                            </button>
+                            <div class="card-actions flex space-x-2">
+                                <button onclick="editFaculty(<?php echo $faculty['id']; ?>)"
+                                        class="flex-1 bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 transition text-sm font-medium">
+                                    <i class="fas fa-edit mr-1"></i>Edit
+                                </button>
+                                <button onclick="deleteFaculty(<?php echo $faculty['id']; ?>)"
+                                        class="flex-1 bg-red-600 text-white px-3 py-2 rounded-md hover:bg-red-700 transition text-sm font-medium">
+                                    <i class="fas fa-trash mr-1"></i>Delete
+                                </button>
+                            </div>
                         </div>
                     </div>
+                    <?php endwhile; ?>
                 </div>
-                <?php endwhile; ?>
-            </div>
-        </div>
-    </div>
+
+                <!-- Empty State (if no faculty members) -->
+                <?php if (mysqli_num_rows($faculty_result) === 0): ?>
+                <div class="text-center py-12">
+                    <div class="text-gray-400 mb-4">
+                        <i class="fas fa-users text-6xl"></i>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">No Faculty Members Found</h3>
+                    <p class="text-gray-600 mb-4">Get started by adding your first faculty member.</p>
+                    <button onclick="showAddModal()" class="bg-seait-orange text-white px-6 py-3 rounded-md hover:bg-orange-600 transition">
+                        <i class="fas fa-plus mr-2"></i>Add First Faculty Member
+                    </button>
+                </div>
+                <?php endif; ?>
+          
+       
+   
+   
 
     <!-- Add/Edit Faculty Modal -->
     <div id="facultyModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">

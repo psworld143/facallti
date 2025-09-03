@@ -132,39 +132,13 @@ $settings = [
 ];
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Settings - Admin Dashboard</title>
-    <link rel="icon" type="image/png" href="../assets/images/seait-logo.png">
-    <link rel="shortcut icon" type="image/png" href="../assets/images/seait-logo.png">
-    <link rel="apple-touch-icon" type="image/png" href="../assets/images/seait-logo.png">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'seait-orange': '#FF6B35',
-                        'seait-dark': '#2C3E50',
-                        'seait-light': '#FFF8F0'
-                    }
-                }
-            }
-        }
-    </script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-</head>
-<body class="bg-gray-50">
-    <?php include 'includes/admin-header.php'; ?>
+<?php
+// Set page title for the header
+$page_title = 'Settings';
 
-    <div class="flex pt-16">
-        <?php include 'includes/admin-sidebar.php'; ?>
-
-        <!-- Main Content -->
-        <div class="flex-1 ml-64 p-8 overflow-y-auto h-screen">
+// Include the admin header
+include 'includes/admin-header.php';
+?>
             <div class="mb-8">
                 <h1 class="text-3xl font-bold text-seait-dark mb-2">Website Settings</h1>
                 <p class="text-gray-600">Configure website settings and preferences</p>
@@ -492,5 +466,8 @@ $settings = [
             }
         });
     </script>
+        </div>
+    </main>
+</div>
 </body>
 </html>

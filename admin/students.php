@@ -337,11 +337,7 @@ $courses_result = mysqli_query($conn, $courses_query);
 <body class="bg-gray-50">
     <?php include 'includes/admin-header.php'; ?>
 
-    <div class="flex pt-16">
-        <?php include 'includes/admin-sidebar.php'; ?>
-
-        <!-- Main Content -->
-        <div class="flex-1 ml-64 p-8 overflow-y-auto h-screen">
+   
             <div class="mb-8">
                 <div class="flex items-center justify-between">
                     <div>
@@ -599,9 +595,7 @@ $courses_result = mysqli_query($conn, $courses_query);
                 </div>
                 <?php endif; ?>
             </div>
-        </div>
-    </div>
-
+      
     <!-- Manual Registration Modal -->
     <div id="manualRegistrationModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
         <div class="flex items-center justify-center min-h-screen p-4">

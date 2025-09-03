@@ -169,62 +169,37 @@ while ($row = mysqli_fetch_assoc($users_result)) {
 }
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Management - SEAIT Admin</title>
-    <link rel="icon" type="image/png" href="../assets/images/seait-logo.png">
-    <link rel="shortcut icon" type="image/png" href="../assets/images/seait-logo.png">
-    <link rel="apple-touch-icon" type="image/png" href="../assets/images/seait-logo.png">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'seait-orange': '#FF6B35',
-                        'seait-dark': '#2C3E50',
-                        'seait-light': '#FFF8F0'
-                    }
-                }
-            }
-        }
-    </script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        @keyframes bounce-in {
-            0% {
-                opacity: 0;
-                transform: scale(0.3);
-            }
-            50% {
-                opacity: 1;
-                transform: scale(1.05);
-            }
-            70% {
-                transform: scale(0.9);
-            }
-            100% {
-                opacity: 1;
-                transform: scale(1);
-            }
-        }
+<?php
+// Set page title for the header
+$page_title = 'User Management';
 
-        .animate-bounce-in {
-            animation: bounce-in 0.6s ease-out;
+// Include the admin header
+include 'includes/admin-header.php';
+?>
+
+<style>
+    @keyframes bounce-in {
+        0% {
+            opacity: 0;
+            transform: scale(0.3);
         }
-    </style>
-</head>
-<body class="bg-gray-50">
-    <?php include 'includes/admin-header.php'; ?>
+        50% {
+            opacity: 1;
+            transform: scale(1.05);
+        }
+        70% {
+            transform: scale(0.9);
+        }
+        100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
 
-    <div class="flex pt-16">
-        <?php include 'includes/admin-sidebar.php'; ?>
-
-        <!-- Main Content -->
-        <div class="flex-1 ml-64 p-8 overflow-y-auto h-screen">
+    .animate-bounce-in {
+        animation: bounce-in 0.6s ease-out;
+    }
+</style>
             <div class="mb-8">
                 <h1 class="text-3xl font-bold text-seait-dark mb-2">User Management</h1>
                 <p class="text-gray-600">Manage system users and their roles</p>
@@ -368,9 +343,6 @@ while ($row = mysqli_fetch_assoc($users_result)) {
                 </nav>
             </div>
             <?php endif; ?>
-        </div>
-    </div>
-
     <!-- Add User Modal -->
     <div id="addUserModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-auto">
@@ -650,5 +622,8 @@ while ($row = mysqli_fetch_assoc($users_result)) {
             });
         });
     </script>
+        </div>
+    </main>
+</div>
 </body>
 </html>
