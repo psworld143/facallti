@@ -280,7 +280,11 @@ $courses_result = mysqli_query($conn, $courses_query);
                 <div class="carousel-slide absolute inset-0 transition-all duration-1000 ease-in-out <?php echo $slide_count === 1 ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-105 pointer-events-none'; ?>" data-slide="<?php echo $slide_count; ?>">
                     <!-- Background Image with Overlay -->
                     <div class="absolute inset-0 bg-black bg-opacity-50"></div>
-                    <div class="absolute inset-0 bg-cover bg-center bg-no-repeat" style="background-image: url('<?php echo htmlspecialchars($slide['image_url']); ?>'); filter: blur(1px);"></div>
+                    <img src="<?php echo htmlspecialchars($slide['image_url']); ?>"
+                         alt="<?php echo htmlspecialchars($slide['title']); ?>"
+                         class="absolute inset-0 w-full h-full object-cover"
+                         <?php echo $slide_count === 1 ? 'fetchpriority="high"' : 'loading="lazy"'; ?>
+                         decoding="async">
 
                     <!-- Content Container -->
                     <div class="relative z-10 flex h-full">

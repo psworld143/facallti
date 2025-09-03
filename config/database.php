@@ -1,5 +1,5 @@
 <?php
-// Database configuration for online server
+// Database configuration
 $host = 'seait-edu.ph';
 $dbname = 'seaitedu_seait_website';
 $username = 'seaitedu_seait_website';
