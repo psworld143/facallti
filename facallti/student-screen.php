@@ -315,6 +315,9 @@ if (empty($teachers) && empty($selected_department)) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $page_title; ?> - SEAIT</title>
+    <link rel="icon" type="image/png" href="../assets/images/seait-logo.png">
+    <link rel="shortcut icon" type="image/png" href="../assets/images/seait-logo.png">
+    <link rel="apple-touch-icon" type="image/png" href="../assets/images/seait-logo.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -1271,6 +1274,143 @@ if (empty($teachers) && empty($selected_department)) {
             }
         }
 
+        /* Enhanced Teacher Selection Focus Effects */
+        .teacher-selection-focus {
+            position: relative;
+            z-index: 50;
+        }
+        
+        .teacher-selection-focus .teacher-card {
+            transform: scale(1.02);
+            box-shadow: 0 25px 50px -12px rgba(255, 107, 53, 0.25);
+            border-color: #FF6B35;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .teacher-selection-focus .teacher-card:hover {
+            transform: scale(1.05) translateY(-12px);
+            box-shadow: 0 30px 60px -15px rgba(255, 107, 53, 0.35);
+            border-color: #E55A2B;
+        }
+        
+        .teacher-selection-focus .teacher-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 107, 53, 0.1), transparent);
+            transition: left 0.6s;
+            z-index: 1;
+        }
+        
+        .teacher-selection-focus .teacher-card:hover::before {
+            left: 100%;
+        }
+        
+        /* Custom teacher avatar sizes - 40% larger than original */
+        .w-22 {
+            width: 7rem; /* 112px - 40% larger than w-20 (80px) */
+        }
+        
+        .h-22 {
+            height: 7rem; /* 112px - 40% larger than h-20 (80px) */
+        }
+        
+        .sm\:w-26 {
+            width: 8.4rem; /* 134.4px - 40% larger than sm:w-24 (96px) */
+        }
+        
+        .sm\:h-26 {
+            height: 8.4rem; /* 134.4px - 40% larger than sm:h-24 (96px) */
+        }
+        
+        /* Background blur effects for teacher selection focus */
+        .blurred-background {
+            filter: blur(8px);
+            transform: scale(0.98);
+            opacity: 0.6;
+            transition: all 0.5s ease;
+        }
+        
+        .blurred-background:hover {
+            filter: blur(6px);
+            opacity: 0.7;
+        }
+        
+        /* Ensure teacher selection area stays sharp */
+        .teacher-selection-focus {
+            filter: none !important;
+            transform: none !important;
+            opacity: 1 !important;
+        }
+        
+        /* Enhanced overlay for better focus */
+        .teacher-selection-overlay {
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+        
+        /* Enhanced cancel button styling */
+        #floatingCancelButton {
+            position: fixed !important;
+            bottom: 2rem !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            z-index: 50 !important;
+        }
+        
+        #floatingCancelButton button {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+            border: 2px solid rgba(255, 255, 255, 0.2) !important;
+            box-shadow: 0 10px 25px rgba(239, 68, 68, 0.4) !important;
+        }
+        
+        #floatingCancelButton button:hover {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+            border-color: rgba(255, 255, 255, 0.4) !important;
+            box-shadow: 0 15px 35px rgba(239, 68, 68, 0.6) !important;
+        }
+        
+        /* Black background for teacher selection focus */
+        #teacherSelectionOverlay {
+            background: rgba(0, 0, 0, 0.8) !important;
+            backdrop-filter: blur(20px) !important;
+            -webkit-backdrop-filter: blur(20px) !important;
+        }
+        
+        /* Ensure teacher selection area stands out against black background */
+        .teacher-selection-focus {
+            filter: none !important;
+            transform: none !important;
+            opacity: 1 !important;
+            border-radius: 1rem !important;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3) !important;
+        }
+        
+        /* Center align teacher cards */
+        .teacher-selection-focus .grid {
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            flex-wrap: wrap !important;
+            gap: 1.5rem !important;
+        }
+        
+        /* Remove white background from teacher cards */
+        .teacher-selection-focus .teacher-card {
+            background: transparent !important;
+            border: 2px solid rgba(255, 255, 255, 0.2) !important;
+            backdrop-filter: blur(10px) !important;
+            -webkit-backdrop-filter: blur(10px) !important;
+        }
+        
+        .teacher-selection-focus .teacher-card:hover {
+            border-color: rgba(255, 107, 53, 0.8) !important;
+            background: rgba(255, 255, 255, 0.05) !important;
+        }
+        
         /* Enhanced Scrollbar */
         ::-webkit-scrollbar {
             width: 8px;
@@ -1374,13 +1514,13 @@ if (empty($teachers) && empty($selected_department)) {
         <?php endif; ?>
 
                 <!-- Enhanced Page Header Card -->
-        <div class="enhanced-card enhanced-header-card rounded-xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6 border-l-4 border-orange-500">
+        <div id="todaysDateSection"  class="enhanced-card enhanced-header-card rounded-xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6 border-l-4 border-orange-500">
             <div class="enhanced-header-layout">
                 <!-- Left Section: Main Content -->
                
                 
                 <!-- Right Section: Enhanced Time Display -->
-                <div class="flex-shrink-0 w-full lg:w-auto lg:min-w-[240px]">
+                <div cass="flex-shrink-0 w-full lg:w-auto lg:min-w-[240px]">
                     <div class="time-display-card rounded-xl p-3 sm:p-4 text-white shadow-lg border border-orange-400">
                         <div class="text-center">
                             <!-- Date Display -->
@@ -1413,7 +1553,7 @@ if (empty($teachers) && empty($selected_department)) {
         </div>
 
         <!-- Student ID QR Scanner Section -->
-        <div class="enhanced-card rounded-xl shadow-lg p-3 sm:p-4 mb-3 sm:mb-4 border-l-4 border-green-500">
+        <div id="qrCodeScannerSection"  class="enhanced-card rounded-xl shadow-lg p-3 sm:p-4 mb-3 sm:mb-4 border-l-4 border-green-500">
             <div class="flex items-center mb-3">
                 <div class="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
                     <i class="fas fa-qrcode text-white text-sm"></i>
@@ -1535,7 +1675,7 @@ if (empty($teachers) && empty($selected_department)) {
         <?php endif; ?>
 
         <!-- QR Code Required Notice -->
-        <div id="studentIdRequiredNotice" class="col-span-full bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center mb-6">
+        <div  id="studentIdRequiredNotice" class="col-span-full bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center mb-6">
             <div class="flex items-center justify-center space-x-3 mb-4">
                 <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
                     <i class="fas fa-qrcode text-yellow-600 text-xl"></i>
@@ -2121,37 +2261,63 @@ if (empty($teachers) && empty($selected_department)) {
             // Initialize QR scanner
             initializeQRScanner();
             
-            // Show/hide teachers section functions
-            function showTeachersSection() {
-                const teachersSection = document.getElementById('teachersSection');
-                const notice = document.getElementById('studentIdRequiredNotice');
-                
-                // Show teachers section - simple
-                if (teachersSection) {
-                    teachersSection.classList.remove('hidden');
-                    teachersSection.style.display = 'block';
-                }
-                
-                // Hide the notice - simple
-                if (notice) {
-                    notice.style.display = 'none';
-                }
-                
-                // Initialize teacher card event listeners after showing the section
-                setTimeout(() => {
-                    initializeTeacherCardListeners();
-                    
-                    // Start real-time teacher updates first
-                    startTeacherUpdates();
-                    
-                    // Delay the availability check to allow real-time updates to load teachers first
-                    setTimeout(() => {
-                        checkTeachersAvailability();
-                    }, 2000); // Wait 2 seconds for API call to complete
-                }, 100);
-                
-                console.log('Teachers section shown - real-time updates started');
+                    // Show/hide teachers section functions
+        function showTeachersSection() {
+            const teachersSection = document.getElementById('teachersSection');
+            const notice = document.getElementById('studentIdRequiredNotice');
+            const todaysDateSection = document.getElementById('todaysDateSection');
+            const qrCodeScannerSection = document.getElementById('qrCodeScannerSection');
+            
+            // Hide the specified sections before showing teachers
+            if (todaysDateSection) {
+                todaysDateSection.style.display = 'none';
             }
+            if (qrCodeScannerSection) {
+                qrCodeScannerSection.style.display = 'none';
+            }
+            if (notice) {
+                notice.style.display = 'none';
+            }
+            
+            // Show teachers section with enhanced UI focus
+            if (teachersSection) {
+                teachersSection.classList.remove('hidden');
+                teachersSection.style.display = 'block';
+                
+                // Add enhanced UI focus effects
+                teachersSection.classList.add('teacher-selection-focus');
+                
+                // Add background blur overlay for focus
+                addBackgroundBlurOverlay();
+                
+                // Animate the appearance
+                setTimeout(() => {
+                    teachersSection.style.opacity = '0';
+                    teachersSection.style.transform = 'translateY(20px) scale(0.95)';
+                    teachersSection.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+                    
+                    requestAnimationFrame(() => {
+                        teachersSection.style.opacity = '1';
+                        teachersSection.style.transform = 'translateY(0) scale(1)';
+                    });
+                }, 50);
+            }
+            
+            // Initialize teacher card event listeners after showing the section
+            setTimeout(() => {
+                initializeTeacherCardListeners();
+                
+                // Start real-time teacher updates first
+                startTeacherUpdates();
+                
+                // Delay the availability check to allow real-time updates to load teachers first
+                setTimeout(() => {
+                    checkTeachersAvailability();
+                }, 2000); // Wait 2 seconds for API call to complete
+            }, 100);
+            
+            console.log('Teachers section shown - real-time updates started with enhanced UI');
+        }
             
             // Check if teachers are available and show modal if not
             function checkTeachersAvailability() {
@@ -2218,6 +2384,15 @@ if (empty($teachers) && empty($selected_department)) {
             function hideTeachersSection() {
                 const teachersSection = document.getElementById('teachersSection');
                 const notice = document.getElementById('studentIdRequiredNotice');
+                const todaysDateSection = document.getElementById('todaysDateSection');
+                const qrCodeScannerSection = document.getElementById('qrCodeScannerSection');
+                
+                // Remove enhanced UI effects
+                if (teachersSection) {
+                    teachersSection.classList.remove('teacher-selection-focus');
+                }
+                removeBackgroundBlurOverlay();
+                removeTeacherSelectionHeader();
                 
                 // Hide teachers section
                 if (teachersSection) {
@@ -2225,7 +2400,13 @@ if (empty($teachers) && empty($selected_department)) {
                     teachersSection.style.display = 'none';
                 }
                 
-                // Show the notice
+                // Show the sections that were hidden
+                if (todaysDateSection) {
+                    todaysDateSection.style.display = 'block';
+                }
+                if (qrCodeScannerSection) {
+                    qrCodeScannerSection.style.display = 'block';
+                }
                 if (notice) {
                     notice.style.display = 'block';
                 }
@@ -2479,10 +2660,10 @@ if (empty($teachers) && empty($selected_department)) {
             }, 100);
         }
         
-        // Create teacher card element - simplified
+        // Create teacher card element - enhanced for focus mode
         function createTeacherCard(teacher) {
             const card = document.createElement('div');
-            card.className = 'teacher-card bg-white rounded-xl shadow-lg hover:shadow-2xl cursor-pointer transition-all duration-300 border border-gray-200 flex flex-col overflow-hidden';
+            card.className = 'teacher-card rounded-xl shadow-lg hover:shadow-2xl cursor-pointer transition-all duration-300 border border-gray-200 flex flex-col overflow-hidden relative';
             card.setAttribute('data-teacher-id', teacher.id);
             card.setAttribute('data-teacher-name', `${teacher.first_name} ${teacher.last_name}`);
             card.setAttribute('data-teacher-dept', teacher.department);
@@ -2493,12 +2674,15 @@ if (empty($teachers) && empty($selected_department)) {
             const initials = firstInitial + lastInitial;
             
             card.innerHTML = `
-                <!-- Teacher Avatar at Top -->
-                <div class="p-6 flex justify-center bg-gradient-to-br from-gray-50 to-white border-b border-gray-100">
+                <!-- Enhanced Card Background -->
+                <div class="absolute inset-0 bg-gradient-to-br from-orange-500 to-orange-600 opacity-0 transition-opacity duration-300 group-hover:opacity-20"></div>
+                
+                <!-- Teacher Avatar at Top - Increased by 40% -->
+                <div class="p-6 flex justify-center relative z-10">
                     <div class="teacher-avatar">
                         ${teacher.image_url ? 
-                            `<img src="../${teacher.image_url}" alt="Teacher" class="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-4 border-orange-500 shadow-lg">` :
-                            `<div class="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center border-4 border-orange-500 shadow-lg">
+                            `<img src="../${teacher.image_url}" alt="Teacher" class="w-22 h-22 sm:w-26 sm:h-26 rounded-full object-cover border-4 border-orange-500 shadow-lg">` :
+                            `<div class="w-22 h-22 sm:w-26 sm:h-26 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center border-4 border-orange-500 shadow-lg">
                                 <span class="text-white text-xl sm:text-2xl font-bold">${initials}</span>
                             </div>`
                         }
@@ -2506,29 +2690,35 @@ if (empty($teachers) && empty($selected_department)) {
                 </div>
 
                 <!-- Teacher Information - Centered -->
-                <div class="p-4 sm:p-6 flex-1 flex flex-col justify-center">
+                <div class="p-4 sm:p-6 flex-1 flex flex-col justify-center relative z-10">
                     <div class="text-center space-y-3">
                         <!-- Teacher Name -->
-                        <h3 class="text-lg sm:text-xl font-bold text-gray-800">
+                        <h3 class="text-lg sm:text-xl font-bold text-white">
                             ${teacher.first_name} ${teacher.last_name}
                         </h3>
                     </div>
                 </div>
 
-                <!-- Card Footer -->
-                <div class="px-4 sm:px-6 py-4 bg-gradient-to-r from-orange-50 to-orange-100 rounded-b-xl">
+                <!-- Enhanced Card Footer -->
+                <div class="px-4 sm:px-6 py-4 relative z-10">
                     <div class="flex items-center justify-center">
                         <div class="text-center">
-                            <div class="text-xs sm:text-sm text-orange-700 font-medium mb-2">Tap to start consultation</div>
+                            <div class="text-xs sm:text-sm text-orange-300 font-medium mb-2">Tap to start consultation</div>
                             <div class="flex items-center justify-center space-x-1 sm:space-x-2">
-                                <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-orange-500 rounded-full animate-pulse"></div>
+                                <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-orange-400 rounded-full animate-pulse"></div>
                                 <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-orange-500 rounded-full animate-pulse" style="animation-delay: 0.2s;"></div>
                                 <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-orange-500 rounded-full animate-pulse" style="animation-delay: 0.4s;"></div>
                             </div>
                         </div>
                     </div>
                 </div>
+                
+                <!-- Enhanced Hover Effect Overlay -->
+                <div class="absolute inset-0 bg-gradient-to-br from-orange-500 to-orange-600 opacity-0 transition-all duration-300 rounded-xl group-hover:opacity-30"></div>
             `;
+            
+            // Add group class for enhanced hover effects
+            card.classList.add('group');
             
             return card;
         }
@@ -2990,6 +3180,181 @@ if (empty($teachers) && empty($selected_department)) {
         // Make functions globally accessible
         window.closeConfirmationModal = closeConfirmationModal;
         window.confirmConsultationRequest = confirmConsultationRequest;
+        window.cancelTeacherSelection = cancelTeacherSelection;
+        
+        // Enhanced UI helper functions for teacher selection
+        function addBackgroundBlurOverlay() {
+            // Remove existing overlay if any
+            const existingOverlay = document.getElementById('teacherSelectionOverlay');
+            if (existingOverlay) {
+                existingOverlay.remove();
+            }
+            
+            // Create background blur overlay
+            const overlay = document.createElement('div');
+            overlay.id = 'teacherSelectionOverlay';
+            overlay.className = 'fixed inset-0 bg-black bg-opacity-80 backdrop-blur-lg z-40 transition-all duration-500';
+            overlay.style.pointerEvents = 'none';
+            
+            document.body.appendChild(overlay);
+            
+            // Apply blur effect to all content outside teacher selection
+            applyBackgroundBlur();
+            
+            // Animate in
+            setTimeout(() => {
+                overlay.style.opacity = '1';
+            }, 10);
+            
+            // Add floating cancel button
+            addFloatingCancelButton();
+        }
+        
+        function removeBackgroundBlurOverlay() {
+            const overlay = document.getElementById('teacherSelectionOverlay');
+            if (overlay) {
+                overlay.style.opacity = '0';
+                setTimeout(() => {
+                    if (overlay.parentNode) {
+                        overlay.parentNode.removeChild(overlay);
+                    }
+                }, 500);
+            }
+            
+            // Remove blur effect from background content
+            removeBackgroundBlur();
+            
+            // Remove floating cancel button
+            removeFloatingCancelButton();
+        }
+        
+        // Function to apply blur effect to background content
+        function applyBackgroundBlur() {
+            // Get all main content sections that should be blurred
+            const sectionsToBlur = [
+                'todaysDateSection',
+                'qrCodeScannerSection', 
+                'studentIdRequiredNotice'
+            ];
+            
+            sectionsToBlur.forEach(sectionId => {
+                const section = document.getElementById(sectionId);
+                if (section) {
+                    section.style.filter = 'blur(8px)';
+                    section.style.transform = 'scale(0.98)';
+                    section.style.transition = 'all 0.5s ease';
+                    section.style.opacity = '0.6';
+                }
+            });
+            
+            // Also blur the main body content
+            document.body.style.filter = 'blur(4px)';
+            document.body.style.transition = 'filter 0.5s ease';
+        }
+        
+        // Function to remove blur effect from background content
+        function removeBackgroundBlur() {
+            // Remove blur from specific sections
+            const sectionsToUnblur = [
+                'todaysDateSection',
+                'qrCodeScannerSection', 
+                'studentIdRequiredNotice'
+            ];
+            
+            sectionsToUnblur.forEach(sectionId => {
+                const section = document.getElementById(sectionId);
+                if (section) {
+                    section.style.filter = 'none';
+                    section.style.transform = 'scale(1)';
+                    section.style.opacity = '1';
+                }
+            });
+            
+            // Remove blur from body
+            document.body.style.filter = 'none';
+        }
+        
+        // Add floating cancel button for easy access
+        function addFloatingCancelButton() {
+            // Remove existing floating button if any
+            const existingButton = document.getElementById('floatingCancelButton');
+            if (existingButton) {
+                existingButton.remove();
+            }
+            
+            // Create floating cancel button positioned at lower center
+            const floatingButton = document.createElement('div');
+            floatingButton.id = 'floatingCancelButton';
+            floatingButton.className = 'fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-500';
+            floatingButton.style.opacity = '0';
+            floatingButton.style.transform = 'translateY(20px) translateX(-50%)';
+            
+            floatingButton.innerHTML = `
+                <button onclick="cancelTeacherSelection()" 
+                        class="bg-red-500 hover:bg-red-600 text-white px-6 py-4 rounded-2xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-2xl hover:shadow-3xl border border-red-400 hover:border-red-500 flex items-center space-x-3 backdrop-blur-sm">
+                    <i class="fas fa-times mr-2 text-lg"></i>
+                    <span class="text-base">Cancel Selection</span>
+                </button>
+            `;
+            
+            document.body.appendChild(floatingButton);
+            
+            // Animate in
+            setTimeout(() => {
+                floatingButton.style.opacity = '1';
+                floatingButton.style.transform = 'translateY(0) translateX(-50%)';
+            }, 200);
+        }
+        
+        // Remove floating cancel button
+        function removeFloatingCancelButton() {
+            const floatingButton = document.getElementById('floatingCancelButton');
+            if (floatingButton) {
+                floatingButton.style.opacity = '0';
+                floatingButton.style.transform = 'translateY(20px) translateX(-50%)';
+                setTimeout(() => {
+                    if (floatingButton.parentNode) {
+                        floatingButton.parentNode.removeChild(floatingButton);
+                    }
+                }, 500);
+            }
+        }
+        
+        function addTeacherSelectionHeader() {
+            // Header functionality removed - keeping function for compatibility
+            // The floating cancel button provides the cancel functionality instead
+        }
+        
+        function removeTeacherSelectionHeader() {
+            // Header functionality removed - keeping function for compatibility
+        }
+        
+        // Function to cancel teacher selection and return to main interface
+        function cancelTeacherSelection() {
+            console.log('Canceling teacher selection and returning to main interface');
+            
+            // Clear any stored student information
+            sessionStorage.removeItem('currentStudentId');
+            sessionStorage.removeItem('currentStudentName');
+            sessionStorage.removeItem('currentStudentDept');
+            
+            // Clear the student ID input field
+            const studentIdInput = document.getElementById('studentIdInput');
+            if (studentIdInput) {
+                studentIdInput.value = '';
+            }
+            
+            // Hide student info display if visible
+            const studentInfoDisplay = document.getElementById('studentInfoDisplay');
+            if (studentInfoDisplay) {
+                studentInfoDisplay.classList.add('hidden');
+            }
+            
+            // Hide teachers section and show hidden sections
+            hideTeachersSection();
+        }
+        
+
         
         // Global variables for automatic status checking
         let automaticStatusCheckInterval = null;
@@ -3225,6 +3590,12 @@ if (empty($teachers) && empty($selected_department)) {
                                             Connected
                                         </span>
                                     </div>
+                                    <div class="mt-4 text-center">
+                                        <div class="text-xs text-gray-500 mb-2">Modal will close and page will reload in <span id="modalCountdownTimer" class="font-bold text-blue-600">10</span> seconds</div>
+                                        <div class="w-full bg-gray-200 rounded-full h-1">
+                                            <div id="modalCountdownProgress" class="bg-blue-500 h-1 rounded-full transition-all duration-1000 ease-linear" style="width: 100%"></div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -3363,10 +3734,45 @@ if (empty($teachers) && empty($selected_department)) {
             };
             document.addEventListener('keydown', handleEscape);
             
-            // Auto-close after 10 seconds
-            setTimeout(() => {
-                closeConsultationModal();
-            }, 10000);
+            // Start countdown timer for modal
+            let modalSecondsLeft = 10;
+            const modalCountdownTimerElement = document.getElementById('modalCountdownTimer');
+            const modalCountdownProgressElement = document.getElementById('modalCountdownProgress');
+            
+            const modalCountdownInterval = setInterval(() => {
+                modalSecondsLeft--;
+                
+                // Update countdown display
+                if (modalCountdownTimerElement) {
+                    modalCountdownTimerElement.textContent = modalSecondsLeft;
+                }
+                
+                // Update progress bar
+                if (modalCountdownProgressElement) {
+                    const progressPercentage = (modalSecondsLeft / 10) * 100;
+                    modalCountdownProgressElement.style.width = progressPercentage + '%';
+                    
+                    // Change color as time runs out
+                    if (modalSecondsLeft <= 3) {
+                        modalCountdownProgressElement.classList.remove('bg-blue-500');
+                        modalCountdownProgressElement.classList.add('bg-red-500');
+                    } else if (modalSecondsLeft <= 5) {
+                        modalCountdownProgressElement.classList.remove('bg-blue-500');
+                        modalCountdownProgressElement.classList.add('bg-yellow-500');
+                    }
+                }
+                
+                // Auto-close and reload when countdown reaches 0
+                if (modalSecondsLeft <= 0) {
+                    clearInterval(modalCountdownInterval);
+                    closeConsultationModal();
+                    // Reload the page after closing the modal
+                    setTimeout(() => {
+                        console.log('🔄 Reloading page after consultation request...');
+                        window.location.reload();
+                    }, 500); // Small delay to ensure modal is fully closed
+                }
+            }, 1000);
         }
         
         // Global audio variables for continuous playback
@@ -3579,6 +3985,29 @@ if (empty($teachers) && empty($selected_department)) {
                 console.log('Modal element not found');
             }
             
+            // Remove enhanced UI effects
+            const teachersSection = document.getElementById('teachersSection');
+            if (teachersSection) {
+                teachersSection.classList.remove('teacher-selection-focus');
+            }
+            removeBackgroundBlurOverlay();
+            removeTeacherSelectionHeader();
+            
+            // Unhide the sections that were hidden when showing teachers
+            const todaysDateSection = document.getElementById('todaysDateSection');
+            const qrCodeScannerSection = document.getElementById('qrCodeScannerSection');
+            const studentIdRequiredNotice = document.getElementById('studentIdRequiredNotice');
+            
+            if (todaysDateSection) {
+                todaysDateSection.style.display = 'block';
+            }
+            if (qrCodeScannerSection) {
+                qrCodeScannerSection.style.display = 'block';
+            }
+            if (studentIdRequiredNotice) {
+                studentIdRequiredNotice.style.display = 'block';
+            }
+            
             // Clear student ID field after consultation response
             setTimeout(() => {
                 clearStudentIdField();
@@ -3609,6 +4038,20 @@ if (empty($teachers) && empty($selected_department)) {
             cleanupBlurEffects();
             // Clear student ID field for fresh start
             clearStudentIdField();
+            // Unhide the sections that were hidden when showing teachers
+            const todaysDateSection = document.getElementById('todaysDateSection');
+            const qrCodeScannerSection = document.getElementById('qrCodeScannerSection');
+            const studentIdRequiredNotice = document.getElementById('studentIdRequiredNotice');
+            
+            if (todaysDateSection) {
+                todaysDateSection.style.display = 'block';
+            }
+            if (qrCodeScannerSection) {
+                qrCodeScannerSection.style.display = 'block';
+            }
+            if (studentIdRequiredNotice) {
+                studentIdRequiredNotice.style.display = 'block';
+            }
             // Refresh the page to show available teachers
             window.location.reload();
         }
@@ -4085,6 +4528,12 @@ if (empty($teachers) && empty($selected_department)) {
                         <div class="text-xs text-blue-100">
                             <i class="fas fa-info-circle mr-1"></i>Teacher will contact you when ready
                         </div>
+                        <div class="mt-3 text-center">
+                            <div class="text-xs text-blue-100 mb-1">Page will reload in <span id="countdownTimer" class="font-bold">10</span> seconds</div>
+                            <div class="w-full bg-blue-400 bg-opacity-30 rounded-full h-1">
+                                <div id="countdownProgress" class="bg-white h-1 rounded-full transition-all duration-1000 ease-linear" style="width: 100%"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
@@ -4098,6 +4547,46 @@ if (empty($teachers) && empty($selected_department)) {
                 card.style.pointerEvents = 'none';
                 card.style.cursor = 'not-allowed';
             });
+            
+            // Start countdown timer
+            let secondsLeft = 10;
+            const countdownTimerElement = document.getElementById('countdownTimer');
+            const countdownProgressElement = document.getElementById('countdownProgress');
+            
+            const countdownInterval = setInterval(() => {
+                secondsLeft--;
+                
+                // Update countdown display
+                if (countdownTimerElement) {
+                    countdownTimerElement.textContent = secondsLeft;
+                }
+                
+                // Update progress bar
+                if (countdownProgressElement) {
+                    const progressPercentage = (secondsLeft / 10) * 100;
+                    countdownProgressElement.style.width = progressPercentage + '%';
+                    
+                    // Change color as time runs out
+                    if (secondsLeft <= 3) {
+                        countdownProgressElement.classList.remove('bg-white');
+                        countdownProgressElement.classList.add('bg-red-300');
+                    } else if (secondsLeft <= 5) {
+                        countdownProgressElement.classList.remove('bg-white');
+                        countdownProgressElement.classList.add('bg-yellow-300');
+                    }
+                }
+                
+                // Auto-hide and reload when countdown reaches 0
+                if (secondsLeft <= 0) {
+                    clearInterval(countdownInterval);
+                    hidePendingRequest();
+                    // Reload the page after hiding the pending request
+                    setTimeout(() => {
+                        console.log('🔄 Reloading page after pending request auto-hide...');
+                        window.location.reload();
+                    }, 500); // Small delay to ensure pending request is fully hidden
+                }
+            }, 1000);
         }
         
         function hidePendingRequest() {
@@ -4126,7 +4615,15 @@ if (empty($teachers) && empty($selected_department)) {
         // Close modal with Escape key
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
-                closeConsultationModal();
+                // Check if teacher selection is active
+                const teachersSection = document.getElementById('teachersSection');
+                if (teachersSection && !teachersSection.classList.contains('hidden')) {
+                    // Cancel teacher selection if Escape is pressed
+                    cancelTeacherSelection();
+                } else {
+                    // Close consultation modal if it's open
+                    closeConsultationModal();
+                }
             }
         });
         

@@ -8,24 +8,50 @@ $page_title = 'Student-Teacher Consultation';
 // Initialize arrays
 $all_departments = [];
 
-// Get departments from heads table with error handling
-$heads_departments_query = "SELECT DISTINCT department FROM heads WHERE status = 'active' ORDER BY department";
-$heads_departments_result = mysqli_query($conn, $heads_departments_query);
-
-if ($heads_departments_result && mysqli_num_rows($heads_departments_result) > 0) {
-    while ($row = mysqli_fetch_assoc($heads_departments_result)) {
-        $all_departments[] = [
-            'id' => null,
-            'name' => $row['department'],
-            'description' => 'Department consultation services',
-            'icon' => 'fas fa-building',
-            'color_theme' => '#FF6B35'
-        ];
-    }
+// Debug: Check database connection
+if (!isset($conn) || !$conn) {
+    error_log("Database connection failed in facallti/index.php");
+    die("Database connection failed. Please check your configuration.");
 }
 
-// If no departments from heads table, add default ones
+// Get departments from colleges table with error handling
+$college_departments_query = "SELECT id, name, description, color_theme FROM colleges WHERE is_active = 1 ORDER BY sort_order, name";
+error_log("Executing query: " . $college_departments_query);
+
+$college_departments_result = mysqli_query($conn, $college_departments_query);
+
+// Check for database errors
+if (!$college_departments_result) {
+    $error_msg = "Database error in colleges query: " . mysqli_error($conn);
+    error_log($error_msg);
+    // Fall back to default departments if query fails
+    $all_departments = [];
+} elseif (mysqli_num_rows($college_departments_result) > 0) {
+    error_log("Found " . mysqli_num_rows($college_departments_result) . " colleges in database");
+    while ($row = mysqli_fetch_assoc($college_departments_result)) {
+        $all_departments[] = [
+            'id' => $row['id'],
+            'name' => $row['name'],
+            'description' => $row['description'] ?: 'College consultation services',
+            'icon' => 'fas fa-building',
+            'color_theme' => $row['color_theme'] ?: '#FF6B35'
+        ];
+    }
+} else {
+    // No colleges found in database
+    error_log("No colleges found in database");
+    $all_departments = [];
+}
+
+// Debug: Log final departments array
+error_log("Final departments array count: " . count($all_departments));
+if (!empty($all_departments)) {
+    error_log("Departments loaded: " . implode(', ', array_column($all_departments, 'name')));
+}
+
+// If no departments from colleges table, add default ones
 if (empty($all_departments)) {
+    error_log("Using fallback default departments");
     $all_departments = [
         [
             'id' => 1,
@@ -70,7 +96,11 @@ if (empty($all_departments)) {
             'color_theme' => '#9B59B6'
         ]
     ];
+    error_log("Fallback departments loaded: " . count($all_departments));
 }
+
+// Debug: Final check before HTML
+error_log("Final departments before HTML: " . count($all_departments));
 
 // Define available screens
 $available_screens = [
@@ -462,7 +492,10 @@ $available_screens = [
                 <div id="loadingState" class="loading text-center py-8">
                     <div class="inline-flex items-center">
                         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-seait-orange"></div>
-                        <span class="ml-3 text-gray-600">Redirecting to selected screen...</span>
+                        <span class="ml-3 text-gray-600">Processing department selection...</span>
+                    </div>
+                    <div class="mt-4 text-sm text-gray-500">
+                        <p>Please wait while we process your department selection...</p>
                     </div>
                 </div>
             </div>
@@ -644,11 +677,62 @@ $available_screens = [
             sessionStorage.setItem('selectedDepartment', selectedDepartment);
             sessionStorage.setItem('selectedScreen', selectedScreen);
             
-            // Redirect to selected screen with department parameter
-            setTimeout(() => {
-                const url = selectedScreenUrl + '?dept=' + encodeURIComponent(selectedDepartment);
-                window.location.href = url;
-            }, 1500);
+            // Update consultation requests status for selected department
+            updateConsultationRequests(selectedDepartment, function() {
+                // Redirect to selected screen with department parameter after update
+                setTimeout(() => {
+                    const url = selectedScreenUrl + '?dept=' + encodeURIComponent(selectedDepartment);
+                    window.location.href = url;
+                }, 1500);
+            });
+        }
+        
+        // Update consultation requests status
+        function updateConsultationRequests(department, callback) {
+            const formData = new FormData();
+            formData.append('department', department);
+            formData.append('action', 'update_status');
+            
+            // Update loading message to show what's happening
+            const loadingText = document.querySelector('#loadingState .text-gray-600');
+            if (loadingText) {
+                loadingText.textContent = 'Processing department selection for ' + department + '...';
+            }
+            
+            fetch('update-consultation-requests-status.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('✅ Consultation requests processed successfully for department:', department);
+                    console.log('📊 Status:', data.status, 'Updated count:', data.updated_count);
+                    
+                    // No notifications shown to user - silent processing
+                    // Log to console for debugging only
+                    
+                    // Update loading message for redirect
+                    if (loadingText) {
+                        loadingText.textContent = 'Redirecting to selected screen...';
+                    }
+                    
+                    if (callback) callback();
+                } else {
+                    console.error('❌ Failed to process consultation requests:', data.error);
+                    // No warning shown to user - silent error handling
+                    
+                    // Continue with redirect even if update fails
+                    if (callback) callback();
+                }
+            })
+            .catch(error => {
+                console.error('❌ Error updating consultation requests:', error);
+                // No error notification shown to user - silent error handling
+                
+                // Continue with redirect even if update fails
+                if (callback) callback();
+            });
         }
 
         // Reset selection

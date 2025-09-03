@@ -132,6 +132,9 @@ $office_session_id = uniqid('office_', true);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $page_title; ?> - SEAIT</title>
+    <link rel="icon" type="image/png" href="../assets/images/seait-logo.png">
+    <link rel="shortcut icon" type="image/png" href="../assets/images/seait-logo.png">
+    <link rel="apple-touch-icon" type="image/png" href="../assets/images/seait-logo.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -1214,13 +1217,11 @@ $office_session_id = uniqid('office_', true);
                             pendingCountElement.textContent = '0';
                         }
                         
-                        // Clear queue and close modal only if no modal is currently open
+                        // Clear queue if no modal is currently open
                         if (requestQueue.length > 0 && !isModalOpen) {
                             requestQueue = [];
                             shownRequestIds.clear();
-                            closeConsultationModal();
-                            
-
+                            // No manual close needed - modal will auto-close
                         }
                     }
                 })
@@ -1342,11 +1343,6 @@ $office_session_id = uniqid('office_', true);
                     
                     <!-- Phone Call Header -->
                     <div class="bg-gradient-to-r from-green-500 to-green-600 p-4 text-center relative">
-                        <div class="absolute top-2 right-2">
-                            <button onclick="closeConsultationModal()" class="text-white hover:text-gray-200 text-xl transition-colors bg-black bg-opacity-20 rounded-full w-8 h-8 flex items-center justify-center">
-                                <i class="fas fa-times text-sm"></i>
-                            </button>
-                        </div>
                         <p class="text-white text-sm font-medium opacity-90">Consultation Request</p>
                         <div class="flex items-center justify-center mt-1">
                             <div class="w-2 h-2 bg-white rounded-full animate-pulse mr-2"></div>
@@ -1429,9 +1425,7 @@ $office_session_id = uniqid('office_', true);
                                 <div id="countdownProgress" class="bg-yellow-400 h-1 rounded-full transition-all duration-1000 ease-linear" style="width: 100%"></div>
                             </div>
                         </div>
-                        <p class="text-gray-500 text-xs">
-                            Press <kbd class="bg-gray-700 text-gray-300 px-2 py-1 rounded text-xs">ESC</kbd> to close
-                        </p>
+
                     </div>
                 </div>
             `;
@@ -1470,16 +1464,7 @@ $office_session_id = uniqid('office_', true);
         
         // Start auto-dismiss countdown
         function startAutoDismissCountdown() {
-            // Only start countdown if no other requests are in queue
-            if (requestQueue.length > 1) {
-                // Hide countdown display if there are other requests
-                const countdownElement = document.getElementById('autoDismissCountdown');
-                if (countdownElement) {
-                    countdownElement.style.display = 'none';
-                }
-                return;
-            }
-            
+            // Always start countdown - modal will auto-dismiss after 10 seconds
             let secondsLeft = 10;
             const countdownSecondsElement = document.getElementById('countdownSeconds');
             const countdownProgressElement = document.getElementById('countdownProgress');
@@ -1488,8 +1473,8 @@ $office_session_id = uniqid('office_', true);
             if (!countdownSecondsElement || !countdownProgressElement || !countdownElement) {
                 console.warn('Countdown elements not found, proceeding with basic auto-dismiss');
                 setTimeout(() => {
-                    if (isModalOpen && requestQueue.length <= 1) {
-                        console.log('Auto-dismissing modal after 10 seconds - no other requests in queue');
+                    if (isModalOpen) {
+                        console.log('Auto-dismissing modal after 10 seconds');
                         
                         // Remove the current request from queue and mark in database
                         if (requestQueue.length > 0) {
@@ -1537,9 +1522,9 @@ $office_session_id = uniqid('office_', true);
                 if (secondsLeft <= 0) {
                     clearInterval(countdownInterval);
                     
-                    // Only dismiss if modal is still open and no other requests
-                    if (isModalOpen && requestQueue.length <= 1) {
-                        console.log('Auto-dismissing modal after countdown - no other requests in queue');
+                    // Always dismiss after countdown
+                    if (isModalOpen) {
+                        console.log('Auto-dismissing modal after countdown');
                         
                         // Remove the current request from queue and mark in database
                         if (requestQueue.length > 0) {
@@ -1555,10 +1540,10 @@ $office_session_id = uniqid('office_', true);
                     }
                 }
                 
-                // Stop countdown if modal is closed or new requests arrive
-                if (!isModalOpen || requestQueue.length > 1) {
+                // Stop countdown if modal is closed
+                if (!isModalOpen) {
                     clearInterval(countdownInterval);
-                    console.log('Stopping auto-dismiss countdown - modal closed or new requests arrived');
+                    console.log('Stopping auto-dismiss countdown - modal closed');
                 }
                 
             }, 1000); // Update every second
@@ -1780,8 +1765,8 @@ $office_session_id = uniqid('office_', true);
                     requestQueue = requestQueue.filter(req => req.request_id !== requestId);
                     shownRequestIds.delete(requestId);
                     
-                    // Close current modal
-                    closeConsultationModal();
+                    // Modal will auto-close after 10 seconds
+                    // No manual close needed
                     
                     // Update pending count
                     const pendingCountElement = document.getElementById('pendingCount');
@@ -1867,8 +1852,8 @@ $office_session_id = uniqid('office_', true);
                     requestQueue = requestQueue.filter(req => req.request_id !== requestId);
                     shownRequestIds.delete(requestId);
                     
-                    // Close current modal
-                    closeConsultationModal();
+                    // Modal will auto-close after 10 seconds
+                    // No manual close needed
                     
                     // Update pending count
                     const pendingCountElement = document.getElementById('pendingCount');
@@ -1916,8 +1901,8 @@ $office_session_id = uniqid('office_', true);
                     requestQueue = requestQueue.filter(req => req.request_id !== requestId);
                     shownRequestIds.delete(requestId);
                     
-                    // Close current modal
-                    closeConsultationModal();
+                    // Modal will auto-close after 10 seconds
+                    // No manual close needed
                     
                     // Update pending count
                     const pendingCountElement = document.getElementById('pendingCount');
@@ -2006,10 +1991,6 @@ $office_session_id = uniqid('office_', true);
         // Keyboard shortcuts
         document.addEventListener('keydown', function(e) {
             switch(e.key) {
-                case 'Escape':
-                    closeConsultationModal();
-                    break;
-
                 case 's':
                 case 'S':
                     toggleStatusBtn.click();
