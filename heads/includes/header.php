@@ -245,7 +245,7 @@
                             error_log("Heads Sidebar Debug - Session user_id: " . ($_SESSION['user_id'] ?? 'NOT SET'));
                             
                             if (!empty($_SESSION['profile_photo'])): ?>
-                                <img src="/seait/<?php echo htmlspecialchars($_SESSION['profile_photo']); ?>" 
+                                <img src="../<?php echo htmlspecialchars($_SESSION['profile_photo']); ?>" 
                                      alt="Profile Photo" 
                                      class="w-full h-full rounded-full object-cover">
                             <?php else: ?>
@@ -382,14 +382,14 @@
                             </span>
                         </div>
                         
-                        <div class="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-seait-orange flex items-center justify-center overflow-hidden">
+                        <div class="h-8 w-8 sm:h-10 sm:w-10 rounded-hidden">
                             <?php 
                             // Debug: Log session data
                             error_log("Heads Header Debug - Session profile_photo: " . ($_SESSION['profile_photo'] ?? 'NOT SET'));
                             error_log("Heads Header Debug - Session user_id: " . ($_SESSION['user_id'] ?? 'NOT SET'));
                             
                             if (!empty($_SESSION['profile_photo'])): ?>
-                                <img src="/seait/<?php echo htmlspecialchars($_SESSION['profile_photo']); ?>" 
+                                <img src="../<?php echo htmlspecialchars($_SESSION['profile_photo']); ?>" 
                                      alt="Profile Photo" 
                                      class="w-full h-full rounded-full object-cover">
                             <?php else: ?>

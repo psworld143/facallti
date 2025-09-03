@@ -43,7 +43,7 @@ error_log("Sidebar Debug - Current Page: " . $current_page);
                     error_log("Sidebar Debug - Session user_id: " . ($_SESSION['user_id'] ?? 'NOT SET'));
                     
                     if (!empty($_SESSION['profile_photo'])): ?>
-                        <img src="/seait/<?php echo htmlspecialchars($_SESSION['profile_photo']); ?>" 
+                        <img src="../<?php echo htmlspecialchars($_SESSION['profile_photo']); ?>" 
                              alt="Profile Photo" 
                              class="w-full h-full rounded-full object-cover">
                     <?php else: ?>
