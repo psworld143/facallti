@@ -1,5 +1,4 @@
 <?php
-include '../includes/error_handler.php';
 // Database configuration
 $host = 'localhost';
 $dbname = 'seaitedu_seait_website';
