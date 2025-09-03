@@ -1,9 +1,9 @@
 <?php
 // Database configuration
 $host = 'localhost';
-$dbname = 'seait_website';
-$username = 'root';
-$password = '';
+$dbname = 'seaitedu_seait_website';
+$username = 'seaitedu_seait_website';
+$password = '020894Website';
 
 // Create connection
 $conn = mysqli_connect($host, $username, $password, $dbname);
