@@ -36,9 +36,15 @@ $recent_posts_result = mysqli_query($conn, $recent_posts_query);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - SEAIT</title>
+    <!-- Favicon Configuration -->
+    <link rel="icon" type="image/x-icon" href="../assets/images/favicon.ico">
     <link rel="icon" type="image/png" href="../assets/images/seait-logo.png">
+    <link rel="shortcut icon" type="image/x-icon" href="../assets/images/favicon.ico">
     <link rel="shortcut icon" type="image/png" href="../assets/images/seait-logo.png">
     <link rel="apple-touch-icon" type="image/png" href="../assets/images/seait-logo.png">
+    <link rel="apple-touch-icon-precomposed" type="image/png" href="../assets/images/seait-logo.png">
+    <meta name="msapplication-TileImage" content="../assets/images/seait-logo.png">
+    <meta name="msapplication-TileColor" content="#FF6B35">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {

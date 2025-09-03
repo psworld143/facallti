@@ -167,6 +167,7 @@ if ($user_found && $user_data) {
         $_SESSION['role'] = (string)$user_data['role'];
         $_SESSION['first_name'] = (string)$user_data['first_name'];
         $_SESSION['last_name'] = (string)$user_data['last_name'];
+        $_SESSION['profile_photo'] = isset($user_data['profile_photo']) ? (string)$user_data['profile_photo'] : '';
 
         // Redirect based on role using absolute URLs
         switch($user_data['role']) {

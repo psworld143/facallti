@@ -2,11 +2,13 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 check_social_media_manager();
 
-// Get post ID from URL
-$post_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+// Get post ID from URL and decrypt it
+$encrypted_id = isset($_GET['id']) ? $_GET['id'] : '';
+$post_id = safe_decrypt_id($encrypted_id, 0);
 
 if (!$post_id) {
     header('Location: dashboard.php');
@@ -54,106 +56,10 @@ $status_text_color = $status_colors[$post['status']][1];
 $status_icon = $status_colors[$post['status']][2];
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>View Post - <?php echo htmlspecialchars($post['title']); ?> - SEAIT</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'seait-orange': '#FF6B35',
-                        'seait-dark': '#2C3E50',
-                        'seait-light': '#FFF8F0'
-                    }
-                }
-            }
-        }
-    </script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        @keyframes bounceIn {
-            0% {
-                opacity: 0;
-                transform: scale(0.3);
-            }
-            50% {
-                opacity: 1;
-                transform: scale(1.05);
-            }
-            70% {
-                transform: scale(0.9);
-            }
-            100% {
-                opacity: 1;
-                transform: scale(1);
-            }
-        }
-
-        .animate-bounce-in {
-            animation: bounceIn 0.6s ease-out;
-        }
-    </style>
-</head>
-<body class="bg-gray-50">
-    <!-- Fixed Navigation -->
-    <nav class="fixed top-0 left-0 right-0 bg-white shadow-lg z-50">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="flex justify-between items-center py-4">
-                <div class="flex items-center space-x-4">
-                    <img src="../assets/images/seait-logo.png" alt="SEAIT Logo" class="h-10 w-auto">
-                    <div class="hidden sm:block">
-                        <h1 class="text-xl font-bold text-seait-dark">SEAIT Social Media</h1>
-                        <p class="text-sm text-gray-600">Welcome, <?php echo $_SESSION['first_name']; ?></p>
-                    </div>
-                    <div class="sm:hidden">
-                        <h1 class="text-lg font-bold text-seait-dark">SEAIT</h1>
-                        <p class="text-xs text-gray-600"><?php echo $_SESSION['first_name']; ?></p>
-                    </div>
-                </div>
-
-                <div class="flex items-center space-x-2 sm:space-x-4">
-                    <!-- Mobile menu button -->
-                    <button id="mobile-menu-button" class="lg:hidden bg-seait-orange text-white p-2 rounded-md hover:bg-orange-600 transition">
-                        <i class="fas fa-bars"></i>
-                    </button>
-
-                    <!-- Desktop links -->
-                    <div class="hidden sm:flex items-center space-x-4">
-                        <a href="../index.php" class="text-seait-dark hover:text-seait-orange transition">
-                            <i class="fas fa-home mr-2"></i>View Site
-                        </a>
-                        <a href="logout.php" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition">
-                            <i class="fas fa-sign-out-alt mr-2"></i>Logout
-                        </a>
-                    </div>
-
-                    <!-- Mobile links -->
-                    <div class="sm:hidden flex items-center space-x-2">
-                        <a href="../index.php" class="text-seait-dark hover:text-seait-orange transition p-2">
-                            <i class="fas fa-home"></i>
-                        </a>
-                        <a href="logout.php" class="bg-red-500 text-white p-2 rounded hover:bg-red-600 transition">
-                            <i class="fas fa-sign-out-alt"></i>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Mobile Sidebar Overlay -->
-    <div id="mobile-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden hidden"></div>
-
-    <!-- Sidebar -->
-    <?php include 'includes/sidebar.php'; ?>
-
-    <!-- Scrollable Main Content -->
-    <div id="main-content" class="lg:ml-64 pt-20 min-h-screen transition-all duration-300 ease-in-out">
+<?php
+$page_title = 'View Post - ' . htmlspecialchars($post['title']);
+include 'includes/header.php';
+?>
         <div class="p-4 lg:p-8">
             <!-- Post Header -->
             <div class="bg-white rounded-lg shadow-md mb-6">
@@ -393,249 +299,203 @@ $status_icon = $status_colors[$post['status']][2];
         </div>
     </div>
 
-    <script>
-        // Mobile menu functionality
-        const mobileMenuButton = document.getElementById('mobile-menu-button');
-        const sidebar = document.getElementById('sidebar');
-        const mobileOverlay = document.getElementById('mobile-overlay');
-        const closeSidebarButton = document.getElementById('close-sidebar');
-        const mainContent = document.getElementById('main-content');
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+</div>
 
-        function openSidebar() {
-            if (sidebar && mobileOverlay) {
-                sidebar.classList.remove('-translate-x-full');
-                mobileOverlay.classList.remove('hidden');
-                document.body.style.overflow = 'hidden';
-            }
-        }
-
-        function closeSidebar() {
-            if (sidebar && mobileOverlay) {
-                sidebar.classList.add('-translate-x-full');
-                mobileOverlay.classList.add('hidden');
-                document.body.style.overflow = 'auto';
-            }
-        }
-
-        // Event listeners with error handling
-        if (mobileMenuButton) {
-            mobileMenuButton.addEventListener('click', openSidebar);
-        }
-        if (closeSidebarButton) {
-            closeSidebarButton.addEventListener('click', closeSidebar);
-        }
-        if (mobileOverlay) {
-            mobileOverlay.addEventListener('click', closeSidebar);
-        }
-
-        // Close sidebar when clicking on navigation links (mobile)
-        if (sidebar) {
-            const navLinks = sidebar.querySelectorAll('a');
-            navLinks.forEach(link => {
-                link.addEventListener('click', () => {
-                    if (window.innerWidth < 1024) { // lg breakpoint
-                        closeSidebar();
+                <script>
+                    function approvePost(postId) {
+                        if (confirm('Are you sure you want to approve this post?')) {
+                            const form = document.createElement('form');
+                            form.method = 'POST';
+                            form.action = 'pending-post.php';
+                            form.innerHTML = `
+                                <input type="hidden" name="action" value="approve">
+                                <input type="hidden" name="post_id" value="${postId}">
+                            `;
+                            document.body.appendChild(form);
+                            form.submit();
+                        }
                     }
-                });
-            });
-        }
 
-        // Handle window resize
-        window.addEventListener('resize', () => {
-            if (window.innerWidth >= 1024) {
-                closeSidebar();
-            }
-        });
+                    function rejectPost(postId) {
+                        const rejectionModal = document.getElementById('rejectionModal');
+                        if (rejectionModal) {
+                            rejectionModal.classList.remove('hidden');
+                        }
+                    }
 
-        function approvePost(postId) {
-            if (confirm('Are you sure you want to approve this post?')) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = 'pending-post.php';
-                form.innerHTML = `
-                    <input type="hidden" name="action" value="approve">
-                    <input type="hidden" name="post_id" value="${postId}">
-                `;
-                document.body.appendChild(form);
-                form.submit();
-            }
-        }
+                    function closeRejectionModal() {
+                        const rejectionModal = document.getElementById('rejectionModal');
+                        const rejectionReason = document.getElementById('rejection_reason');
+                        if (rejectionModal) {
+                            rejectionModal.classList.add('hidden');
+                        }
+                        if (rejectionReason) {
+                            rejectionReason.value = '';
+                        }
+                    }
 
-        function rejectPost(postId) {
-            const rejectionModal = document.getElementById('rejectionModal');
-            if (rejectionModal) {
-                rejectionModal.classList.remove('hidden');
-            }
-        }
+                    function unapprovePost(postId) {
+                        const unapproveModal = document.getElementById('unapproveModal');
+                        if (unapproveModal) {
+                            unapproveModal.classList.remove('hidden');
+                        }
+                    }
 
-        function closeRejectionModal() {
-            const rejectionModal = document.getElementById('rejectionModal');
-            const rejectionReason = document.getElementById('rejection_reason');
-            if (rejectionModal) {
-                rejectionModal.classList.add('hidden');
-            }
-            if (rejectionReason) {
-                rejectionReason.value = '';
-            }
-        }
+                    function closeUnapproveModal() {
+                        const unapproveModal = document.getElementById('unapproveModal');
+                        if (unapproveModal) {
+                            unapproveModal.classList.add('hidden');
+                        }
+                    }
 
-        function unapprovePost(postId) {
-            const unapproveModal = document.getElementById('unapproveModal');
-            if (unapproveModal) {
-                unapproveModal.classList.remove('hidden');
-            }
-        }
+                    function moveToPending(postId) {
+                        if (confirm('Are you sure you want to move this post back to pending? This will clear the rejection reason.')) {
+                            const form = document.createElement('form');
+                            form.method = 'POST';
+                            form.action = 'rejected-posts.php';
+                            form.innerHTML = `
+                                <input type="hidden" name="action" value="move_to_pending">
+                                <input type="hidden" name="post_id" value="${postId}">
+                            `;
+                            document.body.appendChild(form);
+                            form.submit();
+                        }
+                    }
 
-        function closeUnapproveModal() {
-            const unapproveModal = document.getElementById('unapproveModal');
-            if (unapproveModal) {
-                unapproveModal.classList.add('hidden');
-            }
-        }
+                    function deletePost(postId) {
+                        const deleteModal = document.getElementById('deleteModal');
+                        if (deleteModal) {
+                            deleteModal.classList.remove('hidden');
+                        }
+                    }
 
-        function moveToPending(postId) {
-            if (confirm('Are you sure you want to move this post back to pending? This will clear the rejection reason.')) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = 'rejected-posts.php';
-                form.innerHTML = `
-                    <input type="hidden" name="action" value="move_to_pending">
-                    <input type="hidden" name="post_id" value="${postId}">
-                `;
-                document.body.appendChild(form);
-                form.submit();
-            }
-        }
+                    function closeDeleteModal() {
+                        const deleteModal = document.getElementById('deleteModal');
+                        if (deleteModal) {
+                            deleteModal.classList.add('hidden');
+                        }
+                    }
 
-        function deletePost(postId) {
-            const deleteModal = document.getElementById('deleteModal');
-            if (deleteModal) {
-                deleteModal.classList.remove('hidden');
-            }
-        }
+                    function copyToClipboard() {
+                        const content = `<?php echo addslashes($post['title']); ?>\n\n<?php echo addslashes($post['content']); ?>`;
+                        navigator.clipboard.writeText(content).then(() => {
+                            alert('Content copied to clipboard!');
+                        }).catch(() => {
+                            alert('Failed to copy content. Please select and copy manually.');
+                        });
+                    }
 
-        function closeDeleteModal() {
-            const deleteModal = document.getElementById('deleteModal');
-            if (deleteModal) {
-                deleteModal.classList.add('hidden');
-            }
-        }
+                    function sharePost() {
+                        const url = window.location.href;
+                        const title = '<?php echo addslashes($post['title']); ?>';
 
-        function copyToClipboard() {
-            const content = `<?php echo addslashes($post['title']); ?>\n\n<?php echo addslashes($post['content']); ?>`;
-            navigator.clipboard.writeText(content).then(() => {
-                alert('Content copied to clipboard!');
-            }).catch(() => {
-                alert('Failed to copy content. Please select and copy manually.');
-            });
-        }
+                        if (navigator.share) {
+                            navigator.share({
+                                title: title,
+                                url: url
+                            });
+                        } else {
+                            // Fallback for browsers that don't support Web Share API
+                            const shareUrl = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(url)}`;
+                            window.open(shareUrl);
+                        }
+                    }
 
-        function sharePost() {
-            const url = window.location.href;
-            const title = '<?php echo addslashes($post['title']); ?>';
+                    function goBack() {
+                        // Check if we have a valid referrer from the same domain
+                        if (document.referrer && document.referrer.includes(window.location.hostname)) {
+                            // Check if the referrer is from one of our social media pages
+                            const referrerUrl = new URL(document.referrer);
+                            const currentPath = referrerUrl.pathname;
 
-            if (navigator.share) {
-                navigator.share({
-                    title: title,
-                    url: url
-                });
-            } else {
-                // Fallback for browsers that don't support Web Share API
-                const shareUrl = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(url)}`;
-                window.open(shareUrl);
-            }
-        }
+                            // If referrer is from a valid social media page, go back
+                            if (currentPath.includes('/social-media/')) {
+                                window.history.back();
+                                return;
+                            }
+                        }
 
-        function goBack() {
-            // Check if we have a valid referrer from the same domain
-            if (document.referrer && document.referrer.includes(window.location.hostname)) {
-                // Check if the referrer is from one of our social media pages
-                const referrerUrl = new URL(document.referrer);
-                const currentPath = referrerUrl.pathname;
+                        // Fallback: Determine the appropriate page based on post status
+                        const postStatus = '<?php echo $post['status']; ?>';
+                        let fallbackUrl = 'dashboard.php';
 
-                // If referrer is from a valid social media page, go back
-                if (currentPath.includes('/social-media/')) {
-                    window.history.back();
-                    return;
-                }
-            }
+                        switch (postStatus) {
+                            case 'pending':
+                                fallbackUrl = 'pending-post.php';
+                                break;
+                            case 'approved':
+                                fallbackUrl = 'approved-posts.php';
+                                break;
+                            case 'rejected':
+                                fallbackUrl = 'rejected-posts.php';
+                                break;
+                            default:
+                                fallbackUrl = 'dashboard.php';
+                        }
 
-            // Fallback: Determine the appropriate page based on post status
-            const postStatus = '<?php echo $post['status']; ?>';
-            let fallbackUrl = 'dashboard.php';
+                        window.location.href = fallbackUrl;
+                    }
 
-            switch (postStatus) {
-                case 'pending':
-                    fallbackUrl = 'pending-post.php';
-                    break;
-                case 'approved':
-                    fallbackUrl = 'approved-posts.php';
-                    break;
-                case 'rejected':
-                    fallbackUrl = 'rejected-posts.php';
-                    break;
-                default:
-                    fallbackUrl = 'dashboard.php';
-            }
+                    // Close modal when clicking outside
+                    const rejectionModal = document.getElementById('rejectionModal');
+                    if (rejectionModal) {
+                        rejectionModal.addEventListener('click', function(e) {
+                            if (e.target === this) {
+                                closeRejectionModal();
+                            }
+                        });
+                    }
 
-            window.location.href = fallbackUrl;
-        }
+                    const unapproveModal = document.getElementById('unapproveModal');
+                    if (unapproveModal) {
+                        unapproveModal.addEventListener('click', function(e) {
+                            if (e.target === this) {
+                                closeUnapproveModal();
+                            }
+                        });
+                    }
 
-        // Close modal when clicking outside
-        const rejectionModal = document.getElementById('rejectionModal');
-        if (rejectionModal) {
-            rejectionModal.addEventListener('click', function(e) {
-                if (e.target === this) {
-                    closeRejectionModal();
-                }
-            });
-        }
+                    const deleteModal = document.getElementById('deleteModal');
+                    if (deleteModal) {
+                        deleteModal.addEventListener('click', function(e) {
+                            if (e.target === this) {
+                                closeDeleteModal();
+                            }
+                        });
+                    }
 
-        const unapproveModal = document.getElementById('unapproveModal');
-        if (unapproveModal) {
-            unapproveModal.addEventListener('click', function(e) {
-                if (e.target === this) {
-                    closeUnapproveModal();
-                }
-            });
-        }
-
-        const deleteModal = document.getElementById('deleteModal');
-        if (deleteModal) {
-            deleteModal.addEventListener('click', function(e) {
-                if (e.target === this) {
-                    closeDeleteModal();
-                }
-            });
-        }
-
-        function openApproveModal(postId) {
-            document.getElementById('approvePostId').value = postId;
-            document.getElementById('approveModal').classList.remove('hidden');
-        }
-        function closeApproveModal() {
-            document.getElementById('approveModal').classList.add('hidden');
-            document.getElementById('approvePostId').value = '';
-        }
-        function confirmApprove() {
-            const postId = document.getElementById('approvePostId').value;
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = 'pending-post.php';
-            form.innerHTML = `
-                <input type="hidden" name="action" value="approve">
-                <input type="hidden" name="post_id" value="${postId}">
-            `;
-            document.body.appendChild(form);
-            form.submit();
-        }
-        // Close modal when clicking outside
-        document.getElementById('approveModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeApproveModal();
-            }
-        });
-    </script>
+                    function openApproveModal(postId) {
+                        document.getElementById('approvePostId').value = postId;
+                        document.getElementById('approveModal').classList.remove('hidden');
+                    }
+                    function closeApproveModal() {
+                        document.getElementById('approveModal').classList.add('hidden');
+                        document.getElementById('approvePostId').value = '';
+                    }
+                    function confirmApprove() {
+                        const postId = document.getElementById('approvePostId').value;
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = 'pending-post.php';
+                        form.innerHTML = `
+                            <input type="hidden" name="action" value="approve">
+                            <input type="hidden" name="post_id" value="${postId}">
+                        `;
+                        document.body.appendChild(form);
+                        form.submit();
+                    }
+                    // Close modal when clicking outside
+                    document.getElementById('approveModal').addEventListener('click', function(e) {
+                        if (e.target === this) {
+                            closeApproveModal();
+                        }
+                    });
+                </script>
 
     <!-- Rejection Modal -->
     <div id="rejectionModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">

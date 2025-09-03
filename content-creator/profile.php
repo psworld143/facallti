@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 // Check if user is logged in and is a content creator
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'content_creator') {
@@ -83,6 +84,80 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $error = 'Current password is incorrect.';
         }
+    } elseif (isset($_POST['action']) && $_POST['action'] === 'update_photo') {
+        // Handle profile photo upload
+        if (isset($_FILES['profile_photo']) && $_FILES['profile_photo']['error'] === UPLOAD_ERR_OK) {
+            $file = $_FILES['profile_photo'];
+            $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
+            $max_size = 5 * 1024 * 1024; // 5MB
+
+            if (!in_array($file['type'], $allowed_types)) {
+                $error = 'Please upload a valid image file (JPEG, PNG, or GIF).';
+            } elseif ($file['size'] > $max_size) {
+                $error = 'File size must be less than 5MB.';
+            } else {
+                // Use absolute path for better reliability
+                $upload_dir = dirname(__FILE__) . '/../uploads/profile-photos/';
+                
+                // Ensure directory exists with proper permissions
+                if (!is_dir($upload_dir)) {
+                    if (!mkdir($upload_dir, 0755, true)) {
+                        $error = 'Failed to create upload directory. Please check permissions.';
+                        error_log("Content Creator Profile Debug - Failed to create directory: " . $upload_dir);
+                    }
+                }
+                
+                // Check if directory is writable
+                if (!is_writable($upload_dir)) {
+                    $error = 'Upload directory is not writable. Please check permissions.';
+                    error_log("Content Creator Profile Debug - Directory not writable: " . $upload_dir);
+                }
+                
+                // Additional debug: Check if we can create a test file
+                $test_file = $upload_dir . 'test_' . time() . '.txt';
+                if (file_put_contents($test_file, 'test') === false) {
+                    error_log("Content Creator Profile Debug - Cannot create test file in upload directory");
+                    $error = 'Cannot write to upload directory. Please check permissions.';
+                } else {
+                    unlink($test_file); // Remove test file
+                    error_log("Content Creator Profile Debug - Upload directory is writable");
+                }
+
+                $file_extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+                $filename = 'profile_' . $_SESSION['user_id'] . '_' . time() . '.' . $file_extension;
+                $filepath = $upload_dir . $filename;
+
+                if (move_uploaded_file($file['tmp_name'], $filepath)) {
+                    // Update database with new photo path
+                    $photo_path = 'uploads/profile-photos/' . $filename;
+                    $update_query = "UPDATE users SET profile_photo = ? WHERE id = ?";
+                    $stmt = mysqli_prepare($conn, $update_query);
+                    mysqli_stmt_bind_param($stmt, "si", $photo_path, $_SESSION['user_id']);
+
+                    if (mysqli_stmt_execute($stmt)) {
+                        $_SESSION['profile_photo'] = $photo_path;
+                        $message = 'Profile photo updated successfully!';
+                        error_log("Content Creator Profile Debug - Photo uploaded and database updated successfully");
+                    } else {
+                        $error = 'Failed to update profile photo in database.';
+                        error_log("Content Creator Profile Debug - Database update failed: " . mysqli_error($conn));
+                    }
+                } else {
+                    $error = 'Failed to upload profile photo.';
+                    error_log("Content Creator Profile Debug - File upload failed. Upload error: " . $file['error']);
+                    error_log("Content Creator Profile Debug - Source: " . $file['tmp_name'] . " -> Destination: " . $filepath);
+                    
+                    // Check if destination directory exists and is writable
+                    if (!is_dir($upload_dir)) {
+                        error_log("Content Creator Profile Debug - Upload directory does not exist: " . $upload_dir);
+                    } elseif (!is_writable($upload_dir)) {
+                        error_log("Content Creator Profile Debug - Upload directory not writable: " . $upload_dir);
+                    }
+                }
+            }
+        } else {
+            $error = 'Please select a valid image file.';
+        }
     }
 }
 
@@ -94,7 +169,12 @@ mysqli_stmt_execute($stmt);
 $user_result = mysqli_stmt_get_result($stmt);
 $user = mysqli_fetch_assoc($user_result);
 
-// Get user statistics
+// Update session with latest profile photo if it exists
+if ($user && isset($user['profile_photo']) && !empty($user['profile_photo'])) {
+    $_SESSION['profile_photo'] = $user['profile_photo'];
+}
+
+// Get content creator statistics
 $stats_query = "SELECT
     COUNT(*) as total_posts,
     SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END) as drafts,
@@ -120,28 +200,29 @@ $activity_result = mysqli_stmt_get_result($stmt);
 $page_title = 'Profile';
 include 'includes/header.php';
 ?>
-                <div class="mb-8">
-                    <h1 class="text-2xl lg:text-3xl font-bold text-seait-dark mb-2">Profile</h1>
-                    <p class="text-gray-600">Manage your account information and settings</p>
-                </div>
+        <div class="p-3 sm:p-4 lg:p-8">
+            <div class="mb-8">
+                <h1 class="text-2xl lg:text-3xl font-bold text-seait-dark mb-2">Profile Management</h1>
+                <p class="text-gray-600">Manage your account information, photo, and content creation settings</p>
+            </div>
 
-                <!-- Information Section -->
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 lg:p-6 mb-6 lg:mb-8">
-                    <div class="flex items-start">
-                        <div class="flex-shrink-0">
-                            <i class="fas fa-info-circle text-blue-400 text-lg"></i>
-                        </div>
-                        <div class="ml-3">
-                            <h3 class="text-sm font-medium text-blue-800 mb-2">Profile Management</h3>
-                            <div class="text-sm text-blue-700 space-y-1">
-                                <p><strong>Account Information:</strong> View and update your personal information including name, email, and contact details.</p>
-                                <p><strong>Content Statistics:</strong> Track your content creation activity with detailed statistics and recent activity.</p>
-                                <p><strong>Security:</strong> Update your password and manage account security settings.</p>
-                                <p><strong>Activity:</strong> View your recent content creation activity and track your contributions to the website.</p>
-                            </div>
+            <!-- Information Section -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 lg:p-6 mb-6 lg:mb-8">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-info-circle text-blue-400 text-lg"></i>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-blue-800 mb-2">Profile Management</h3>
+                        <div class="text-sm text-blue-700 space-y-1">
+                            <p><strong>Account Information:</strong> Update your personal information including name and email.</p>
+                            <p><strong>Profile Photo:</strong> Upload and manage your profile picture with real-time preview.</p>
+                            <p><strong>Content Creation Statistics:</strong> Track your content creation activity and performance metrics.</p>
+                            <p><strong>Security:</strong> Update your password and manage account security settings.</p>
                         </div>
                     </div>
                 </div>
+            </div>
 
             <?php if ($message): ?>
                 <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
@@ -158,6 +239,54 @@ include 'includes/header.php';
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <!-- Profile Information -->
                 <div class="lg:col-span-2 space-y-6">
+                    <!-- Profile Photo Section -->
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h3 class="text-lg font-semibold text-seait-dark mb-4">Profile Photo</h3>
+                        <div class="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-6">
+                            <!-- Current Photo Display -->
+                            <div class="flex-shrink-0">
+                                <div class="relative">
+                                    <div id="profilePhotoPreview" class="w-32 h-32 rounded-full border-4 border-seait-orange shadow-lg bg-gray-200 flex items-center justify-center">
+                                        <?php if (!empty($user['profile_photo'])): ?>
+                                            <img src="../<?php echo $user['profile_photo']; ?>" 
+                                                 alt="Profile Photo" 
+                                                 class="w-full h-full rounded-full object-cover">
+                                        <?php else: ?>
+                                            <i class="fas fa-user text-4xl text-gray-400"></i>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="absolute -bottom-2 -right-2 bg-seait-orange text-white rounded-full p-2 cursor-pointer hover:bg-orange-600 transition-colors" 
+                                         onclick="document.getElementById('photoInput').click()">
+                                        <i class="fas fa-camera text-sm"></i>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Photo Upload Form -->
+                            <div class="flex-1">
+                                <form method="POST" enctype="multipart/form-data" class="space-y-4">
+                                    <input type="hidden" name="action" value="update_photo">
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Upload New Photo</label>
+                                        <input type="file" id="photoInput" name="profile_photo" accept="image/*" 
+                                               class="hidden" onchange="previewProfilePhoto(this)">
+                                        <button type="button" onclick="document.getElementById('photoInput').click()" 
+                                                class="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-seait-orange hover:bg-orange-50 transition-colors text-center">
+                                            <i class="fas fa-cloud-upload-alt mr-2 text-gray-400"></i>
+                                            <span class="text-gray-600">Click to select image</span>
+                                        </button>
+                                        <p class="text-xs text-gray-500 mt-1">Supported formats: JPEG, PNG, GIF. Max size: 5MB</p>
+                                    </div>
+
+                                    <button type="submit" class="bg-seait-orange text-white px-6 py-2 rounded-md hover:bg-orange-600 transition">
+                                        <i class="fas fa-upload mr-2"></i>Update Photo
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Basic Information -->
                     <div class="bg-white rounded-lg shadow-md p-6">
                         <h3 class="text-lg font-semibold text-seait-dark mb-4">Basic Information</h3>
@@ -242,7 +371,7 @@ include 'includes/header.php';
                 <div class="space-y-6">
                     <!-- Account Statistics -->
                     <div class="bg-white rounded-lg shadow-md p-6">
-                        <h3 class="text-lg font-semibold text-seait-dark mb-4">Account Statistics</h3>
+                        <h3 class="text-lg font-semibold text-seait-dark mb-4">Content Creation Statistics</h3>
                         <div class="space-y-3">
                             <div class="flex justify-between">
                                 <span class="text-gray-600">Total Posts</span>
@@ -315,4 +444,32 @@ include 'includes/header.php';
                 </div>
             </div>
         </div>
-    </div>
+    </main>
+</div>
+</div>
+
+<script>
+    // Profile photo preview functionality
+    function previewProfilePhoto(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const previewDiv = document.getElementById('profilePhotoPreview');
+                // Clear the div and add the new image
+                previewDiv.innerHTML = `<img src="${e.target.result}" alt="Profile Photo Preview" class="w-full h-full rounded-full object-cover">`;
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    // Add click event to the camera icon for easier photo selection
+    document.addEventListener('DOMContentLoaded', function() {
+        const cameraIcon = document.querySelector('.fa-camera').parentElement;
+        cameraIcon.addEventListener('click', function() {
+            document.getElementById('photoInput').click();
+        });
+    });
+</script>
+
+</body>
+</html>

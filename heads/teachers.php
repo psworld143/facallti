@@ -4,6 +4,7 @@ session_start();
 // ini_set('display_errors', 1);
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 // Check if user is logged in and has head role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'head') {
@@ -340,32 +341,19 @@ include 'includes/header.php';
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div class="flex space-x-3">
-                                    <a href="view-evaluation.php?faculty_id=<?php echo $teacher['id']; ?>" 
+                                    <a href="view-teacher-profile.php?faculty_id=<?php echo IDEncryption::encrypt($teacher['id']); ?>" 
                                        class="inline-flex items-center justify-center w-10 h-10 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-all duration-200 transform hover:scale-105"
-                                       title="View Evaluations">
+                                       title="View Teacher Profile">
                                         <i class="fas fa-eye text-lg font-bold"></i>
                                     </a>
                                     
-                                    <a href="edit-faculty.php?id=<?php echo $teacher['id']; ?>" 
+                                    <a href="edit-faculty.php?id=<?php echo IDEncryption::encrypt($teacher['id']); ?>" 
                                        class="inline-flex items-center justify-center w-10 h-10 bg-yellow-50 text-yellow-700 rounded-lg hover:bg-yellow-100 transition-all duration-200 transform hover:scale-105"
                                        title="Edit Faculty">
                                         <i class="fas fa-edit text-lg font-bold"></i>
                                     </a>
                                     
-                                    <?php if (!empty($teacher['qrcode'])): ?>
-                                        <a href="../generate-teacher-qr.php?id=<?php echo $teacher['id']; ?>" 
-                                           target="_blank" 
-                                           class="inline-flex items-center justify-center w-10 h-10 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-all duration-200 transform hover:scale-105"
-                                           title="View QR Code">
-                                            <i class="fas fa-qrcode text-lg font-bold"></i>
-                                        </a>
-                                    <?php else: ?>
-                                        <span class="inline-flex items-center justify-center w-10 h-10 bg-gray-50 text-gray-400 rounded-lg cursor-not-allowed"
-                                              title="No QR Code Available">
-                                            <i class="fas fa-qrcode text-lg font-bold"></i>
-                                        </span>
-                                    <?php endif; ?>
-                                    
+
                                     <?php if ($teacher['is_active']): ?>
                                         <button onclick="confirmDeactivate(<?php echo $teacher['id']; ?>, '<?php echo htmlspecialchars($teacher['first_name'] . ' ' . $teacher['last_name'], ENT_QUOTES); ?>')" 
                                                 class="inline-flex items-center justify-center w-10 h-10 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-all duration-200 transform hover:scale-105"
@@ -455,10 +443,11 @@ include 'includes/header.php';
                             <button type="button" id="removePhoto" class="bg-red-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-red-600 transition-colors hidden">
                                 <i class="fas fa-trash mr-1"></i>Remove
                             </button>
+
                         </div>
                         
                         <input type="file" id="faculty_photo" name="faculty_photo" accept="image/*" class="hidden">
-                    <input type="hidden" id="captured_photo" name="captured_photo">
+                        <input type="hidden" id="captured_photo" name="captured_photo">
                         <p class="text-xs text-gray-500">Optional. Max 2MB. JPG, PNG, GIF allowed.</p>
                     </div>
                 </div>
@@ -712,9 +701,13 @@ function capturePhoto() {
     const canvas = document.getElementById('cameraCanvas');
     const context = canvas.getContext('2d');
     
+    console.log('Capturing photo...');
+    
     // Set canvas dimensions to match video
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
+    
+    console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
     
     // Draw video frame to canvas
     context.drawImage(video, 0, 0);
@@ -722,6 +715,10 @@ function capturePhoto() {
     // Convert to base64 and store in hidden input
     const base64Data = canvas.toDataURL('image/jpeg', 0.8);
     document.getElementById('captured_photo').value = base64Data;
+    
+    console.log('Photo captured and stored in captured_photo input');
+    console.log('Base64 data length:', base64Data.length);
+    console.log('First 100 chars:', base64Data.substring(0, 100));
     
     // Clear file input when photo is captured
     document.getElementById('faculty_photo').value = '';
@@ -737,6 +734,8 @@ function capturePhoto() {
     // Stop camera and hide camera view
     stopCamera();
     hideCameraView();
+    
+    console.log('Photo capture completed successfully');
 }
 
 // Close modal when clicking outside
@@ -852,6 +851,18 @@ document.getElementById('addFacultyForm').addEventListener('submit', function(e)
     const firstName = document.getElementById('first_name').value.trim();
     const lastName = document.getElementById('last_name').value.trim();
     const capturedPhoto = document.getElementById('captured_photo').value;
+    const facultyPhoto = document.getElementById('faculty_photo').files[0];
+    
+    console.log('=== FORM SUBMISSION DEBUG ===');
+    console.log('QR Code:', qrcode);
+    console.log('First Name:', firstName);
+    console.log('Last Name:', lastName);
+    console.log('Captured Photo length:', capturedPhoto ? capturedPhoto.length : 0);
+    console.log('Captured Photo starts with:', capturedPhoto ? capturedPhoto.substring(0, 50) : 'N/A');
+    console.log('Faculty Photo file:', facultyPhoto);
+    console.log('Faculty Photo name:', facultyPhoto ? facultyPhoto.name : 'N/A');
+    console.log('Faculty Photo size:', facultyPhoto ? facultyPhoto.size : 'N/A');
+    console.log('=== END DEBUG ===');
     
     if (!qrcode || !firstName || !lastName) {
         e.preventDefault();
@@ -859,12 +870,16 @@ document.getElementById('addFacultyForm').addEventListener('submit', function(e)
         return false;
     }
     
-    // Validate QR code format (YYYY-NNNN)
-    const qrcodePattern = /^\d{4}-\d{4}$/;
-    if (!qrcodePattern.test(qrcode)) {
-        e.preventDefault();
-        alert('QR Code must be in format YYYY-NNNN (e.g., 2025-0001).');
-        return false;
+    // Check if either photo option is selected (optional)
+    if (!capturedPhoto && !facultyPhoto) {
+        console.log('No photo selected - this is optional');
+    } else if (capturedPhoto) {
+        console.log('Captured photo will be submitted - Length:', capturedPhoto.length);
+        if (capturedPhoto.length < 100) {
+            console.log('WARNING: Captured photo data seems too short!');
+        }
+    } else if (facultyPhoto) {
+        console.log('File photo will be submitted - Name:', facultyPhoto.name, 'Size:', facultyPhoto.size);
     }
     
     return true;
@@ -1000,6 +1015,7 @@ document.addEventListener('keydown', function(e) {
         closeConfirmationModal();
     }
 });
+
+
 </script>
 
-<?php include 'includes/footer.php'; ?>

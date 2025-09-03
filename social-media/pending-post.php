@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 check_social_media_manager();
 
@@ -241,106 +242,10 @@ $pending_count = get_pending_posts_count($conn);
 // ========================================
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pending Posts - Social Media Manager - SEAIT</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'seait-orange': '#FF6B35',
-                        'seait-dark': '#2C3E50',
-                        'seait-light': '#FFF8F0'
-                    }
-                }
-            }
-        }
-    </script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        @keyframes bounceIn {
-            0% {
-                opacity: 0;
-                transform: scale(0.3);
-            }
-            50% {
-                opacity: 1;
-                transform: scale(1.05);
-            }
-            70% {
-                transform: scale(0.9);
-            }
-            100% {
-                opacity: 1;
-                transform: scale(1);
-            }
-        }
-
-        .animate-bounce-in {
-            animation: bounceIn 0.6s ease-out;
-        }
-    </style>
-</head>
-<body class="bg-gray-50">
-    <!-- Fixed Navigation -->
-    <nav class="fixed top-0 left-0 right-0 bg-white shadow-lg z-50">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="flex justify-between items-center py-4">
-                <div class="flex items-center space-x-4">
-                    <img src="../assets/images/seait-logo.png" alt="SEAIT Logo" class="h-10 w-auto">
-                    <div class="hidden sm:block">
-                        <h1 class="text-xl font-bold text-seait-dark">SEAIT Social Media</h1>
-                        <p class="text-sm text-gray-600">Welcome, <?php echo $_SESSION['first_name']; ?></p>
-                    </div>
-                    <div class="sm:hidden">
-                        <h1 class="text-lg font-bold text-seait-dark">SEAIT</h1>
-                        <p class="text-xs text-gray-600"><?php echo $_SESSION['first_name']; ?></p>
-                    </div>
-                </div>
-
-                <div class="flex items-center space-x-2 sm:space-x-4">
-                    <!-- Mobile menu button -->
-                    <button id="mobile-menu-button" class="lg:hidden bg-seait-orange text-white p-2 rounded-md hover:bg-orange-600 transition">
-                        <i class="fas fa-bars"></i>
-                    </button>
-
-                    <!-- Desktop links -->
-                    <div class="hidden sm:flex items-center space-x-4">
-                        <a href="../index.php" class="text-seait-dark hover:text-seait-orange transition">
-                            <i class="fas fa-home mr-2"></i>View Site
-                        </a>
-                        <a href="logout.php" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition">
-                            <i class="fas fa-sign-out-alt mr-2"></i>Logout
-                        </a>
-                    </div>
-
-                    <!-- Mobile links -->
-                    <div class="sm:hidden flex items-center space-x-2">
-                        <a href="../index.php" class="text-seait-dark hover:text-seait-orange transition p-2">
-                            <i class="fas fa-home"></i>
-                        </a>
-                        <a href="logout.php" class="bg-red-500 text-white p-2 rounded hover:bg-red-600 transition">
-                            <i class="fas fa-sign-out-alt"></i>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Mobile Sidebar Overlay -->
-    <div id="mobile-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden hidden"></div>
-
-    <!-- Sidebar -->
-    <?php include 'includes/sidebar.php'; ?>
-
-    <!-- Scrollable Main Content -->
-    <div id="main-content" class="lg:ml-64 pt-20 min-h-screen transition-all duration-300 ease-in-out">
+<?php
+$page_title = 'Pending Posts';
+include 'includes/header.php';
+?>
         <div class="p-3 sm:p-4 lg:p-8">
             <div class="mb-6 sm:mb-8">
                 <h1 class="text-2xl sm:text-3xl font-bold text-seait-dark mb-2">Pending Posts</h1>
@@ -454,19 +359,19 @@ $pending_count = get_pending_posts_count($conn);
                                         </div>
                                     </div>
                                     <div class="flex flex-wrap gap-2 lg:flex-col lg:gap-2 lg:ml-4">
-                                        <button onclick="openApproveModal(<?php echo $post['id']; ?>)"
+                                        <button onclick="openApproveModal('<?php echo encrypt_id($post['id']); ?>')"
                                                 class="bg-green-500 text-white px-3 py-2 rounded hover:bg-green-600 transition text-sm">
                                             <i class="fas fa-check mr-1"></i><span class="hidden sm:inline">Approve</span>
                                         </button>
-                                        <button onclick="rejectPost(<?php echo $post['id']; ?>)"
+                                        <button onclick="rejectPost('<?php echo encrypt_id($post['id']); ?>')"
                                                 class="bg-red-500 text-white px-3 py-2 rounded hover:bg-red-600 transition text-sm">
                                             <i class="fas fa-times mr-1"></i><span class="hidden sm:inline">Reject</span>
                                         </button>
-                                        <button onclick="viewPost(<?php echo $post['id']; ?>)"
+                                        <button onclick="viewPost('<?php echo encrypt_id($post['id']); ?>')"
                                                 class="bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600 transition text-sm">
                                             <i class="fas fa-eye mr-1"></i><span class="hidden sm:inline">View</span>
                                         </button>
-                                        <button onclick="deletePost(<?php echo $post['id']; ?>)"
+                                        <button onclick="deletePost('<?php echo encrypt_id($post['id']); ?>')"
                                                 class="bg-gray-500 text-white px-3 py-2 rounded hover:bg-gray-600 transition text-sm">
                                             <i class="fas fa-trash mr-1"></i><span class="hidden sm:inline">Delete</span>
                                         </button>
@@ -644,145 +549,117 @@ $pending_count = get_pending_posts_count($conn);
         </div>
     </div>
 
-    <script>
-        // Mobile menu functionality
-        const mobileMenuButton = document.getElementById('mobile-menu-button');
-        const sidebar = document.getElementById('sidebar');
-        const mobileOverlay = document.getElementById('mobile-overlay');
-        const closeSidebarButton = document.getElementById('close-sidebar');
-        const mainContent = document.getElementById('main-content');
+                    </div>
+            </div>
+        </div>
+    </main>
+</div>
+</div>
 
-        function openSidebar() {
-            sidebar.classList.remove('-translate-x-full');
-            mobileOverlay.classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
-        }
+                <script>
+                    function approvePost(postId) {
+                        if (confirm('Are you sure you want to approve this post?')) {
+                            const form = document.createElement('form');
+                            form.method = 'POST';
+                            form.innerHTML = `
+                                <input type="hidden" name="action" value="approve">
+                                <input type="hidden" name="post_id" value="${postId}">
+                            `;
+                            document.body.appendChild(form);
+                            form.submit();
+                        }
+                    }
 
-        function closeSidebar() {
-            sidebar.classList.add('-translate-x-full');
-            mobileOverlay.classList.add('hidden');
-            document.body.style.overflow = 'auto';
-        }
+                    function rejectPost(postId) {
+                        document.getElementById('rejectPostId').value = postId;
+                        document.getElementById('rejectionModal').classList.remove('hidden');
+                    }
 
-        // Event listeners
-        mobileMenuButton.addEventListener('click', openSidebar);
-        closeSidebarButton.addEventListener('click', closeSidebar);
-        mobileOverlay.addEventListener('click', closeSidebar);
+                    function closeRejectionModal() {
+                        document.getElementById('rejectionModal').classList.add('hidden');
+                        document.getElementById('rejection_reason').value = '';
+                    }
 
-        // Close sidebar when clicking on navigation links (mobile)
-        const navLinks = sidebar.querySelectorAll('a');
-        navLinks.forEach(link => {
-            link.addEventListener('click', () => {
-                if (window.innerWidth < 1024) { // lg breakpoint
-                    closeSidebar();
-                }
-            });
-        });
+                    function deletePost(postId) {
+                        const deleteModal = document.getElementById('deleteModal');
+                        const postIdField = document.getElementById('deletePostId');
+                        if (deleteModal && postIdField) {
+                            postIdField.value = postId;
+                            deleteModal.classList.remove('hidden');
+                        }
+                    }
 
-        // Handle window resize
-        window.addEventListener('resize', () => {
-            if (window.innerWidth >= 1024) {
-                closeSidebar();
-            }
-        });
+                    function closeDeleteModal() {
+                        const deleteModal = document.getElementById('deleteModal');
+                        if (deleteModal) {
+                            deleteModal.classList.add('hidden');
+                        }
+                    }
 
-        function approvePost(postId) {
-            if (confirm('Are you sure you want to approve this post?')) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.innerHTML = `
-                    <input type="hidden" name="action" value="approve">
-                    <input type="hidden" name="post_id" value="${postId}">
-                `;
-                document.body.appendChild(form);
-                form.submit();
-            }
-        }
+                    function confirmDelete() {
+                        const postId = document.getElementById('deletePostId').value;
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.innerHTML = `
+                            <input type="hidden" name="action" value="delete">
+                            <input type="hidden" name="post_id" value="${postId}">
+                        `;
+                        document.body.appendChild(form);
+                        form.submit();
+                    }
 
-        function rejectPost(postId) {
-            document.getElementById('rejectPostId').value = postId;
-            document.getElementById('rejectionModal').classList.remove('hidden');
-        }
+                    function viewPost(postId) {
+                        // Navigate to the dedicated view post page
+                        window.location.href = `view-post.php?id=${postId}`;
+                    }
 
-        function closeRejectionModal() {
-            document.getElementById('rejectionModal').classList.add('hidden');
-            document.getElementById('rejection_reason').value = '';
-        }
+                    function refreshPage() {
+                        window.location.reload();
+                    }
 
-        function deletePost(postId) {
-            const deleteModal = document.getElementById('deleteModal');
-            const postIdField = document.getElementById('deletePostId');
-            if (deleteModal && postIdField) {
-                postIdField.value = postId;
-                deleteModal.classList.remove('hidden');
-            }
-        }
+                    function openApproveModal(postId) {
+                        document.getElementById('approvePostId').value = postId;
+                        document.getElementById('approveModal').classList.remove('hidden');
+                    }
+                    function closeApproveModal() {
+                        document.getElementById('approveModal').classList.add('hidden');
+                        document.getElementById('approvePostId').value = '';
+                    }
+                    function confirmApprove() {
+                        const postId = document.getElementById('approvePostId').value;
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.innerHTML = `
+                            <input type="hidden" name="action" value="approve">
+                            <input type="hidden" name="post_id" value="${postId}">
+                        `;
+                        document.body.appendChild(form);
+                        form.submit();
+                    }
 
-        function closeDeleteModal() {
-            const deleteModal = document.getElementById('deleteModal');
-            if (deleteModal) {
-                deleteModal.classList.add('hidden');
-            }
-        }
+                    // Close modal when clicking outside
+                    document.getElementById('rejectionModal').addEventListener('click', function(e) {
+                        if (e.target === this) {
+                            closeRejectionModal();
+                        }
+                    });
 
-        function confirmDelete() {
-            const postId = document.getElementById('deletePostId').value;
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.innerHTML = `
-                <input type="hidden" name="action" value="delete">
-                <input type="hidden" name="post_id" value="${postId}">
-            `;
-            document.body.appendChild(form);
-            form.submit();
-        }
-
-        function viewPost(postId) {
-            // Navigate to the dedicated view post page
-            window.location.href = `view-post.php?id=${postId}`;
-        }
-
-        function refreshPage() {
-            window.location.reload();
-        }
-
-        function openApproveModal(postId) {
-            document.getElementById('approvePostId').value = postId;
-            document.getElementById('approveModal').classList.remove('hidden');
-        }
-        function closeApproveModal() {
-            document.getElementById('approveModal').classList.add('hidden');
-            document.getElementById('approvePostId').value = '';
-        }
-        function confirmApprove() {
-            const postId = document.getElementById('approvePostId').value;
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.innerHTML = `
-                <input type="hidden" name="action" value="approve">
-                <input type="hidden" name="post_id" value="${postId}">
-            `;
-            document.body.appendChild(form);
-            form.submit();
-        }
-
-        // Close modal when clicking outside
-        document.getElementById('rejectionModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeRejectionModal();
-            }
-        });
-
-        document.getElementById('deleteModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeDeleteModal();
-            }
-        });
-        document.getElementById('approveModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeApproveModal();
-            }
-        });
-    </script>
+                    document.getElementById('deleteModal').addEventListener('click', function(e) {
+                        if (e.target === this) {
+                            closeDeleteModal();
+                        }
+                    });
+                    document.getElementById('approveModal').addEventListener('click', function(e) {
+                        if (e.target === this) {
+                            closeApproveModal();
+                        }
+                    });
+                </script>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+</div>
 </body>
 </html>

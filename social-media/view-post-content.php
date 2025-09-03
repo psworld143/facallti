@@ -2,11 +2,13 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 check_social_media_manager();
 
-// Get post ID from URL
-$post_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+// Get post ID from URL and decrypt it
+$encrypted_id = isset($_GET['id']) ? $_GET['id'] : '';
+$post_id = safe_decrypt_id($encrypted_id, 0);
 
 if (!$post_id) {
     echo '<div class="text-center py-8 text-red-600"><i class="fas fa-exclamation-triangle text-2xl"></i><p class="mt-2">Post not found</p></div>';

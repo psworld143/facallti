@@ -3,6 +3,14 @@ session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
 
+// Debug: Log what we received
+error_log("=== ADD FACULTY DEBUG START ===");
+error_log("POST data received: " . print_r($_POST, true));
+error_log("FILES data received: " . print_r($_FILES, true));
+error_log("Request method: " . $_SERVER['REQUEST_METHOD']);
+error_log("Content type: " . ($_SERVER['CONTENT_TYPE'] ?? 'Not set'));
+error_log("=== END DEBUG START ===");
+
 // Check if user is logged in and has head role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'head') {
     header('Location: ../index.php');
@@ -30,10 +38,6 @@ if (!$head_info) {
     header('Location: teachers.php?error=unauthorized');
     exit();
 }
-
-
-
-
 
 // Sanitize input data
 $qrcode = sanitize_input($_POST['qrcode']);
@@ -76,6 +80,7 @@ $counter = 1;
 $original_email = $email;
 
 do {
+    $email_check_query = "SELECT id FROM faculty WHERE email = ?";
     $email_check_stmt = mysqli_prepare($conn, $email_check_query);
     mysqli_stmt_bind_param($email_check_stmt, "s", $email);
     mysqli_stmt_execute($email_check_stmt);
@@ -92,39 +97,58 @@ do {
 // Handle photo upload
 $photo_path = null;
 
-// Check for captured photo (base64)
+// Debug: Log what we received
+error_log("=== PHOTO DEBUG ===");
+error_log("POST captured_photo exists: " . (isset($_POST['captured_photo']) ? 'YES' : 'NO'));
+if (isset($_POST['captured_photo'])) {
+    error_log("captured_photo length: " . strlen($_POST['captured_photo']));
+    error_log("captured_photo starts with: " . substr($_POST['captured_photo'], 0, 50));
+}
+
+// Check for captured photo (base64) first
 if (isset($_POST['captured_photo']) && !empty($_POST['captured_photo'])) {
+    error_log("Processing captured photo...");
     $base64_data = $_POST['captured_photo'];
     
-    // Remove data URL prefix
+    // Remove data URL prefix if present
     if (strpos($base64_data, 'data:image/') === 0) {
+        error_log("Removing data URL prefix...");
         $base64_data = substr($base64_data, strpos($base64_data, ',') + 1);
+        error_log("Base64 data after prefix removal length: " . strlen($base64_data));
     }
     
     // Decode base64
+    error_log("Attempting to decode base64...");
     $image_data = base64_decode($base64_data);
     
     if ($image_data !== false) {
+        error_log("Base64 decode successful, image data length: " . strlen($image_data));
         $upload_dir = dirname(__FILE__) . '/../uploads/faculty_photos/';
         
         // Create directory if it doesn't exist
         if (!is_dir($upload_dir)) {
+            error_log("Creating upload directory: " . $upload_dir);
             mkdir($upload_dir, 0755, true);
         }
         
         // Generate unique filename
         $filename = $qrcode . '_' . time() . '.jpg';
         $upload_path = $upload_dir . $filename;
+        error_log("Attempting to save file to: " . $upload_path);
         
         if (file_put_contents($upload_path, $image_data)) {
             $photo_path = 'uploads/faculty_photos/' . $filename;
+            error_log("File saved successfully! Photo path: " . $photo_path);
+        } else {
+            error_log("Failed to save file using file_put_contents");
         }
     } else {
         error_log("Failed to decode base64 image data");
     }
 }
-// Check for uploaded file
+// Check for uploaded file if no captured photo
 elseif (isset($_FILES['faculty_photo']) && $_FILES['faculty_photo']['error'] === UPLOAD_ERR_OK) {
+    error_log("Processing uploaded file photo...");
     $upload_dir = dirname(__FILE__) . '/../uploads/faculty_photos/';
     
     // Create directory if it doesn't exist
@@ -146,16 +170,16 @@ elseif (isset($_FILES['faculty_photo']) && $_FILES['faculty_photo']['error'] ===
             
             if (move_uploaded_file($_FILES['faculty_photo']['tmp_name'], $upload_path)) {
                 $photo_path = 'uploads/faculty_photos/' . $filename;
+                error_log("Uploaded file saved successfully! Photo path: " . $photo_path);
             }
-        } else {
-            error_log("File too large: " . $_FILES['faculty_photo']['size'] . " bytes");
         }
-    } else {
-        error_log("Invalid file type: " . $file_extension);
     }
+} else {
+    error_log("No photo to process - neither captured photo nor uploaded file");
 }
 
-
+error_log("Final photo_path value: " . ($photo_path ?: 'NULL'));
+error_log("=== END PHOTO DEBUG ===");
 
 // Sample data for new faculty
 $sample_position = 'Instructor'; // Default position
@@ -177,7 +201,7 @@ try {
         throw new Exception("Error preparing faculty statement: " . mysqli_error($conn));
     }
     
-
+    error_log("About to save faculty with photo_path: " . ($photo_path ?: 'NULL'));
     
     mysqli_stmt_bind_param($faculty_stmt, "sssssssss", 
         $first_name, $last_name, $email, $sample_position, $department, $sample_bio, $photo_path, $qrcode, $default_password);
@@ -217,19 +241,19 @@ try {
     // Commit transaction
     mysqli_commit($conn);
     
-    // Success - redirect with success message
-    header('Location: teachers.php?success=faculty_added&name=' . urlencode($first_name . ' ' . $last_name) . '&password=Seait123');
+    // Redirect with success message
+    header('Location: teachers.php?success=faculty_added&qrcode=' . urlencode($qrcode));
     exit();
     
 } catch (Exception $e) {
-    // Rollback transaction
+    // Rollback transaction on error
     mysqli_rollback($conn);
     
-    // Log error for debugging
-    error_log("Add Faculty Error: " . $e->getMessage());
+    // Log error
+    error_log("Error adding faculty: " . $e->getMessage());
     
-    // Redirect with error
-    header('Location: teachers.php?error=database_error');
+    // Redirect with error message
+    header('Location: teachers.php?error=add_failed&message=' . urlencode($e->getMessage()));
     exit();
 }
 ?>

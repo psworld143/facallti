@@ -8,9 +8,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo isset($page_title) ? $page_title . ' - Head Dashboard' : 'Head Dashboard'; ?></title>
-    <link rel="icon" type="image/png" href="../../assets/images/seait-logo.png">
-    <link rel="shortcut icon" type="image/png" href="../../assets/images/seait-logo.png">
-    <link rel="apple-touch-icon" type="image/png" href="../../assets/images/seait-logo.png">
+    <!-- Favicon Configuration -->
+    <link rel="icon" type="image/x-icon" href="../assets/images/favicon.ico">
+    <link rel="icon" type="image/png" href="../assets/images/seait-logo.png">
+    <link rel="shortcut icon" type="image/x-icon" href="../assets/images/favicon.ico">
+    <link rel="shortcut icon" type="image/png" href="../assets/images/seait-logo.png">
+    <link rel="apple-touch-icon" type="image/png" href="../assets/images/seait-logo.png">
+    <link rel="apple-touch-icon-precomposed" type="image/png" href="../assets/images/seait-logo.png">
+    <meta name="msapplication-TileImage" content="../assets/images/seait-logo.png">
+    <meta name="msapplication-TileColor" content="#FF6B35">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -232,15 +238,26 @@
                 <!-- User Profile Section -->
                 <div class="mb-6 p-4 bg-gray-800 rounded-lg mx-3 transform transition-all duration-300 hover:bg-gray-700 hover:scale-105 hover:shadow-lg">
                     <div class="flex items-center">
-                        <div class="h-12 w-12 rounded-full bg-seait-orange flex items-center justify-center mr-3 transition-all duration-300 hover:bg-orange-500 hover:scale-110 hover:shadow-md">
-                            <span class="text-white font-semibold text-lg"><?php echo strtoupper(substr($_SESSION['first_name'], 0, 1) . substr($_SESSION['last_name'], 0, 1)); ?></span>
+                        <div class="h-12 w-12 rounded-full bg-seait-orange flex items-center justify-center mr-3 transition-all duration-300 hover:bg-orange-500 hover:scale-110 hover:shadow-md overflow-hidden">
+                            <?php 
+                            // Debug: Log session data
+                            error_log("Heads Sidebar Debug - Session profile_photo: " . ($_SESSION['profile_photo'] ?? 'NOT SET'));
+                            error_log("Heads Sidebar Debug - Session user_id: " . ($_SESSION['user_id'] ?? 'NOT SET'));
+                            
+                            if (!empty($_SESSION['profile_photo'])): ?>
+                                <img src="/seait/<?php echo htmlspecialchars($_SESSION['profile_photo']); ?>" 
+                                     alt="Profile Photo" 
+                                     class="w-full h-full rounded-full object-cover">
+                            <?php else: ?>
+                                <span class="text-white font-semibold text-lg"><?php echo strtoupper(substr($_SESSION['first_name'], 0, 1) . substr($_SESSION['last_name'], 0, 1)); ?></span>
+                            <?php endif; ?>
                         </div>
                         <div class="flex-1">
-                            <p class="text-white font-semibold text-sm"><?php echo htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']); ?></p>
-                            <p class="text-gray-400 text-xs">Department Head</p>
+                            <p class="text-white font-semibold text-base"><?php echo htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']); ?></p>
+                            <p class="text-gray-400 text-sm">Department Head</p>
                             <div class="flex items-center mt-1">
                                 <div class="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></div>
-                                <span class="text-green-400 text-xs">Online</span>
+                                <span class="text-green-400 text-sm">Online</span>
                             </div>
                         </div>
                     </div>
@@ -250,56 +267,78 @@
                     <!-- Dashboard Section -->
                     <div class="animate-fadeInUp" style="animation-delay: 0.1s;">
                         <a href="dashboard.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'dashboard.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
-                            <i class="fas fa-tachometer-alt mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Dashboard
+                            <i class="fas fa-tachometer-alt mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i><span class="text-sm">Dashboard</span>
                         </a>
                     </div>
 
                     <!-- Teacher Management Section -->
                     <div class="animate-fadeInUp" style="animation-delay: 0.2s;">
-                        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Teacher Management</h3>
+                        <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Teacher Management</h3>
                         <div class="space-y-1">
                             <a href="teachers.php" class="flex items-center <?php echo (basename($_SERVER['PHP_SELF']) === 'teachers.php' || basename($_SERVER['PHP_SELF']) === 'edit-faculty.php') ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
-                                <i class="fas fa-chalkboard-teacher mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>My Teachers
+                                <i class="fas fa-chalkboard-teacher mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i><span class="text-sm">My Teachers</span>
                             </a>
                             <a href="consultation-hours.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'consultation-hours.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
-                                <i class="fas fa-clock mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>FaCallTI
+                                <i class="fas fa-clock mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i><span class="text-sm">FaCallTI</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Schedule Management Section -->
+                    <div class="animate-fadeInUp" style="animation-delay: 0.25s;">
+                        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Schedule Management</h3>
+                        <div class="space-y-1">
+                            <a href="schedule-management.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'schedule-management.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                                <i class="fas fa-calendar-alt mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i><span class="text-xs">Assign Schedules</span>
+                                <span class="ml-auto text-xs bg-yellow-600 text-white px-2 py-1 rounded-full">Soon</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- LMS Monitoring Section -->
+                    <div class="animate-fadeInUp" style="animation-delay: 0.3s;">
+                        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">LMS Monitoring</h3>
+                        <div class="space-y-1">
+                            <a href="lms-monitoring.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'lms-monitoring.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
+                                <i class="fas fa-chalkboard-teacher mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i><span class="text-xs">Teacher LMS Activities</span>
+                                <span class="ml-auto text-xs bg-yellow-600 text-white px-2 py-1 rounded-full">Soon</span>
                             </a>
                         </div>
                     </div>
 
                     <!-- Reports & Analytics Section -->
-                    <div class="animate-fadeInUp" style="animation-delay: 0.3s;">
+                    <div class="animate-fadeInUp" style="animation-delay: 0.4s;">
                         <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Reports & Analytics</h3>
                         <div class="space-y-1">
                             <a href="reports.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'reports.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
-                                <i class="fas fa-chart-bar mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Evaluation Reports
+                                <i class="fas fa-chart-bar mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i><span class="text-xs">Evaluation Reports</span>
                             </a>
                         </div>
                     </div>
 
                     <!-- Leave Management Section -->
-                    <div class="animate-fadeInUp" style="animation-delay: 0.35s;">
+                    <div class="animate-fadeInUp" style="animation-delay: 0.45s;">
                         <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Leave Management</h3>
                         <div class="space-y-1">
                             <a href="leave-requests.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'leave-requests.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
-                                <i class="fas fa-calendar-check mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Leave Requests
+                                <i class="fas fa-calendar-check mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i><span class="text-xs">Leave Requests</span>
                             </a>
                             <a href="leave-approvals.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'leave-approvals.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
-                                <i class="fas fa-thumbs-up mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>My Approvals
+                                <i class="fas fa-thumbs-up mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i><span class="text-xs">My Approvals</span>
                             </a>
                         </div>
                     </div>
 
                     <!-- System Section -->
-                    <div class="animate-fadeInUp" style="animation-delay: 0.45s;">
+                    <div class="animate-fadeInUp" style="animation-delay: 0.55s;">
                         <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">System</h3>
                         <div class="space-y-1">
                             <a href="profile.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'profile.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
-                                <i class="fas fa-user-edit mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Profile Settings
+                                <i class="fas fa-user-edit mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i><span class="text-xs">Profile Settings</span>
                             </a>
                             <?php if (function_exists('is_head_evaluation_active') && is_head_evaluation_active()): ?>
                                 <a href="evaluate-faculty.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'evaluate-faculty.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
-                                    <i class="fas fa-clipboard-check mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Evaluate Faculty
+                                    <i class="fas fa-clipboard-check mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i><span class="text-xs">Evaluate Faculty</span>
                                 </a>
                             <?php endif; ?>
                         </div>
@@ -310,7 +349,7 @@
             <!-- Sidebar Footer -->
             <div class="sidebar-footer p-4 border-t border-gray-700 bg-gradient-to-r from-gray-800 to-gray-700">
                 <a href="logout.php" class="flex items-center bg-red-600 text-white hover:bg-red-700 px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg">
-                    <i class="fas fa-sign-out-alt mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Logout
+                    <i class="fas fa-sign-out-alt mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i><span class="text-xs">Logout</span>
                 </a>
             </div>
         </div>
@@ -328,13 +367,34 @@
 
                         <div>
                             <h1 class="text-lg sm:text-xl font-bold text-seait-dark">Head Dashboard</h1>
-                            <p class="text-xs sm:text-sm text-gray-600">Department Head Evaluation Management</p>
+                            <p class="text-xs sm:text-sm text-gray-600">Department Head Management</p>
                         </div>
                     </div>
 
                     <div class="flex items-center space-x-4">
-                        <div class="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-seait-orange flex items-center justify-center">
-                            <span class="text-white text-sm sm:text-base font-medium"><?php echo strtoupper(substr($_SESSION['first_name'], 0, 1) . substr($_SESSION['last_name'], 0, 1)); ?></span>
+                        <!-- Real-time Calendar and Clock -->
+                        <div class="hidden sm:inline-flex items-center bg-gray-50 rounded-lg px-3 py-2 border border-gray-200">
+                            <span class="text-xs text-gray-500 uppercase tracking-wide font-medium whitespace-nowrap" id="currentDate">
+                                <!-- Date will be populated by JavaScript -->
+                            </span>
+                            <span class="text-lg font-bold text-seait-dark whitespace-nowrap ml-3" id="currentTime">
+                                <!-- Time will be populated by JavaScript -->
+                            </span>
+                        </div>
+                        
+                        <div class="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-seait-orange flex items-center justify-center overflow-hidden">
+                            <?php 
+                            // Debug: Log session data
+                            error_log("Heads Header Debug - Session profile_photo: " . ($_SESSION['profile_photo'] ?? 'NOT SET'));
+                            error_log("Heads Header Debug - Session user_id: " . ($_SESSION['user_id'] ?? 'NOT SET'));
+                            
+                            if (!empty($_SESSION['profile_photo'])): ?>
+                                <img src="/seait/<?php echo htmlspecialchars($_SESSION['profile_photo']); ?>" 
+                                     alt="Profile Photo" 
+                                     class="w-full h-full rounded-full object-cover">
+                            <?php else: ?>
+                                <span class="text-white text-sm sm:text-base font-medium"><?php echo strtoupper(substr($_SESSION['first_name'], 0, 1) . substr($_SESSION['last_name'], 0, 1)); ?></span>
+                            <?php endif; ?>
                         </div>
                         <a href="logout.php" class="text-gray-600 hover:text-red-600 p-2 rounded-lg hover:bg-gray-100 transition-colors" title="Logout">
                             <i class="fas fa-sign-out-alt text-xl"></i>
@@ -394,5 +454,37 @@ document.addEventListener('DOMContentLoaded', function() {
             overlay.classList.remove('open');
         }
     });
+    
+    // Initialize real-time calendar and clock
+    updateDateTime();
+    setInterval(updateDateTime, 1000); // Update every second
 });
+
+// Real-time calendar and clock functionality
+function updateDateTime() {
+    const now = new Date();
+    
+    // Update date
+    const dateElement = document.getElementById('currentDate');
+    if (dateElement) {
+        const options = { 
+            weekday: 'short', 
+            month: 'short', 
+            day: 'numeric' 
+        };
+        dateElement.textContent = now.toLocaleDateString('en-US', options);
+    }
+    
+    // Update time
+    const timeElement = document.getElementById('currentTime');
+    if (timeElement) {
+        const options = { 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            second: '2-digit',
+            hour12: true 
+        };
+        timeElement.textContent = now.toLocaleTimeString('en-US', options);
+    }
+}
 </script>

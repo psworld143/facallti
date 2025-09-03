@@ -2,11 +2,13 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 check_social_media_manager();
 
 if (isset($_GET['id'])) {
-    $post_id = (int)$_GET['id'];
+    $encrypted_id = $_GET['id'];
+    $post_id = safe_decrypt_id($encrypted_id, 0);
 
     // Update post status to rejected
     $query = "UPDATE posts SET status = 'rejected', approved_by = ? WHERE id = ?";

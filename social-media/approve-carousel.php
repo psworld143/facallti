@@ -2,11 +2,13 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 check_social_media_manager();
 
 if (isset($_GET['id'])) {
-    $slide_id = (int)$_GET['id'];
+    $encrypted_id = $_GET['id'];
+    $slide_id = safe_decrypt_id($encrypted_id, 0);
 
     // Update carousel slide status to approved and set is_active to 1
     $query = "UPDATE carousel_slides SET status = 'approved', approved_by = ?, is_active = 1 WHERE id = ?";

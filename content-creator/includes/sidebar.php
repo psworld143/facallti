@@ -10,7 +10,7 @@ if (!isset($sidebar_context)) {
 
 // Get current page name for active state
 if (!isset($current_page)) {
-    $current_page = basename($_SERVER['PHP_SELF']);
+$current_page = basename($_SERVER['PHP_SELF']);
 }
 
 // Debug: Log current page for troubleshooting
@@ -32,7 +32,7 @@ error_log("Sidebar Debug - Current Page: " . $current_page);
         <div class="absolute top-2 right-2 text-xs text-gray-400">
             <?php echo $current_page; ?>
         </div>
-    </div>
+        </div>
 
     <!-- Navigation Menu - Scrollable Content -->
     <div class="sidebar-content">
@@ -40,7 +40,18 @@ error_log("Sidebar Debug - Current Page: " . $current_page);
         <div class="mb-6 p-4 bg-gray-800 rounded-lg mx-3 transform transition-all duration-300 hover:bg-gray-700 hover:scale-105 hover:shadow-lg">
             <div class="flex items-center">
                 <div class="h-12 w-12 rounded-full bg-seait-orange flex items-center justify-center mr-3 transition-all duration-300 hover:bg-orange-500 hover:scale-110 hover:shadow-md overflow-hidden">
-                    <span class="text-white font-semibold text-lg"><?php echo strtoupper(substr($_SESSION['first_name'], 0, 1) . substr($_SESSION['last_name'], 0, 1)); ?></span>
+                    <?php 
+                    // Debug: Log session data
+                    error_log("Content Creator Sidebar Debug - Session profile_photo: " . ($_SESSION['profile_photo'] ?? 'NOT SET'));
+                    error_log("Content Creator Sidebar Debug - Session user_id: " . ($_SESSION['user_id'] ?? 'NOT SET'));
+                    
+                    if (!empty($_SESSION['profile_photo'])): ?>
+                        <img src="/seait/<?php echo htmlspecialchars($_SESSION['profile_photo']); ?>" 
+                             alt="Profile Photo" 
+                             class="w-full h-full rounded-full object-cover">
+                    <?php else: ?>
+                        <span class="text-white font-semibold text-lg"><?php echo strtoupper(substr($_SESSION['first_name'], 0, 1) . substr($_SESSION['last_name'], 0, 1)); ?></span>
+                    <?php endif; ?>
                 </div>
                 <div class="flex-1">
                     <p class="text-white font-semibold text-sm"><?php echo htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']); ?></p>
@@ -51,17 +62,17 @@ error_log("Sidebar Debug - Current Page: " . $current_page);
                     </div>
                 </div>
             </div>
-        </div>
+                            </div>
 
         <div class="space-y-6">
             <!-- Dashboard Section -->
             <div class="animate-fadeInUp" style="animation-delay: 0.1s;">
                 <a href="dashboard.php" class="flex items-center <?php echo $current_page === 'dashboard.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
                     <i class="fas fa-tachometer-alt mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Dashboard
-                </a>
-            </div>
+                        </a>
+                    </div>
 
-            <!-- Content Management Section -->
+                    <!-- Content Management Section -->
             <div class="animate-fadeInUp" style="animation-delay: 0.2s;">
                 <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Content Management</h3>
                 <div class="space-y-1">
@@ -75,11 +86,11 @@ error_log("Sidebar Debug - Current Page: " . $current_page);
 
                     <a href="drafts.php" class="flex items-center <?php echo $current_page === 'drafts.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
                         <i class="fas fa-edit mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Drafts
-                    </a>
-                </div>
-            </div>
+                            </a>
+                        </div>
+                    </div>
 
-            <!-- Website Management Section -->
+                    <!-- Website Management Section -->
             <div class="animate-fadeInUp" style="animation-delay: 0.3s;">
                 <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Website Management</h3>
                 <div class="space-y-1">
@@ -113,11 +124,11 @@ error_log("Sidebar Debug - Current Page: " . $current_page);
 
                     <a href="manage-contacts.php" class="flex items-center <?php echo $current_page === 'manage-contacts.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
                         <i class="fas fa-address-book mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Manage Contacts
-                    </a>
-                </div>
-            </div>
+                            </a>
+                        </div>
+                    </div>
 
-            <!-- Account Section -->
+                    <!-- Account Section -->
             <div class="animate-fadeInUp" style="animation-delay: 0.4s;">
                 <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Account</h3>
                 <div class="space-y-1">

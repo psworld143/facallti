@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 check_social_media_manager();
 
@@ -204,106 +205,10 @@ $approved_count = get_approved_posts_count($conn);
 // ========================================
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Approved Posts - Social Media Manager - SEAIT</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'seait-orange': '#FF6B35',
-                        'seait-dark': '#2C3E50',
-                        'seait-light': '#FFF8F0'
-                    }
-                }
-            }
-        }
-    </script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        @keyframes bounceIn {
-            0% {
-                opacity: 0;
-                transform: scale(0.3);
-            }
-            50% {
-                opacity: 1;
-                transform: scale(1.05);
-            }
-            70% {
-                transform: scale(0.9);
-            }
-            100% {
-                opacity: 1;
-                transform: scale(1);
-            }
-        }
-
-        .animate-bounce-in {
-            animation: bounceIn 0.6s ease-out;
-        }
-    </style>
-</head>
-<body class="bg-gray-50">
-    <!-- Fixed Navigation -->
-    <nav class="fixed top-0 left-0 right-0 bg-white shadow-lg z-50">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="flex justify-between items-center py-4">
-                <div class="flex items-center space-x-4">
-                    <img src="../assets/images/seait-logo.png" alt="SEAIT Logo" class="h-10 w-auto">
-                    <div class="hidden sm:block">
-                        <h1 class="text-xl font-bold text-seait-dark">SEAIT Social Media</h1>
-                        <p class="text-sm text-gray-600">Welcome, <?php echo $_SESSION['first_name']; ?></p>
-                    </div>
-                    <div class="sm:hidden">
-                        <h1 class="text-lg font-bold text-seait-dark">SEAIT</h1>
-                        <p class="text-xs text-gray-600"><?php echo $_SESSION['first_name']; ?></p>
-                    </div>
-                </div>
-
-                <div class="flex items-center space-x-2 sm:space-x-4">
-                    <!-- Mobile menu button -->
-                    <button id="mobile-menu-button" class="lg:hidden bg-seait-orange text-white p-2 rounded-md hover:bg-orange-600 transition">
-                        <i class="fas fa-bars"></i>
-                    </button>
-
-                    <!-- Desktop links -->
-                    <div class="hidden sm:flex items-center space-x-4">
-                        <a href="../index.php" class="text-seait-dark hover:text-seait-orange transition">
-                            <i class="fas fa-home mr-2"></i>View Site
-                        </a>
-                        <a href="logout.php" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition">
-                            <i class="fas fa-sign-out-alt mr-2"></i>Logout
-                        </a>
-                    </div>
-
-                    <!-- Mobile links -->
-                    <div class="sm:hidden flex items-center space-x-2">
-                        <a href="../index.php" class="text-seait-dark hover:text-seait-orange transition p-2">
-                            <i class="fas fa-home"></i>
-                        </a>
-                        <a href="logout.php" class="bg-red-500 text-white p-2 rounded hover:bg-red-600 transition">
-                            <i class="fas fa-sign-out-alt"></i>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Mobile Sidebar Overlay -->
-    <div id="mobile-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden hidden"></div>
-
-    <!-- Sidebar -->
-    <?php include 'includes/sidebar.php'; ?>
-
-    <!-- Scrollable Main Content -->
-    <div id="main-content" class="lg:ml-64 pt-20 min-h-screen transition-all duration-300 ease-in-out">
+<?php
+$page_title = 'Approved Posts';
+include 'includes/header.php';
+?>
         <div class="p-3 sm:p-4 lg:p-8">
             <div class="mb-6 sm:mb-8">
                 <h1 class="text-2xl sm:text-3xl font-bold text-seait-dark mb-2">Approved Posts</h1>
@@ -430,7 +335,7 @@ $approved_count = get_approved_posts_count($conn);
                                                 class="bg-yellow-500 text-white px-3 py-2 rounded hover:bg-yellow-600 transition text-sm">
                                             <i class="fas fa-undo mr-1"></i><span class="hidden sm:inline">Unapprove</span>
                                         </button>
-                                        <button onclick="viewPost(<?php echo $post['id']; ?>)"
+                                        <button onclick="viewPost('<?php echo encrypt_id($post['id']); ?>')"
                                                 class="bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600 transition text-sm">
                                             <i class="fas fa-eye mr-1"></i><span class="hidden sm:inline">View</span>
                                         </button>
@@ -582,95 +487,56 @@ $approved_count = get_approved_posts_count($conn);
                 </div>
             </div>
         </div>
-    </div>
+    </main>
+</div>
+</div>
 
-    <script>
-        // Mobile menu functionality
-        const mobileMenuButton = document.getElementById('mobile-menu-button');
-        const sidebar = document.getElementById('sidebar');
-        const mobileOverlay = document.getElementById('mobile-overlay');
-        const closeSidebarButton = document.getElementById('close-sidebar');
-        const mainContent = document.getElementById('main-content');
+                <script>
+                    function unapprovePost(postId) {
+                        document.getElementById('unapprovePostId').value = postId;
+                        document.getElementById('unapproveModal').classList.remove('hidden');
+                    }
 
-        function openSidebar() {
-            sidebar.classList.remove('-translate-x-full');
-            mobileOverlay.classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
-        }
+                    function closeUnapproveModal() {
+                        document.getElementById('unapproveModal').classList.add('hidden');
+                    }
 
-        function closeSidebar() {
-            sidebar.classList.add('-translate-x-full');
-            mobileOverlay.classList.add('hidden');
-            document.body.style.overflow = 'auto';
-        }
+                    function deletePost(postId) {
+                        document.getElementById('deletePostId').value = postId;
+                        document.getElementById('deleteModal').classList.remove('hidden');
+                    }
 
-        // Event listeners
-        mobileMenuButton.addEventListener('click', openSidebar);
-        closeSidebarButton.addEventListener('click', closeSidebar);
-        mobileOverlay.addEventListener('click', closeSidebar);
+                    function closeDeleteModal() {
+                        document.getElementById('deleteModal').classList.add('hidden');
+                    }
 
-        // Close sidebar when clicking on navigation links (mobile)
-        const navLinks = sidebar.querySelectorAll('a');
-        navLinks.forEach(link => {
-            link.addEventListener('click', () => {
-                if (window.innerWidth < 1024) { // lg breakpoint
-                    closeSidebar();
-                }
-            });
-        });
+                    function viewPost(postId) {
+                        // Navigate to the dedicated view post page
+                        window.location.href = `view-post.php?id=${postId}`;
+                    }
 
-        // Handle window resize
-        window.addEventListener('resize', () => {
-            if (window.innerWidth >= 1024) {
-                closeSidebar();
-            }
-        });
+                    function refreshPage() {
+                        window.location.reload();
+                    }
 
-        function unapprovePost(postId) {
-            document.getElementById('unapprovePostId').value = postId;
-            document.getElementById('unapproveModal').classList.remove('hidden');
-        }
+                    // Close modals when clicking outside
+                    const unapproveModal = document.getElementById('unapproveModal');
+                    if (unapproveModal) {
+                        unapproveModal.addEventListener('click', function(e) {
+                            if (e.target === this) {
+                                closeUnapproveModal();
+                            }
+                        });
+                    }
 
-        function closeUnapproveModal() {
-            document.getElementById('unapproveModal').classList.add('hidden');
-        }
-
-        function deletePost(postId) {
-            document.getElementById('deletePostId').value = postId;
-            document.getElementById('deleteModal').classList.remove('hidden');
-        }
-
-        function closeDeleteModal() {
-            document.getElementById('deleteModal').classList.add('hidden');
-        }
-
-        function viewPost(postId) {
-            // Navigate to the dedicated view post page
-            window.location.href = `view-post.php?id=${postId}`;
-        }
-
-        function refreshPage() {
-            window.location.reload();
-        }
-
-        // Close modals when clicking outside
-        const unapproveModal = document.getElementById('unapproveModal');
-        if (unapproveModal) {
-            unapproveModal.addEventListener('click', function(e) {
-                if (e.target === this) {
-                    closeUnapproveModal();
-                }
-            });
-        }
-
-        const deleteModal = document.getElementById('deleteModal');
-        if (deleteModal) {
-            deleteModal.addEventListener('click', function(e) {
-                if (e.target === this) {
-                    closeDeleteModal();
-                }
-            });
-        }
-    </script>
+                    const deleteModal = document.getElementById('deleteModal');
+                    if (deleteModal) {
+                        deleteModal.addEventListener('click', function(e) {
+                            if (e.target === this) {
+                                closeDeleteModal();
+                            }
+                        });
+                    }
+                </script>
 </body>
 </html>

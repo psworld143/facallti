@@ -6,6 +6,7 @@ ini_set('max_execution_time', 120);
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 // Check if user is logged in and has head role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'head') {
@@ -38,7 +39,14 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
     exit();
 }
 
-$faculty_id = intval($_GET['id']);
+// Decrypt the faculty ID
+try {
+    $faculty_id = IDEncryption::decrypt($_GET['id']);
+} catch (Exception $e) {
+    error_log("ID decryption failed: " . $e->getMessage());
+    header('Location: teachers.php?error=invalid_faculty');
+    exit();
+}
 
 // Get faculty information with details
 $faculty_query = "SELECT f.*, fd.middle_name, fd.phone, fd.address 

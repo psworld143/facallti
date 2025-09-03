@@ -73,84 +73,10 @@ function get_analytics_data($conn) {
 $analytics = get_analytics_data($conn);
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analytics - Social Media Manager - SEAIT</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'seait-orange': '#FF6B35',
-                        'seait-dark': '#2C3E50',
-                        'seait-light': '#FFF8F0'
-                    }
-                }
-            }
-        }
-    </script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-</head>
-<body class="bg-gray-50">
-    <!-- Fixed Navigation -->
-    <nav class="fixed top-0 left-0 right-0 bg-white shadow-lg z-50">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="flex justify-between items-center py-4">
-                <div class="flex items-center space-x-4">
-                    <img src="../assets/images/seait-logo.png" alt="SEAIT Logo" class="h-10 w-auto">
-                    <div class="hidden sm:block">
-                        <h1 class="text-xl font-bold text-seait-dark">SEAIT Social Media</h1>
-                        <p class="text-sm text-gray-600">Welcome, <?php echo $_SESSION['first_name']; ?></p>
-                    </div>
-                    <div class="sm:hidden">
-                        <h1 class="text-lg font-bold text-seait-dark">SEAIT</h1>
-                        <p class="text-xs text-gray-600"><?php echo $_SESSION['first_name']; ?></p>
-                    </div>
-                </div>
-
-                <div class="flex items-center space-x-2 sm:space-x-4">
-                    <!-- Mobile menu button -->
-                    <button id="mobile-menu-button" class="lg:hidden bg-seait-orange text-white p-2 rounded-md hover:bg-orange-600 transition">
-                        <i class="fas fa-bars"></i>
-                    </button>
-
-                    <!-- Desktop links -->
-                    <div class="hidden sm:flex items-center space-x-4">
-                        <a href="../index.php" class="text-seait-dark hover:text-seait-orange transition">
-                            <i class="fas fa-home mr-2"></i>View Site
-                        </a>
-                        <a href="logout.php" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition">
-                            <i class="fas fa-sign-out-alt mr-2"></i>Logout
-                        </a>
-                    </div>
-
-                    <!-- Mobile links -->
-                    <div class="sm:hidden flex items-center space-x-2">
-                        <a href="../index.php" class="text-seait-dark hover:text-seait-orange transition p-2">
-                            <i class="fas fa-home"></i>
-                        </a>
-                        <a href="logout.php" class="bg-red-500 text-white p-2 rounded hover:bg-red-600 transition">
-                            <i class="fas fa-sign-out-alt"></i>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Mobile Sidebar Overlay -->
-    <div id="mobile-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden hidden"></div>
-
-    <!-- Sidebar -->
-    <?php include 'includes/sidebar.php'; ?>
-
-    <!-- Scrollable Main Content -->
-    <div id="main-content" class="lg:ml-64 pt-20 min-h-screen transition-all duration-300 ease-in-out">
+<?php
+$page_title = 'Analytics';
+include 'includes/header.php';
+?>
         <div class="p-3 sm:p-4 lg:p-8">
             <div class="mb-6 sm:mb-8">
                 <h1 class="text-2xl sm:text-3xl font-bold text-seait-dark mb-2">Content Analytics</h1>
@@ -350,113 +276,80 @@ $analytics = get_analytics_data($conn);
         </div>
     </div>
 
-    <script>
-        // Mobile menu functionality
-        const mobileMenuButton = document.getElementById('mobile-menu-button');
-        const sidebar = document.getElementById('sidebar');
-        const mobileOverlay = document.getElementById('mobile-overlay');
-        const closeSidebarButton = document.getElementById('close-sidebar');
-        const mainContent = document.getElementById('main-content');
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+</div>
 
-        function openSidebar() {
-            sidebar.classList.remove('-translate-x-full');
-            mobileOverlay.classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
-        }
+                <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+                <script>
+                    // Status Chart
+                    const statusCtx = document.getElementById('statusChart').getContext('2d');
+                    new Chart(statusCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Pending', 'Approved', 'Rejected', 'Draft'],
+                            datasets: [{
+                                data: [
+                                    <?php echo $analytics['by_status']['pending'] ?? 0; ?>,
+                                    <?php echo $analytics['by_status']['approved'] ?? 0; ?>,
+                                    <?php echo $analytics['by_status']['rejected'] ?? 0; ?>,
+                                    <?php echo $analytics['by_status']['draft'] ?? 0; ?>
+                                ],
+                                backgroundColor: [
+                                    '#FCD34D', // Yellow for pending
+                                    '#10B981', // Green for approved
+                                    '#EF4444', // Red for rejected
+                                    '#6B7280'  // Gray for draft
+                                ]
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom'
+                                }
+                            }
+                        }
+                    });
 
-        function closeSidebar() {
-            sidebar.classList.add('-translate-x-full');
-            mobileOverlay.classList.add('hidden');
-            document.body.style.overflow = 'auto';
-        }
-
-        // Event listeners
-        mobileMenuButton.addEventListener('click', openSidebar);
-        closeSidebarButton.addEventListener('click', closeSidebar);
-        mobileOverlay.addEventListener('click', closeSidebar);
-
-        // Close sidebar when clicking on navigation links (mobile)
-        const navLinks = sidebar.querySelectorAll('a');
-        navLinks.forEach(link => {
-            link.addEventListener('click', () => {
-                if (window.innerWidth < 1024) { // lg breakpoint
-                    closeSidebar();
-                }
-            });
-        });
-
-        // Handle window resize
-        window.addEventListener('resize', () => {
-            if (window.innerWidth >= 1024) {
-                closeSidebar();
-            }
-        });
-
-        // Status Chart
-        const statusCtx = document.getElementById('statusChart').getContext('2d');
-        new Chart(statusCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Pending', 'Approved', 'Rejected', 'Draft'],
-                datasets: [{
-                    data: [
-                        <?php echo $analytics['by_status']['pending'] ?? 0; ?>,
-                        <?php echo $analytics['by_status']['approved'] ?? 0; ?>,
-                        <?php echo $analytics['by_status']['rejected'] ?? 0; ?>,
-                        <?php echo $analytics['by_status']['draft'] ?? 0; ?>
-                    ],
-                    backgroundColor: [
-                        '#FCD34D', // Yellow for pending
-                        '#10B981', // Green for approved
-                        '#EF4444', // Red for rejected
-                        '#6B7280'  // Gray for draft
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
-                }
-            }
-        });
-
-        // Type Chart
-        const typeCtx = document.getElementById('typeChart').getContext('2d');
-        new Chart(typeCtx, {
-            type: 'bar',
-            data: {
-                labels: ['News', 'Announcement', 'Hiring', 'Event', 'Article'],
-                datasets: [{
-                    label: 'Posts',
-                    data: [
-                        <?php echo $analytics['by_type']['news'] ?? 0; ?>,
-                        <?php echo $analytics['by_type']['announcement'] ?? 0; ?>,
-                        <?php echo $analytics['by_type']['hiring'] ?? 0; ?>,
-                        <?php echo $analytics['by_type']['event'] ?? 0; ?>,
-                        <?php echo $analytics['by_type']['article'] ?? 0; ?>
-                    ],
-                    backgroundColor: '#FF6B35',
-                    borderColor: '#FF6B35',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                }
-            }
-        });
-    </script>
+                    // Type Chart
+                    const typeCtx = document.getElementById('typeChart').getContext('2d');
+                    new Chart(typeCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: ['News', 'Announcement', 'Hiring', 'Event', 'Article'],
+                            datasets: [{
+                                label: 'Posts',
+                                data: [
+                                    <?php echo $analytics['by_type']['news'] ?? 0; ?>,
+                                    <?php echo $analytics['by_type']['announcement'] ?? 0; ?>,
+                                    <?php echo $analytics['by_type']['hiring'] ?? 0; ?>,
+                                    <?php echo $analytics['by_type']['event'] ?? 0; ?>,
+                                    <?php echo $analytics['by_type']['article'] ?? 0; ?>
+                                ],
+                                backgroundColor: '#FF6B35',
+                                borderColor: '#FF6B35',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            scales: {
+                                y: {
+                                    beginAtZero: true
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    display: false
+                                }
+                            }
+                        }
+                    });
+                </script>
 </body>
 </html>

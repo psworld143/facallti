@@ -89,9 +89,18 @@ $stats = mysqli_fetch_assoc($stats_result);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Research & Publications - SEAIT</title>
+    <!-- Favicon Configuration -->
+    <link rel="icon" type="image/x-icon" href="assets/images/favicon.ico">
     <link rel="icon" type="image/png" href="assets/images/seait-logo.png">
+    <link rel="shortcut icon" type="image/x-icon" href="assets/images/favicon.ico">
     <link rel="shortcut icon" type="image/png" href="assets/images/seait-logo.png">
     <link rel="apple-touch-icon" type="image/png" href="assets/images/seait-logo.png">
+    <link rel="apple-touch-icon-precomposed" type="image/png" href="assets/images/seait-logo.png">
+    <meta name="msapplication-TileImage" content="assets/images/seait-logo.png">
+    <meta name="msapplication-TileColor" content="#FF6B35">
+
+
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">

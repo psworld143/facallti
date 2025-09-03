@@ -1,9 +1,9 @@
 <?php
 // Database configuration
-$host = 'seait-edu.ph';
-$dbname = 'seaitedu_seait_website';
-$username = 'seaitedu_seait_website';
-$password = '020894Website';
+$host = 'localhost';
+$dbname = 'seait_website';
+$username = 'root';
+$password = '';
 
 // Create connection
 $conn = mysqli_connect($host, $username, $password, $dbname);

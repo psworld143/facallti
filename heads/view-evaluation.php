@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/id_encryption.php';
 
 // Check if user is logged in and has head role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'head') {
@@ -23,8 +24,21 @@ if (isset($_SESSION['message'])) {
     unset($_SESSION['message_type']);
 }
 
-// Get faculty ID from URL
-$faculty_id = isset($_GET['faculty_id']) ? (int)$_GET['faculty_id'] : 0;
+// Get faculty ID from URL and decrypt it
+$encrypted_faculty_id = isset($_GET['faculty_id']) ? $_GET['faculty_id'] : '';
+$faculty_id = 0;
+
+if (!empty($encrypted_faculty_id)) {
+    try {
+        $faculty_id = IDEncryption::decrypt($encrypted_faculty_id);
+    } catch (Exception $e) {
+        error_log("ID decryption failed: " . $e->getMessage());
+        $_SESSION['message'] = 'Invalid faculty ID provided.';
+        $_SESSION['message_type'] = 'error';
+        header('Location: teachers.php');
+        exit();
+    }
+}
 
 if (!$faculty_id) {
     $_SESSION['message'] = 'Invalid faculty ID provided.';

@@ -14,9 +14,15 @@ if (!isset($sidebar_context)) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo isset($page_title) ? $page_title . ' - Content Creator Portal' : 'Content Creator Portal'; ?></title>
+    <!-- Favicon Configuration -->
+    <link rel="icon" type="image/x-icon" href="../assets/images/favicon.ico">
     <link rel="icon" type="image/png" href="../assets/images/seait-logo.png">
+    <link rel="shortcut icon" type="image/x-icon" href="../assets/images/favicon.ico">
     <link rel="shortcut icon" type="image/png" href="../assets/images/seait-logo.png">
     <link rel="apple-touch-icon" type="image/png" href="../assets/images/seait-logo.png">
+    <link rel="apple-touch-icon-precomposed" type="image/png" href="../assets/images/seait-logo.png">
+    <meta name="msapplication-TileImage" content="../assets/images/seait-logo.png">
+    <meta name="msapplication-TileColor" content="#FF6B35">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -232,7 +238,18 @@ if (!isset($sidebar_context)) {
                             <p class="text-sm text-gray-500">Content Creator</p>
                         </div>
                         <div class="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-seait-orange flex items-center justify-center overflow-hidden">
-                            <span class="text-white text-sm sm:text-base font-medium"><?php echo strtoupper(substr($_SESSION['first_name'], 0, 1) . substr($_SESSION['last_name'], 0, 1)); ?></span>
+                            <?php 
+                            // Debug: Log session data
+                            error_log("Content Creator Header Debug - Session profile_photo: " . ($_SESSION['profile_photo'] ?? 'NOT SET'));
+                            error_log("Content Creator Header Debug - Session user_id: " . ($_SESSION['user_id'] ?? 'NOT SET'));
+                            
+                            if (!empty($_SESSION['profile_photo'])): ?>
+                                <img src="/seait/<?php echo htmlspecialchars($_SESSION['profile_photo']); ?>" 
+                                     alt="Profile Photo" 
+                                     class="w-full h-full rounded-full object-cover">
+                            <?php else: ?>
+                                <span class="text-white text-sm sm:text-base font-medium"><?php echo strtoupper(substr($_SESSION['first_name'], 0, 1) . substr($_SESSION['last_name'], 0, 1)); ?></span>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>

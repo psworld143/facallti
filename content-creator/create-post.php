@@ -31,89 +31,89 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (empty($_POST) && !empty($_SERVER['CONTENT_LENGTH'])) {
         $message = display_message('Upload too large. Please reduce file sizes or increase post_max_size and upload_max_filesize in php.ini, then restart Apache.', 'error');
     } else {
-        $title = isset($_POST['title']) ? sanitize_input($_POST['title']) : '';
-        $content = isset($_POST['content']) ? $_POST['content'] : '';
-        $type = isset($_POST['type']) ? sanitize_input($_POST['type']) : '';
+    $title = isset($_POST['title']) ? sanitize_input($_POST['title']) : '';
+    $content = isset($_POST['content']) ? $_POST['content'] : '';
+    $type = isset($_POST['type']) ? sanitize_input($_POST['type']) : '';
 
-        // Server-side required validation
-        if (trim($title) === '' || trim($type) === '' || trim($content) === '') {
-            $message = display_message('Please complete Title, Type, and Content before submitting.', 'error');
+    // Server-side required validation
+    if (trim($title) === '' || trim($type) === '' || trim($content) === '') {
+        $message = display_message('Please complete Title, Type, and Content before submitting.', 'error');
         } else {
-            // Handle image upload
-            $image_url = NULL;
-            if (isset($_FILES['post_image']) && $_FILES['post_image']['error'] === UPLOAD_ERR_OK) {
-                $upload_dir = '../assets/images/news/';
+    // Handle image upload
+    $image_url = NULL;
+    if (isset($_FILES['post_image']) && $_FILES['post_image']['error'] === UPLOAD_ERR_OK) {
+        $upload_dir = '../assets/images/news/';
                 
                 // Ensure upload directory exists and is writable
                 if (!ensure_upload_directory($upload_dir)) {
                     $message = display_message('Error: Could not create or access upload directory. Please check permissions.', 'error');
                 } else {
-                    $file_tmp = $_FILES['post_image']['tmp_name'];
-                    $file_name = basename($_FILES['post_image']['name']);
-                    $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-                    $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-                    if (in_array($file_ext, $allowed_exts)) {
-                        $new_name = uniqid('news_', true) . '.' . $file_ext;
-                        $dest_path = $upload_dir . $new_name;
-                        if (move_uploaded_file($file_tmp, $dest_path)) {
-                            $image_url = 'assets/images/news/' . $new_name;
+        $file_tmp = $_FILES['post_image']['tmp_name'];
+        $file_name = basename($_FILES['post_image']['name']);
+        $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+        $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        if (in_array($file_ext, $allowed_exts)) {
+            $new_name = uniqid('news_', true) . '.' . $file_ext;
+            $dest_path = $upload_dir . $new_name;
+            if (move_uploaded_file($file_tmp, $dest_path)) {
+                $image_url = 'assets/images/news/' . $new_name;
                         } else {
                             error_log("Failed to move uploaded file from {$file_tmp} to {$dest_path}");
                             $message = display_message('Error uploading main image. Please try again.', 'error');
                         }
-                    }
-                }
             }
+        }
+    }
 
-            // Determine status based on action
-            if (isset($_POST['action']) && $_POST['action'] === 'save_draft') {
-                $status = 'draft';
+    // Determine status based on action
+    if (isset($_POST['action']) && $_POST['action'] === 'save_draft') {
+        $status = 'draft';
                 $success_message = 'Draft saved successfully!';
-            } else {
-                $status = 'pending'; // All posts start as pending for approval
+    } else {
+        $status = 'pending'; // All posts start as pending for approval
                 $success_message = 'Post created successfully and submitted for approval!';
-            }
-
-            // Handle additional images upload
-            $additional_images_urls = [];
-            if (isset($_FILES['additional_images']) && is_array($_FILES['additional_images']['name'])) {
-                $upload_dir = '../assets/images/news/';
-                $max_images = 5; // Maximum 5 additional images
-                
+    }
+    
+    // Handle additional images upload
+    $additional_images_urls = [];
+    if (isset($_FILES['additional_images']) && is_array($_FILES['additional_images']['name'])) {
+        $upload_dir = '../assets/images/news/';
+        $max_images = 5; // Maximum 5 additional images
+        
                 // Ensure upload directory exists and is writable
                 if (!ensure_upload_directory($upload_dir)) {
                     $message = display_message('Error: Could not create or access upload directory. Please check permissions.', 'error');
                 } else {
-                    for ($i = 0; $i < count($_FILES['additional_images']['name']) && $i < $max_images; $i++) {
-                        // Check if file was uploaded successfully
-                        if (isset($_FILES['additional_images']['error'][$i]) && $_FILES['additional_images']['error'][$i] === UPLOAD_ERR_OK) {
-                            $file_tmp = $_FILES['additional_images']['tmp_name'][$i];
-                            $file_name = basename($_FILES['additional_images']['name'][$i]);
-                            $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-                            $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-                            
-                            if (in_array($file_ext, $allowed_exts)) {
-                                $new_name = uniqid('additional_' . $i . '_', true) . '.' . $file_ext;
-                                $dest_path = $upload_dir . $new_name;
-                                
-                                // Check if file is actually uploaded
+        for ($i = 0; $i < count($_FILES['additional_images']['name']) && $i < $max_images; $i++) {
+            // Check if file was uploaded successfully
+            if (isset($_FILES['additional_images']['error'][$i]) && $_FILES['additional_images']['error'][$i] === UPLOAD_ERR_OK) {
+                $file_tmp = $_FILES['additional_images']['tmp_name'][$i];
+                $file_name = basename($_FILES['additional_images']['name'][$i]);
+                $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+                $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+                
+                if (in_array($file_ext, $allowed_exts)) {
+                    $new_name = uniqid('additional_' . $i . '_', true) . '.' . $file_ext;
+                    $dest_path = $upload_dir . $new_name;
+                    
+                    // Check if file is actually uploaded
                                 if (is_uploaded_file($file_tmp)) {
                                     if (move_uploaded_file($file_tmp, $dest_path)) {
-                                        $additional_images_urls[] = 'assets/images/news/' . $new_name;
+                        $additional_images_urls[] = 'assets/images/news/' . $new_name;
                                     } else {
                                         error_log("Failed to move uploaded file from {$file_tmp} to {$dest_path}");
                                         $message = display_message('Error uploading additional image ' . ($i + 1) . '. Please try again.', 'error');
                                     }
                                 }
-                            }
-                        }
                     }
                 }
             }
-            
-            // Convert array to JSON string for database storage
-            $additional_images_json = !empty($additional_images_urls) ? json_encode($additional_images_urls) : NULL;
-            
+        }
+    }
+    
+    // Convert array to JSON string for database storage
+    $additional_images_json = !empty($additional_images_urls) ? json_encode($additional_images_urls) : NULL;
+    
             // Only proceed with database insertion if no errors occurred
             if (empty($message)) {
                 // Check if additional_image_url column exists, if not create it
@@ -137,15 +137,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     
                     // Proceed with database insertion
                     if (empty($message)) {
-                        $query = "INSERT INTO posts (title, content, type, status, author_id, image_url, additional_image_url) VALUES (?, ?, ?, ?, ?, ?, ?)";
-                        $stmt = mysqli_prepare($conn, $query);
+    $query = "INSERT INTO posts (title, content, type, status, author_id, image_url, additional_image_url) VALUES (?, ?, ?, ?, ?, ?, ?)";
+    $stmt = mysqli_prepare($conn, $query);
                         
                         if ($stmt) {
-                            mysqli_stmt_bind_param($stmt, "ssssiss", $title, $content, $type, $status, $_SESSION['user_id'], $image_url, $additional_images_json);
-                            
-                            if (mysqli_stmt_execute($stmt)) {
+    mysqli_stmt_bind_param($stmt, "ssssiss", $title, $content, $type, $status, $_SESSION['user_id'], $image_url, $additional_images_json);
+
+    if (mysqli_stmt_execute($stmt)) {
                                 $message = display_message($success_message, 'success');
-                            } else {
+    } else {
                                 $message = display_message('Error creating post: ' . mysqli_stmt_error($stmt), 'error');
                             }
                             mysqli_stmt_close($stmt);
@@ -382,26 +382,26 @@ include 'includes/header.php';
                         <div id="imagePreview" class="mt-2"></div>
                     </div>
 
-                    <div>
-                        <label for="content" class="block text-sm font-medium text-gray-700 mb-2">
-                            Content *
-                        </label>
-                        <textarea id="content" name="content" rows="12" required
+                                         <div>
+                         <label for="content" class="block text-sm font-medium text-gray-700 mb-2">
+                             Content *
+                         </label>
+                         <textarea id="content" name="content" rows="12" required
                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange focus:border-transparent"
                                    placeholder="Write your content here..."
                                    oninput="updatePreview()"></textarea>
-                    </div>
+                     </div>
 
-                    <div>
-                        <label for="additional_images" class="block text-sm font-medium text-gray-700 mb-2">
-                            Additional Images
-                        </label>
-                        <input type="file" id="additional_images" name="additional_images[]" accept="image/*" multiple
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange focus:border-transparent"
-                               onchange="previewAdditionalImages(event)">
-                        <div id="additionalImagesPreview" class="mt-2"></div>
-                        <p class="text-xs text-gray-500 mt-1">Upload multiple additional images to display below the content (max 5 images)</p>
-                    </div>
+                                           <div>
+                          <label for="additional_images" class="block text-sm font-medium text-gray-700 mb-2">
+                              Additional Images
+                          </label>
+                          <input type="file" id="additional_images" name="additional_images[]" accept="image/*" multiple
+                                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-seait-orange focus:border-transparent"
+                                 onchange="previewAdditionalImages(event)">
+                          <div id="additionalImagesPreview" class="mt-2"></div>
+                          <p class="text-xs text-gray-500 mt-1">Upload multiple additional images to display below the content (max 5 images)</p>
+                      </div>
 
                     <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                         <div class="flex">
@@ -495,7 +495,7 @@ include 'includes/header.php';
                             </li>
                         </ul>
                     </div>
-                </div>
+                    </div>
                 </div>
             </div>
         </div>

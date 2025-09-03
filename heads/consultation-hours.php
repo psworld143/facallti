@@ -231,7 +231,16 @@ include 'includes/header.php';
         <div class="flex items-center justify-between">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900">Consultation Hours Management</h1>
+                <div class="flex items-center space-x-3 mb-2">
+                    <span class="text-lg font-semibold text-seait-orange">FaCallTI</span>
+                    <span class="text-gray-400">|</span>
+                    <span class="text-sm text-gray-600">Faculty Consultation Time Interface</span>
+                    <button onclick="openFaCallTIModal()" class="ml-2 text-seait-orange hover:text-orange-600 transition-colors" title="Learn about FaCallTI functions">
+                        <i class="fas fa-info-circle text-lg"></i>
+                    </button>
+                </div>
                 <p class="text-gray-600">Manage consultation hours for teachers in your department</p>
+                <p class="text-sm text-gray-500 mt-1">Author: <span class="font-medium text-seait-orange">Reginald S. Prudente, MIT</span></p>
             </div>
                          <div class="flex space-x-3">
                  <button onclick="openAddModal()" class="bg-seait-orange hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center">
@@ -256,18 +265,7 @@ include 'includes/header.php';
         </div>
     <?php endif; ?>
 
-    <!-- Active Semester Info -->
-    <?php if ($active_semester): ?>
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div class="flex items-center">
-                <i class="fas fa-info-circle text-blue-500 mr-3"></i>
-                <div>
-                    <p class="text-blue-800 font-medium">Current Active Semester</p>
-                    <p class="text-blue-600 text-sm"><?php echo $active_semester['name'] . ' (' . $active_semester['academic_year'] . ')'; ?></p>
-                </div>
-            </div>
-        </div>
-    <?php endif; ?>
+
 
     <!-- View Toggle -->
     <div class="bg-white rounded-lg shadow-sm p-4">
@@ -1955,6 +1953,194 @@ include 'includes/header.php';
     </div>
 </div>
 
+<!-- FaCallTI Information Modal -->
+<div id="facalltiModal" class="fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full hidden z-50 transition-all duration-300 ease-in-out backdrop-blur-sm">
+    <div class="relative top-10 mx-auto p-0 border-0 w-full max-w-4xl shadow-2xl rounded-xl bg-white transform scale-95 opacity-0 transition-all duration-300 ease-out" id="facalltiModalContent">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-seait-orange to-orange-500 rounded-t-xl p-6 text-white">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <div class="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center mr-4">
+                        <i class="fas fa-info-circle text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold">FaCallTI Module Functions</h3>
+                        <p class="text-orange-100 text-sm">Faculty Consultation Time Interface - Complete System Overview</p>
+                    </div>
+                </div>
+                <button onclick="closeFaCallTIModal()" class="text-white hover:text-orange-200 transition-colors duration-200 p-2 rounded-full hover:bg-white hover:bg-opacity-20">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Content -->
+        <div class="p-8">
+            <div class="space-y-6">
+                <!-- System Overview -->
+                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
+                    <h4 class="text-lg font-bold text-blue-800 mb-3 flex items-center">
+                        <i class="fas fa-rocket mr-2 text-blue-600"></i>
+                        System Overview
+                    </h4>
+                    <p class="text-blue-700 leading-relaxed">
+                        FaCallTI (Faculty Consultation Time Interface) is a comprehensive system designed to streamline and manage 
+                        faculty consultation hours, student requests, and real-time communication between teachers and students. 
+                        The system provides a modern, efficient way to handle consultation scheduling and management.
+                    </p>
+                </div>
+
+                <!-- Core Functions -->
+                <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-6 border border-green-200">
+                    <h4 class="text-lg font-bold text-green-800 mb-4 flex items-center">
+                        <i class="fas fa-cogs mr-2 text-green-600"></i>
+                        Core Functions
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="space-y-3">
+                            <div class="flex items-start">
+                                <i class="fas fa-calendar-alt text-green-600 mt-1 mr-3"></i>
+                                <div>
+                                    <h5 class="font-semibold text-green-800">Consultation Hours Management</h5>
+                                    <p class="text-sm text-green-700">Set and manage teacher consultation schedules</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-user-clock text-green-600 mt-1 mr-3"></i>
+                                <div>
+                                    <h5 class="font-semibold text-green-800">Real-time Availability</h5>
+                                    <p class="text-sm text-green-700">Track teacher availability in real-time</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-comments text-green-600 mt-1 mr-3"></i>
+                                <div>
+                                    <h5 class="font-semibold text-green-800">Student Requests</h5>
+                                    <p class="text-sm text-green-700">Handle consultation requests from students</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="space-y-3">
+                            <div class="flex items-start">
+                                <i class="fas fa-chart-line text-green-600 mt-1 mr-3"></i>
+                                <div>
+                                    <h5 class="font-semibold text-green-800">Analytics & Reports</h5>
+                                    <p class="text-sm text-green-700">Generate performance and usage reports</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-bell text-green-600 mt-1 mr-3"></i>
+                                <div>
+                                    <h5 class="font-semibold text-green-800">Notifications</h5>
+                                    <p class="text-sm text-green-700">Real-time alerts and updates</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-mobile-alt text-green-600 mt-1 mr-3"></i>
+                                <div>
+                                    <h5 class="font-semibold text-green-800">Mobile Responsive</h5>
+                                    <p class="text-sm text-green-700">Access from any device</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Module Features -->
+                <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-200">
+                    <h4 class="text-lg font-bold text-purple-800 mb-4 flex items-center">
+                        <i class="fas fa-star mr-2 text-purple-600"></i>
+                        Key Features
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="space-y-3">
+                            <div class="flex items-center">
+                                <i class="fas fa-check-circle text-purple-600 mr-3"></i>
+                                <span class="text-purple-700">Department-based management</span>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fas fa-check-circle text-purple-600 mr-3"></i>
+                                <span class="text-purple-700">Semester and academic year tracking</span>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fas fa-check-circle text-purple-600 mr-3"></i>
+                                <span class="text-purple-700">Room assignment and scheduling</span>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fas fa-check-circle text-purple-600 mr-3"></i>
+                                <span class="text-purple-700">Leave management system</span>
+                            </div>
+                        </div>
+                        <div class="space-y-3">
+                            <div class="flex items-center">
+                                <i class="fas fa-check-circle text-purple-600 mr-3"></i>
+                                <span class="text-purple-700">Student consultation logs</span>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fas fa-check-circle text-purple-600 mr-3"></i>
+                                <span class="text-purple-700">Response time tracking</span>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fas fa-check-circle text-purple-600 mr-3"></i>
+                                <span class="text-purple-700">Performance analytics</span>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fas fa-check-circle text-purple-600 mr-3"></i>
+                                <span class="text-purple-700">Multi-view interfaces</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Technical Details -->
+                <div class="bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl p-6 border border-gray-200">
+                    <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-code mr-2 text-gray-600"></i>
+                        Technical Implementation
+                    </h4>
+                    <div class="space-y-3">
+                        <div class="flex items-start">
+                            <i class="fas fa-database text-gray-600 mt-1 mr-3"></i>
+                            <div>
+                                <h5 class="font-semibold text-gray-800">Database Integration</h5>
+                                <p class="text-sm text-gray-700">MySQL database with optimized queries and real-time updates</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <i class="fas fa-mobile text-gray-600 mt-1 mr-3"></i>
+                            <div>
+                                <h5 class="font-semibold text-gray-800">Responsive Design</h5>
+                                <p class="text-sm text-gray-700">Built with Tailwind CSS for seamless cross-device experience</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <i class="fas fa-bolt text-gray-600 mt-1 mr-3"></i>
+                            <div>
+                                <h5 class="font-semibold text-gray-800">Real-time Updates</h5>
+                                <p class="text-sm text-gray-700">AJAX-powered updates for instant data synchronization</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="bg-gray-50 rounded-b-xl p-4 border-t border-gray-200">
+            <div class="flex justify-between items-center">
+                <div class="text-sm text-gray-600">
+                    <i class="fas fa-user-edit mr-2"></i>
+                    Developed by: <span class="font-medium text-seait-orange">Reginald S. Prudente, MIT</span>
+                </div>
+                <button onclick="closeFaCallTIModal()" class="bg-seait-orange hover:bg-orange-600 text-white px-6 py-2 rounded-lg transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-105">
+                    <i class="fas fa-check mr-2"></i>
+                    Got it
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Consultation Leave Modal -->
 <div id="leaveModal" class="fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full hidden z-50 transition-all duration-300 ease-in-out backdrop-blur-sm">
     <div class="relative top-5 mx-auto p-0 border-0 w-full max-w-2xl shadow-2xl rounded-xl bg-white transform scale-95 opacity-0 transition-all duration-300 ease-out" id="leaveModalContent">
@@ -2586,6 +2772,35 @@ function getStatusColor(status) {
         'cancelled': 'bg-gray-100 text-gray-800'
     };
     return statusColors[status] || 'bg-gray-100 text-gray-800';
+}
+
+// FaCallTI Modal Functions
+function openFaCallTIModal() {
+    const modal = document.getElementById('facalltiModal');
+    const modalContent = document.getElementById('facalltiModalContent');
+    
+    // Show modal
+    modal.classList.remove('hidden');
+    
+    // Trigger animation after a small delay
+    setTimeout(() => {
+        modalContent.classList.remove('scale-95', 'opacity-0');
+        modalContent.classList.add('scale-100', 'opacity-100');
+    }, 10);
+}
+
+function closeFaCallTIModal() {
+    const modal = document.getElementById('facalltiModal');
+    const modalContent = document.getElementById('facalltiModalContent');
+    
+    // Start closing animation
+    modalContent.classList.remove('scale-100', 'opacity-100');
+    modalContent.classList.add('scale-95', 'opacity-0');
+    
+    // Hide modal after animation completes
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
 }
 </script>
 
