@@ -457,37 +457,11 @@ if ($isAjax && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']))
 }
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Course Details - SEAIT Content Creator</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'seait-orange': '#FF6B35',
-                        'seait-dark': '#2C3E50'
-                    },
-                    fontFamily: {
-                        'poppins': ['Poppins', 'sans-serif']
-                    }
-                }
-            }
-        }
-    </script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<?php
+$page_title = 'Manage Course Details';
+include 'includes/header.php';
+?>
     <style>
-        body {
-            font-family: 'Poppins', sans-serif;
-        }
-
         @keyframes bounce-in {
             0% {
                 opacity: 0;
@@ -662,39 +636,6 @@ if ($isAjax && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']))
             }
         }
     </style>
-</head>
-<body class="bg-gray-50">
-    <!-- Navigation -->
-    <nav class="bg-white fixed top-0 left-0 right-0 z-50 shadow-sm">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="flex justify-between items-center py-4">
-                <div class="flex items-center space-x-4">
-                    <img src="../assets/images/seait-logo.png" alt="SEAIT Logo" class="h-10 w-auto">
-                    <div>
-                        <h1 class="text-xl font-bold text-seait-dark">SEAIT Content Creator</h1>
-                        <p class="text-sm text-gray-600">Welcome, <?php echo htmlspecialchars($_SESSION['first_name']); ?></p>
-                    </div>
-                </div>
-
-                <div class="flex items-center space-x-4">
-                    <a href="../index.php" class="text-seait-dark hover:text-seait-orange transition">
-                        <i class="fas fa-home mr-2"></i><span class="hidden sm:inline">View Site</span>
-                    </a>
-                    <a href="logout.php" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition">
-                        <i class="fas fa-sign-out-alt mr-2"></i><span class="hidden sm:inline">Logout</span>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </nav>
-
-    <div class="flex min-h-screen pt-16">
-        <!-- Sidebar -->
-        <?php include 'includes/sidebar.php'; ?>
-
-        <!-- Main Content -->
-        <div class="flex-1 lg:ml-72 overflow-y-auto h-screen">
-            <div class="p-4 lg:p-8">
                 <?php if ($message): ?>
                 <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
                     <?php echo htmlspecialchars($message); ?>
@@ -932,10 +873,6 @@ if ($isAjax && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']))
                     btn.classList.add('active', 'border-seait-orange', 'text-seait-orange');
                     btn.classList.remove('border-transparent', 'text-gray-600');
                 }
-                </script>
-            </div>
-        </div>
-
     <!-- Edit Requirement Modal -->
     <div id="editRequirementModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
         <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
@@ -1797,5 +1734,3 @@ if ($isAjax && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']))
             setTimeout(() => notif.remove(), 3000);
         }
     </script>
-</body>
-</html>

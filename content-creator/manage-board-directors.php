@@ -154,32 +154,10 @@ $directors_query = "SELECT * FROM board_directors ORDER BY sort_order ASC, name 
 $directors_result = mysqli_query($conn, $directors_query);
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Board Directors - SEAIT Content Creator</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'seait-orange': '#FF6B35',
-                        'seait-dark': '#2C3E50'
-                    },
-                    fontFamily: {
-                        'poppins': ['Poppins', 'sans-serif']
-                    }
-                }
-            }
-        }
-    </script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<?php
+$page_title = 'Manage Board Directors';
+include 'includes/header.php';
+?>
     <style>
         @keyframes bounceIn {
             0% {
@@ -203,39 +181,6 @@ $directors_result = mysqli_query($conn, $directors_query);
             animation: bounceIn 0.6s ease-out;
         }
     </style>
-</head>
-<body class="bg-gray-50">
-    <!-- Navigation -->
-    <nav class="bg-white fixed top-0 left-0 right-0 z-50 shadow-sm">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="flex justify-between items-center py-4">
-                <div class="flex items-center space-x-4">
-                    <img src="../assets/images/seait-logo.png" alt="SEAIT Logo" class="h-10 w-auto">
-                    <div>
-                        <h1 class="text-xl font-bold text-seait-dark">SEAIT Content Creator</h1>
-                        <p class="text-sm text-gray-600">Welcome, <?php echo htmlspecialchars($_SESSION['first_name']); ?></p>
-                    </div>
-                </div>
-
-                <div class="flex items-center space-x-4">
-                    <a href="../index.php" class="text-seait-dark hover:text-seait-orange transition">
-                        <i class="fas fa-home mr-2"></i><span class="hidden sm:inline">View Site</span>
-                    </a>
-                    <a href="logout.php" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition">
-                        <i class="fas fa-sign-out-alt mr-2"></i><span class="hidden sm:inline">Logout</span>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </nav>
-
-    <div class="flex min-h-screen pt-16">
-        <!-- Sidebar -->
-        <?php include 'includes/sidebar.php'; ?>
-
-        <!-- Main Content -->
-        <div class="flex-1 lg:ml-72 overflow-y-auto h-screen">
-            <div class="p-4 lg:p-8">
                 <div class="mb-8">
                     <h1 class="text-2xl lg:text-3xl font-bold text-seait-dark mb-2">Manage Board Directors</h1>
                     <p class="text-gray-600">Add and manage board members for the About section</p>
@@ -430,10 +375,6 @@ $directors_result = mysqli_query($conn, $directors_query);
             </div>
             <?php endif; ?>
         </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Edit Director Modal -->
     <div id="editDirectorModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
         <div class="relative top-4 sm:top-20 mx-auto p-4 sm:p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto">
@@ -705,5 +646,3 @@ $directors_result = mysqli_query($conn, $directors_query);
             });
         }
     </script>
-</body>
-</html>
