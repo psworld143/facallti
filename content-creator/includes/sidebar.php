@@ -28,10 +28,7 @@ error_log("Sidebar Debug - Current Page: " . $current_page);
             <img src="../assets/images/seait-logo.png" alt="SEAIT Logo" class="h-8 w-auto mr-2 transition-all duration-200 hover:rotate-12">
             <span class="text-white font-semibold">Content Creator Portal</span>
         </div>
-        <!-- Debug: Show current page -->
-        <div class="absolute top-2 right-2 text-xs text-gray-400">
-            <?php echo $current_page; ?>
-        </div>
+
         </div>
 
     <!-- Navigation Menu - Scrollable Content -->
