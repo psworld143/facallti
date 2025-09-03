@@ -18,11 +18,11 @@ ErrorDocument 504 /seait/505.php
 ErrorDocument 505 /seait/505.php
 
 # Force error pages to be displayed
-php_flag display_errors off
+php_flag display_errors on
 php_flag log_errors on
 
 # Custom error handling for PHP errors
-php_value error_reporting 0
+php_value error_reporting E_ALL
 
 # Additional security headers
 <IfModule mod_headers.c>

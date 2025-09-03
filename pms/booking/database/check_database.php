@@ -6,7 +6,7 @@ echo "<h2>Hotel PMS Database Configuration Check</h2>";
 
 // Check configuration file
 echo "<h3>Configuration File Analysis:</h3>";
-$configFile = '../includes/config.php';
+$configFile = '../../includes/database.php';
 
 if (file_exists($configFile)) {
     echo "<p>✅ Configuration file found: <code>$configFile</code></p>";
@@ -68,7 +68,7 @@ echo "<h3>Database Connection Test:</h3>";
 
 try {
     // Include the config file to get the connection
-    require_once '../includes/config.php';
+    require_once '../../includes/database.php';
     
     echo "<p>✅ Database connection successful!</p>";
     

@@ -1,7 +1,7 @@
 <?php
 session_start();
 require_once '../../includes/error_handler.php';
-require_once '../includes/config.php';
+require_once '../../includes/database.php';
 require_once '../includes/functions.php';
 
 // Check if user is logged in
