@@ -22,19 +22,27 @@ class FloatingActionButton {
     }
 
     bindEvents() {
-        this.fabButton.addEventListener('click', () => this.showModal());
-        this.fabModalOverlay.addEventListener('click', () => this.hideModal());
-        this.fabModalClose.addEventListener('click', () => this.hideModal());
+        if (this.fabButton) {
+            this.fabButton.addEventListener('click', () => this.showModal());
+        }
+        if (this.fabModalOverlay) {
+            this.fabModalOverlay.addEventListener('click', () => this.hideModal());
+        }
+        if (this.fabModalClose) {
+            this.fabModalClose.addEventListener('click', () => this.hideModal());
+        }
         
         // Close modal with Escape key
         document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape' && this.fabModal.classList.contains('show')) {
+            if (event.key === 'Escape' && this.fabModal && this.fabModal.classList.contains('show')) {
                 this.hideModal();
             }
         });
     }
 
     showModal() {
+        if (!this.fabModal || !this.fabButton) return;
+        
         this.fabModal.classList.add('show');
         this.fabButton.classList.add('modal-open');
         document.body.style.overflow = 'hidden';
@@ -51,6 +59,8 @@ class FloatingActionButton {
     }
 
     hideModal() {
+        if (!this.fabModal || !this.fabButton) return;
+        
         // Remove bounce class first
         const modalContent = this.fabModal.querySelector('.fab-modal-content');
         if (modalContent) {
