@@ -1940,7 +1940,15 @@ if (empty($teachers) && empty($selected_department)) {
                                 }
                             } catch (e) {
                                 console.error('Error parsing response:', e);
-                                showNotification('Error processing QR code', 'error');
+                                console.error('Response text:', xhr.responseText.substring(0, 500));
+                                
+                                // Check if response is HTML (error page)
+                                if (xhr.responseText.trim().startsWith('<')) {
+                                    showNotification('Server error. Please try again.', 'error');
+                                } else {
+                                    showNotification('Error processing QR code response', 'error');
+                                }
+                                
                                 if (studentIdInput) {
                                     studentIdInput.value = '';
                                 }
@@ -4812,6 +4820,20 @@ if (empty($teachers) && empty($selected_department)) {
             
             xhr.onload = function() {
                 try {
+                    // Check if response is valid JSON
+                    if (!xhr.responseText.trim()) {
+                        console.error('Empty response received');
+                        showNotification('Empty response from server', 'error');
+                        return;
+                    }
+                    
+                    // Check if response starts with HTML (error page)
+                    if (xhr.responseText.trim().startsWith('<')) {
+                        console.error('HTML response received instead of JSON:', xhr.responseText.substring(0, 200));
+                        showNotification('Server error. Please try again.', 'error');
+                        return;
+                    }
+                    
                     const response = JSON.parse(xhr.responseText);
                     
                     if (response.success) {
