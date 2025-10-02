@@ -1,12 +1,17 @@
 <?php
-// Database configuration
-$host = 'seait-edu.ph';
-$dbname = 'seaitedu_facallti';
-$username = 'seaitedu_facallti';
-$password = '020894FaCallTi';
+/**
+ * FACALLTI Database Configuration
+ * Faculty Consultation Time Interface
+ */
 
-// Create connection with socket path
-$conn = mysqli_connect($host, $username, $password, $dbname, 3306, '/Applications/XAMPP/xamppfiles/var/mysql/mysql.sock');
+// Database configuration
+$host = 'localhost';
+$dbname = 'facallti';
+$username = 'root';
+$password = '';
+
+// Create connection
+$conn = mysqli_connect($host, $username, $password, $dbname);
 
 // Check connection
 if (!$conn) {

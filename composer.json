@@ -1,6 +1,6 @@
 {
-    "name": "seait/student-registration-system",
-    "description": "Student Registration System for SEAIT",
+    "name": "seait/facallti",
+    "description": "FACALLTI - Faculty Consultation Time Interface for SEAIT",
     "type": "project",
     "require": {
         "php": ">=7.4",
