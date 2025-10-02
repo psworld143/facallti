@@ -252,14 +252,7 @@ INSERT INTO `faculty` (`first_name`, `last_name`, `email`, `department`, `positi
 ('Emily', 'Davis', 'emily.davis@seait.edu', 'Network Administration', 'Associate Professor');
 
 INSERT INTO `heads` (`first_name`, `last_name`, `email`, `department`, `position`) VALUES
-('Dr. Sarah', 'Wilson', 'sarah.wilson@seait.edu', 'Computer Science', 'Department Head'),
-('Dr. Robert', 'Brown', 'robert.brown@seait.edu', 'Information Technology', 'Department Head'),
-('Dr. Michael', 'Chen', 'michael.chen@seait.edu', 'Software Engineering', 'Department Head'),
-('Dr. Jennifer', 'Lee', 'jennifer.lee@seait.edu', 'Information Systems', 'Department Head'),
-('Dr. Carlos', 'Rodriguez', 'carlos.rodriguez@seait.edu', 'Computer Engineering', 'Department Head'),
-('Dr. Amanda', 'Taylor', 'amanda.taylor@seait.edu', 'Cybersecurity', 'Department Head'),
-('Dr. Kevin', 'Anderson', 'kevin.anderson@seait.edu', 'Data Science', 'Department Head'),
-('Dr. Maria', 'Gonzalez', 'maria.gonzalez@seait.edu', 'Network Administration', 'Department Head');
+('Reginald S.', 'Prudente', 'reginald.prudente@seait.edu', 'College of Information and Communication Technology', 'Dean');
 
 INSERT INTO `consultation_hours` (`teacher_id`, `day_of_week`, `start_time`, `end_time`) VALUES
 (1, 'monday', '09:00:00', '11:00:00'),
