@@ -8,6 +8,14 @@ class FloatingActionButton {
         this.fabModalTitle = document.getElementById('fabModalTitle');
         this.fabTeachersGrid = document.getElementById('fabTeachersGrid');
         
+        // Debug: Log which elements are found
+        console.log('FAB Debug:', {
+            fabButton: !!this.fabButton,
+            fabModal: !!this.fabModal,
+            fabModalOverlay: !!this.fabModalOverlay,
+            fabModalClose: !!this.fabModalClose
+        });
+        
         // Only initialize if all required elements exist
         if (this.fabButton && this.fabModal && this.fabModalOverlay && this.fabModalClose) {
             this.init();
@@ -17,6 +25,12 @@ class FloatingActionButton {
     }
 
     init() {
+        // Double-check that all required elements exist before proceeding
+        if (!this.fabButton || !this.fabModal || !this.fabModalOverlay || !this.fabModalClose) {
+            console.log('FAB elements missing in init(), skipping bindEvents');
+            return;
+        }
+        
         this.bindEvents();
         console.log('Floating Action Button initialized');
     }
@@ -194,7 +208,11 @@ class FloatingActionButton {
 
 // Initialize FAB when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    new FloatingActionButton();
+    try {
+        new FloatingActionButton();
+    } catch (error) {
+        console.log('FAB initialization failed:', error.message);
+    }
 });
 
 // Export for use in other scripts
