@@ -8,7 +8,12 @@ class FloatingActionButton {
         this.fabModalTitle = document.getElementById('fabModalTitle');
         this.fabTeachersGrid = document.getElementById('fabTeachersGrid');
         
-        this.init();
+        // Only initialize if all required elements exist
+        if (this.fabButton && this.fabModal && this.fabModalOverlay && this.fabModalClose) {
+            this.init();
+        } else {
+            console.log('FAB elements not found, skipping initialization');
+        }
     }
 
     init() {
