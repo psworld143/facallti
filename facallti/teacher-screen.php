@@ -1016,10 +1016,15 @@ $office_session_id = uniqid('office_', true);
         function testAudio() {
             console.log('Testing audio functionality...');
             console.log('User interacted:', userInteracted);
+            console.log('Sound enabled:', window.soundEnabled);
+            
+            // Force enable user interaction
+            userInteracted = true;
+            window.soundEnabled = true;
             
             // Test MP3 file
             const testAudio = new Audio('notification-sound.mp3');
-            testAudio.volume = 0.1;
+            testAudio.volume = 0.5;
             
             testAudio.addEventListener('loadstart', () => console.log('Audio loading started'));
             testAudio.addEventListener('canplay', () => console.log('Audio can play'));
@@ -1028,10 +1033,33 @@ $office_session_id = uniqid('office_', true);
             
             testAudio.play().then(() => {
                 console.log('Test audio played successfully');
+                showEnhancedNotification('🔊 Test audio played successfully!', 'success');
                 testAudio.pause();
             }).catch(e => {
                 console.log('Test audio failed:', e);
+                showEnhancedNotification('❌ Test audio failed: ' + e.message, 'error');
+                // Try Web Audio fallback
+                playWebAudioFallback('notification');
             });
+        }
+        
+        // Simple test function for debugging
+        function testSimpleAudio() {
+            console.log('Testing simple audio...');
+            try {
+                const audio = new Audio('notification-sound.mp3');
+                audio.volume = 0.3;
+                audio.play().then(() => {
+                    console.log('Simple audio test successful');
+                    showEnhancedNotification('🔊 Simple audio test successful!', 'success');
+                }).catch(e => {
+                    console.log('Simple audio test failed:', e);
+                    showEnhancedNotification('❌ Simple audio test failed: ' + e.message, 'error');
+                });
+            } catch (e) {
+                console.log('Simple audio creation failed:', e);
+                showEnhancedNotification('❌ Simple audio creation failed: ' + e.message, 'error');
+            }
         }
         
 
@@ -1927,6 +1955,7 @@ $office_session_id = uniqid('office_', true);
         function enableAudioPlayback() {
             if (!userInteracted) {
                 userInteracted = true;
+                window.soundEnabled = true;
                 console.log('User interaction detected, audio playback enabled for remote access');
                 
                 // Try to unlock audio context immediately
@@ -1951,6 +1980,16 @@ $office_session_id = uniqid('office_', true);
                 if (!userInteracted) {
                     console.log('Auto-enabling audio for remote access...');
                     enableAudioForRemoteAccess();
+                    
+                    // Force enable audio after 3 seconds if no user interaction
+                    setTimeout(() => {
+                        if (!userInteracted) {
+                            console.log('Force enabling audio after timeout...');
+                            userInteracted = true;
+                            window.soundEnabled = true;
+                            showEnhancedNotification('🔊 Audio auto-enabled for remote access!', 'success');
+                        }
+                    }, 3000);
                     
                     // Show instruction for remote users
                     showEnhancedNotification('🖱️ Click anywhere on the page to enable sound notifications for remote access', 'info');
@@ -1985,7 +2024,29 @@ $office_session_id = uniqid('office_', true);
         }
         
         // Add test button for debugging
-
+        // Create test buttons for audio debugging
+        function addTestButtons() {
+            const testContainer = document.createElement('div');
+            testContainer.id = 'audioTestContainer';
+            testContainer.className = 'fixed bottom-4 right-4 z-50 space-y-2';
+            testContainer.innerHTML = `
+                <button onclick="testSimpleAudio()" class="bg-blue-500 text-white px-3 py-2 rounded text-sm hover:bg-blue-600">
+                    🔊 Test Simple Audio
+                </button>
+                <button onclick="testAudio()" class="bg-green-500 text-white px-3 py-2 rounded text-sm hover:bg-green-600">
+                    🎵 Test Full Audio
+                </button>
+                <button onclick="playNotificationSound()" class="bg-orange-500 text-white px-3 py-2 rounded text-sm hover:bg-orange-600">
+                    🔔 Test Notification
+                </button>
+            `;
+            document.body.appendChild(testContainer);
+        }
+        
+        // Add test buttons when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(addTestButtons, 1000);
+        });
         
 
 
