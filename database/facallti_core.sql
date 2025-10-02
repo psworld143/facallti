@@ -229,39 +229,64 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `colleges` (`name`, `description`, `color_theme`) VALUES
-('College of Information Technology', 'IT and Computer Science programs', '#FF6B35'),
-('College of Engineering', 'Engineering and Technology programs', '#4ECDC4'),
-('College of Business', 'Business and Management programs', '#45B7D1');
+('College of Information and Communication Technology', 'Information Technology, Computer Science, and Communication programs', '#FF6B35');
 
 INSERT INTO `departments` (`name`, `college_id`, `description`) VALUES
 ('Computer Science', 1, 'Computer Science Department'),
 ('Information Technology', 1, 'Information Technology Department'),
 ('Software Engineering', 1, 'Software Engineering Department'),
-('Civil Engineering', 2, 'Civil Engineering Department'),
-('Mechanical Engineering', 2, 'Mechanical Engineering Department'),
-('Business Administration', 3, 'Business Administration Department'),
-('Marketing', 3, 'Marketing Department');
+('Information Systems', 1, 'Information Systems Department'),
+('Computer Engineering', 1, 'Computer Engineering Department'),
+('Cybersecurity', 1, 'Cybersecurity Department'),
+('Data Science', 1, 'Data Science Department'),
+('Network Administration', 1, 'Network Administration Department');
 
 INSERT INTO `faculty` (`first_name`, `last_name`, `email`, `department`, `position`) VALUES
 ('John', 'Doe', 'john.doe@seait.edu', 'Computer Science', 'Professor'),
 ('Jane', 'Smith', 'jane.smith@seait.edu', 'Information Technology', 'Associate Professor'),
-('Mike', 'Johnson', 'mike.johnson@seait.edu', 'Software Engineering', 'Assistant Professor');
+('Mike', 'Johnson', 'mike.johnson@seait.edu', 'Software Engineering', 'Assistant Professor'),
+('Sarah', 'Wilson', 'sarah.wilson@seait.edu', 'Information Systems', 'Professor'),
+('David', 'Brown', 'david.brown@seait.edu', 'Computer Engineering', 'Associate Professor'),
+('Lisa', 'Garcia', 'lisa.garcia@seait.edu', 'Cybersecurity', 'Assistant Professor'),
+('Robert', 'Martinez', 'robert.martinez@seait.edu', 'Data Science', 'Professor'),
+('Emily', 'Davis', 'emily.davis@seait.edu', 'Network Administration', 'Associate Professor');
 
 INSERT INTO `heads` (`first_name`, `last_name`, `email`, `department`, `position`) VALUES
 ('Dr. Sarah', 'Wilson', 'sarah.wilson@seait.edu', 'Computer Science', 'Department Head'),
-('Dr. Robert', 'Brown', 'robert.brown@seait.edu', 'Information Technology', 'Department Head');
+('Dr. Robert', 'Brown', 'robert.brown@seait.edu', 'Information Technology', 'Department Head'),
+('Dr. Michael', 'Chen', 'michael.chen@seait.edu', 'Software Engineering', 'Department Head'),
+('Dr. Jennifer', 'Lee', 'jennifer.lee@seait.edu', 'Information Systems', 'Department Head'),
+('Dr. Carlos', 'Rodriguez', 'carlos.rodriguez@seait.edu', 'Computer Engineering', 'Department Head'),
+('Dr. Amanda', 'Taylor', 'amanda.taylor@seait.edu', 'Cybersecurity', 'Department Head'),
+('Dr. Kevin', 'Anderson', 'kevin.anderson@seait.edu', 'Data Science', 'Department Head'),
+('Dr. Maria', 'Gonzalez', 'maria.gonzalez@seait.edu', 'Network Administration', 'Department Head');
 
 INSERT INTO `consultation_hours` (`teacher_id`, `day_of_week`, `start_time`, `end_time`) VALUES
 (1, 'monday', '09:00:00', '11:00:00'),
 (1, 'wednesday', '14:00:00', '16:00:00'),
 (2, 'tuesday', '10:00:00', '12:00:00'),
 (2, 'thursday', '13:00:00', '15:00:00'),
-(3, 'friday', '09:00:00', '11:00:00');
+(3, 'friday', '09:00:00', '11:00:00'),
+(4, 'monday', '13:00:00', '15:00:00'),
+(4, 'wednesday', '09:00:00', '11:00:00'),
+(5, 'tuesday', '14:00:00', '16:00:00'),
+(5, 'thursday', '10:00:00', '12:00:00'),
+(6, 'friday', '13:00:00', '15:00:00'),
+(6, 'monday', '10:00:00', '12:00:00'),
+(7, 'tuesday', '09:00:00', '11:00:00'),
+(7, 'thursday', '14:00:00', '16:00:00'),
+(8, 'wednesday', '10:00:00', '12:00:00'),
+(8, 'friday', '14:00:00', '16:00:00');
 
 INSERT INTO `teacher_availability` (`teacher_id`, `is_available`) VALUES
 (1, 1),
 (2, 1),
-(3, 1);
+(3, 1),
+(4, 1),
+(5, 1),
+(6, 1),
+(7, 1),
+(8, 1);
 
 COMMIT;
 
