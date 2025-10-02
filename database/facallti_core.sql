@@ -225,6 +225,22 @@ CREATE TABLE `users` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `settings`
+--
+
+CREATE TABLE `settings` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `setting_key` varchar(100) NOT NULL,
+  `setting_value` text,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `setting_key` (`setting_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Sample data for testing
 --
 
@@ -247,6 +263,12 @@ INSERT INTO `consultation_hours` (`teacher_id`, `day_of_week`, `start_time`, `en
 
 INSERT INTO `teacher_availability` (`teacher_id`, `is_available`) VALUES
 (1, 1);
+
+INSERT INTO `settings` (`setting_key`, `setting_value`) VALUES
+('school_logo', ''),
+('site_description', 'FACALLTI - Faculty Consultation Time Interface'),
+('school_name', 'Southeast Asian Institute of Technology'),
+('school_abbreviation', 'SEAIT');
 
 COMMIT;
 
