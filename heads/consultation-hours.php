@@ -391,7 +391,7 @@ include 'includes/header.php';
                                     <?php echo date('g:i A', strtotime($consultation['start_time'])) . ' - ' . date('g:i A', strtotime($consultation['end_time'])); ?>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    <?php echo htmlspecialchars($consultation['room']); ?>
+                                    <?php echo $consultation['room'] ? htmlspecialchars($consultation['room']) : '-'; ?>
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-900">
                                     <?php echo $consultation['notes'] ?: '-'; ?>
