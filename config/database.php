@@ -6,9 +6,9 @@
 
 // Database configuration
 $host = 'localhost';
-$dbname = 'facallti';
-$username = 'root';
-$password = '';
+$dbname = 'cons_facallti';
+$username = 'cons_facallti';
+$password = '020894Facallti';
 
 // Create connection
 $conn = mysqli_connect($host, $username, $password, $dbname);
