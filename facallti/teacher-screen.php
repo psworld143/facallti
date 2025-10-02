@@ -42,9 +42,9 @@ $department_query = "SELECT DISTINCT
                     ch.end_time,
                     ch.room,
                     ch.notes,
-                    ta.scan_time,
+                    ta.last_updated as scan_time,
                     ta.is_available as availability_status,
-                    ta.last_activity
+                    ta.last_updated as last_activity
                    FROM faculty f 
                    INNER JOIN consultation_hours ch ON f.id = ch.teacher_id
                    LEFT JOIN teacher_availability ta ON f.id = ta.teacher_id
@@ -61,7 +61,7 @@ $department_query .= " AND f.id NOT IN (
                        FROM consultation_leave 
                        WHERE leave_date = CURDATE()
                    )
-                   GROUP BY f.id, f.first_name, f.last_name, f.department, f.position, f.email, f.bio, f.image_url, f.is_active, ta.scan_time, ta.is_available, ta.last_activity
+                   GROUP BY f.id, f.first_name, f.last_name, f.department, f.position, f.email, f.bio, f.image_url, f.is_active, ta.last_updated, ta.is_available
                    ORDER BY ta.is_available DESC, f.first_name, f.last_name";
 
 $department_stmt = mysqli_prepare($conn, $department_query);
