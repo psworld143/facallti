@@ -232,24 +232,17 @@ INSERT INTO `colleges` (`name`, `description`, `color_theme`) VALUES
 ('College of Information and Communication Technology', 'Information Technology, Computer Science, and Communication programs', '#FF6B35');
 
 INSERT INTO `departments` (`name`, `college_id`, `description`) VALUES
-('Computer Science', 1, 'Computer Science Department'),
-('Information Technology', 1, 'Information Technology Department'),
-('Software Engineering', 1, 'Software Engineering Department'),
-('Information Systems', 1, 'Information Systems Department'),
-('Computer Engineering', 1, 'Computer Engineering Department'),
-('Cybersecurity', 1, 'Cybersecurity Department'),
-('Data Science', 1, 'Data Science Department'),
-('Network Administration', 1, 'Network Administration Department');
+('College of Information and Communication Technology', 1, 'All ICT programs and departments');
 
 INSERT INTO `faculty` (`first_name`, `last_name`, `email`, `department`, `position`) VALUES
-('John', 'Doe', 'john.doe@seait.edu', 'Computer Science', 'Professor'),
-('Jane', 'Smith', 'jane.smith@seait.edu', 'Information Technology', 'Associate Professor'),
-('Mike', 'Johnson', 'mike.johnson@seait.edu', 'Software Engineering', 'Assistant Professor'),
-('Sarah', 'Wilson', 'sarah.wilson@seait.edu', 'Information Systems', 'Professor'),
-('David', 'Brown', 'david.brown@seait.edu', 'Computer Engineering', 'Associate Professor'),
-('Lisa', 'Garcia', 'lisa.garcia@seait.edu', 'Cybersecurity', 'Assistant Professor'),
-('Robert', 'Martinez', 'robert.martinez@seait.edu', 'Data Science', 'Professor'),
-('Emily', 'Davis', 'emily.davis@seait.edu', 'Network Administration', 'Associate Professor');
+('John', 'Doe', 'john.doe@seait.edu', 'College of Information and Communication Technology', 'Professor'),
+('Jane', 'Smith', 'jane.smith@seait.edu', 'College of Information and Communication Technology', 'Associate Professor'),
+('Mike', 'Johnson', 'mike.johnson@seait.edu', 'College of Information and Communication Technology', 'Assistant Professor'),
+('Sarah', 'Wilson', 'sarah.wilson@seait.edu', 'College of Information and Communication Technology', 'Professor'),
+('David', 'Brown', 'david.brown@seait.edu', 'College of Information and Communication Technology', 'Associate Professor'),
+('Lisa', 'Garcia', 'lisa.garcia@seait.edu', 'College of Information and Communication Technology', 'Assistant Professor'),
+('Robert', 'Martinez', 'robert.martinez@seait.edu', 'College of Information and Communication Technology', 'Professor'),
+('Emily', 'Davis', 'emily.davis@seait.edu', 'College of Information and Communication Technology', 'Associate Professor');
 
 INSERT INTO `heads` (`first_name`, `last_name`, `email`, `department`, `position`) VALUES
 ('Reginald S.', 'Prudente', 'reginald.prudente@seait.edu', 'College of Information and Communication Technology', 'Dean');
