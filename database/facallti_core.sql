@@ -243,6 +243,23 @@ CREATE TABLE `settings` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `error_logs`
+--
+
+CREATE TABLE `error_logs` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `error_type` varchar(10) NOT NULL,
+  `requested_url` text,
+  `referrer` text,
+  `user_agent` text,
+  `ip_address` varchar(45),
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Sample data for testing
 --
 
