@@ -56,7 +56,7 @@ try {
                    LEFT JOIN consultation_hours ch ON f.id = ch.teacher_id 
                        AND ch.day_of_week = ? 
                        AND ch.is_active = 1
-                   LEFT JOIN teacher_availability ta ON f.id = ta.teacher_id AND ta.availability_date = CURDATE()
+                   LEFT JOIN teacher_availability ta ON f.id = ta.teacher_id
                    WHERE f.is_active = 1 
                    AND f.department = ?
                    AND f.id NOT IN (
@@ -117,7 +117,7 @@ try {
                        LEFT JOIN consultation_hours ch ON f.id = ch.teacher_id 
                            AND ch.day_of_week = ? 
                            AND ch.is_active = 1
-                       LEFT JOIN teacher_availability ta ON f.id = ta.teacher_id AND ta.availability_date = CURDATE()
+                       LEFT JOIN teacher_availability ta ON f.id = ta.teacher_id
                        WHERE f.is_active = 1 
                        AND f.department LIKE ?
                        AND f.id NOT IN (

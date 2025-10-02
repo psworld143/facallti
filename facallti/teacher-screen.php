@@ -47,7 +47,7 @@ $department_query = "SELECT DISTINCT
                     ta.last_activity
                    FROM faculty f 
                    INNER JOIN consultation_hours ch ON f.id = ch.teacher_id
-                   LEFT JOIN teacher_availability ta ON f.id = ta.teacher_id AND ta.availability_date = CURDATE()
+                   LEFT JOIN teacher_availability ta ON f.id = ta.teacher_id
                    WHERE f.department = ? 
                    AND f.is_active = 1
                    AND ch.day_of_week = ?

@@ -49,7 +49,7 @@ $department_query = "SELECT DISTINCT
                     ta.last_activity
                    FROM faculty f 
                    LEFT JOIN consultation_hours ch ON f.id = ch.teacher_id AND ch.day_of_week = ? AND ch.is_active = 1
-                   LEFT JOIN teacher_availability ta ON f.id = ta.teacher_id AND ta.availability_date = CURDATE()
+                   LEFT JOIN teacher_availability ta ON f.id = ta.teacher_id
                    WHERE f.department = ? 
                    AND f.is_active = 1
                    AND f.id NOT IN (
@@ -88,7 +88,7 @@ if ($department_stmt) {
                         ta.is_available as availability_status,
                         ta.last_activity
                        FROM faculty f 
-                       LEFT JOIN teacher_availability ta ON f.id = ta.teacher_id AND ta.availability_date = CURDATE()
+                       LEFT JOIN teacher_availability ta ON f.id = ta.teacher_id
                        WHERE f.department = ? AND f.is_active = 1
                        ORDER BY ta.is_available DESC, f.first_name, f.last_name";
     

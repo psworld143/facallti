@@ -60,23 +60,25 @@ try {
     
     $teacher = mysqli_fetch_assoc($teacher_result);
     
-    // Check if availability record exists for today
-    $check_query = "SELECT id, status FROM teacher_availability 
-                   WHERE teacher_id = ? AND availability_date = ?";
+    // Check if availability record exists for this teacher
+    $check_query = "SELECT id, is_available FROM teacher_availability 
+                   WHERE teacher_id = ?";
     $check_stmt = mysqli_prepare($conn, $check_query);
-    mysqli_stmt_bind_param($check_stmt, "is", $teacher_id, $today);
+    mysqli_stmt_bind_param($check_stmt, "i", $teacher_id);
     mysqli_stmt_execute($check_stmt);
     $check_result = mysqli_stmt_get_result($check_stmt);
+    
+    $is_available = ($status === 'available') ? 1 : 0;
     
     if (mysqli_num_rows($check_result) > 0) {
         // Update existing record
         $existing_record = mysqli_fetch_assoc($check_result);
         
         $update_query = "UPDATE teacher_availability 
-                        SET status = ?, last_activity = NOW(), notes = ?, updated_at = NOW()
+                        SET is_available = ?, last_updated = NOW()
                         WHERE id = ?";
         $update_stmt = mysqli_prepare($conn, $update_query);
-        mysqli_stmt_bind_param($update_stmt, "ssi", $status, $notes, $existing_record['id']);
+        mysqli_stmt_bind_param($update_stmt, "ii", $is_available, $existing_record['id']);
         
         if (!mysqli_stmt_execute($update_stmt)) {
             throw new Exception('Failed to update teacher availability');
@@ -86,10 +88,10 @@ try {
     } else {
         // Insert new record
         $insert_query = "INSERT INTO teacher_availability 
-                        (teacher_id, availability_date, scan_time, status, notes, created_at, updated_at) 
-                        VALUES (?, ?, NOW(), ?, ?, NOW(), NOW())";
+                        (teacher_id, is_available, last_updated) 
+                        VALUES (?, ?, NOW())";
         $insert_stmt = mysqli_prepare($conn, $insert_query);
-        mysqli_stmt_bind_param($insert_stmt, "isss", $teacher_id, $today, $status, $notes);
+        mysqli_stmt_bind_param($insert_stmt, "ii", $teacher_id, $is_available);
         
         if (!mysqli_stmt_execute($insert_stmt)) {
             throw new Exception('Failed to insert teacher availability');

@@ -56,8 +56,8 @@ try {
         $teacher = mysqli_fetch_assoc($teacher_result);
         
         // Check current availability status from teacher_availability table
-        $availability_check_query = "SELECT status FROM teacher_availability 
-                                   WHERE teacher_id = ? AND availability_date = CURDATE()";
+        $availability_check_query = "SELECT is_available FROM teacher_availability 
+                                   WHERE teacher_id = ?";
         $availability_stmt = mysqli_prepare($conn, $availability_check_query);
         mysqli_stmt_bind_param($availability_stmt, "i", $teacher['id']);
         mysqli_stmt_execute($availability_stmt);
@@ -66,7 +66,7 @@ try {
         $current_status = null;
         if (mysqli_num_rows($availability_result) > 0) {
             $availability_row = mysqli_fetch_assoc($availability_result);
-            $current_status = $availability_row['status'];
+            $current_status = $availability_row['is_available'] ? 'available' : 'not_available';
         }
         
         // Check if teacher has active consultation today
