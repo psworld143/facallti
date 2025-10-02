@@ -1,6 +1,6 @@
 {
     "name": "seait/facallti",
-    "description": "FACALLTI - Faculty Consultation Time Interface for SEAIT",
+    "description": "Faculty Consultation Time Interface for SEAIT",
     "type": "project",
     "require": {
         "php": ">=7.4",

@@ -1,4 +1,4 @@
-# FACALLTI - Faculty Consultation Time Interface
+# Faculty Consultation Time Interface
 
 A comprehensive web-based system for managing faculty consultation hours and student-teacher interactions at SEAIT (Southeast Asian Institute of Technology).
 

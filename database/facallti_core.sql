@@ -285,7 +285,7 @@ INSERT INTO `teacher_availability` (`teacher_id`, `is_available`) VALUES
 
 INSERT INTO `settings` (`setting_key`, `setting_value`) VALUES
 ('school_logo', ''),
-('site_description', 'FACALLTI - Faculty Consultation Time Interface'),
+('site_description', 'Faculty Consultation Time Interface'),
 ('school_name', 'Southeast Asian Institute of Technology'),
 ('school_abbreviation', 'SEAIT');
 
