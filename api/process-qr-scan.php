@@ -20,7 +20,13 @@ function sanitize_input($data) {
 // Function to log QR processing
 function log_qr_processing($qr_code, $type, $result) {
     $log_message = date('Y-m-d H:i:s') . " - QR: $qr_code, Type: $type, Result: " . ($result ? 'SUCCESS' : 'FAILED') . PHP_EOL;
-    error_log($log_message, 3, '../logs/qr_processing.log');
+    
+    // Try to write to log file, but don't fail if permission denied
+    $log_file = '../logs/qr_processing.log';
+    if (is_writable(dirname($log_file))) {
+        @error_log($log_message, 3, $log_file);
+    }
+    // If logging fails, we continue without error - logging is not critical
 }
 
 try {
