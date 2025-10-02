@@ -177,7 +177,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Get user data
 $user_query = "SELECT u.*, h.department, h.position, h.phone as head_phone 
                FROM users u 
-               LEFT JOIN heads h ON u.id = h.user_id 
+               LEFT JOIN heads h ON u.email = h.email 
                WHERE u.id = ?";
 $stmt = mysqli_prepare($conn, $user_query);
 mysqli_stmt_bind_param($stmt, "i", $_SESSION['user_id']);

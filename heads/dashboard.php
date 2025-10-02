@@ -21,10 +21,11 @@ $first_name = $_SESSION['first_name'];
 $last_name = $_SESSION['last_name'];
 $role = $_SESSION['role'];
 
-// Get head information from heads table
-$head_query = "SELECT h.* FROM heads h WHERE h.user_id = ?";
+// Get head information from heads table using email
+$user_email = $_SESSION['email'];
+$head_query = "SELECT h.* FROM heads h WHERE h.email = ?";
 $head_stmt = mysqli_prepare($conn, $head_query);
-mysqli_stmt_bind_param($head_stmt, "i", $user_id);
+mysqli_stmt_bind_param($head_stmt, "s", $user_email);
 mysqli_stmt_execute($head_stmt);
 $head_result = mysqli_stmt_get_result($head_stmt);
 $head_info = mysqli_fetch_assoc($head_result);

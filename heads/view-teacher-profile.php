@@ -19,14 +19,15 @@ $username = $_SESSION['username'];
 $first_name = $_SESSION['first_name'];
 $last_name = $_SESSION['last_name'];
 
-// Get head information from heads table
-$head_query = "SELECT h.* FROM heads h WHERE h.user_id = ?";
+// Get head information from heads table using email
+$user_email = $_SESSION['email'];
+$head_query = "SELECT h.* FROM heads h WHERE h.email = ?";
 $head_stmt = mysqli_prepare($conn, $head_query);
 if (!$head_stmt) {
     die("Error preparing head statement: " . mysqli_error($conn));
 }
 
-mysqli_stmt_bind_param($head_stmt, "i", $user_id);
+mysqli_stmt_bind_param($head_stmt, "s", $user_email);
 if (!mysqli_stmt_execute($head_stmt)) {
     die("Error executing head statement: " . mysqli_stmt_error($head_stmt));
 }
