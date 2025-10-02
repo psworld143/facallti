@@ -2,7 +2,7 @@
 // Services CRUD Operations
 // This file contains all database operations for services, separated from UI
 
-require_once 'config/database.php';
+require_once '../config/database.php';
 
 // ==================== SERVICE CATEGORIES CRUD ====================
 

@@ -1,5 +1,7 @@
 <?php
 session_start();
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
 // Set timezone BEFORE including database.php to ensure it's applied globally
 if (function_exists('date_default_timezone_set')) {
@@ -93,17 +95,10 @@ if (function_exists('shell_exec')) {
     }
 }
 
-// Get active semester
-$semester_query = "SELECT name, academic_year FROM semesters WHERE status = 'active' LIMIT 1";
-$semester_result = mysqli_query($conn, $semester_query);
-$active_semester = null;
-$active_academic_year = null;
-
-if ($semester_result && mysqli_num_rows($semester_result) > 0) {
-    $semester_row = mysqli_fetch_assoc($semester_result);
-    $active_semester = $semester_row['name'];
-    $active_academic_year = $semester_row['academic_year'];
-}
+// Since semesters table was removed during FaCallTi cleanup,
+// set default semester values
+$active_semester = 'First Semester';
+$active_academic_year = date('Y') . '-' . (date('Y') + 1);
 
 // Get teachers available for consultation in the selected department who have scanned their QR code
 // Teachers are available regardless of their scheduled consultation hours once they scan
@@ -121,15 +116,15 @@ $teachers_query = "SELECT
                     COALESCE(MAX(ch.end_time), '17:00:00') as end_time,
                     COALESCE(GROUP_CONCAT(DISTINCT ch.room ORDER BY ch.room SEPARATOR ', '), 'Available') as room,
                     COALESCE(GROUP_CONCAT(DISTINCT ch.notes ORDER BY ch.notes SEPARATOR '; '), 'Available for consultation') as notes,
-                    ta.scan_time,
-                    ta.last_activity
+                    NOW() as scan_time,
+                    NOW() as last_activity
                    FROM faculty f 
-                   INNER JOIN teacher_availability ta ON f.id = ta.teacher_id
                    LEFT JOIN consultation_hours ch ON f.id = ch.teacher_id 
                        AND ch.day_of_week = ? 
                        AND ch.is_active = 1
                        " . ($active_semester ? "AND ch.semester = ?" : "") . "
                        " . ($active_academic_year ? "AND ch.academic_year = ?" : "") . "
+                   LEFT JOIN teacher_availability ta ON f.id = ta.teacher_id AND ta.availability_date = CURDATE()
                    WHERE f.is_active = 1 
                    AND f.department = ?
                    AND f.id NOT IN (
@@ -137,10 +132,9 @@ $teachers_query = "SELECT
                        FROM consultation_leave 
                        WHERE leave_date = CURDATE()
                    )
-                   AND ta.availability_date = CURDATE()
                    AND ta.status = 'available'
-                   GROUP BY f.id, f.first_name, f.last_name, f.department, f.position, f.email, f.bio, f.image_url, f.is_active, ta.scan_time, ta.last_activity
-                   ORDER BY ta.scan_time DESC, f.first_name, f.last_name";
+                   GROUP BY f.id, f.first_name, f.last_name, f.department, f.position, f.email, f.bio, f.image_url, f.is_active
+                   ORDER BY f.first_name, f.last_name";
 
 $teachers_stmt = mysqli_prepare($conn, $teachers_query);
 if ($teachers_stmt) {
@@ -194,15 +188,15 @@ if (empty($teachers)) {
                         COALESCE(MAX(ch.end_time), '17:00:00') as end_time,
                         COALESCE(GROUP_CONCAT(DISTINCT ch.room ORDER BY ch.room SEPARATOR ', '), 'Available') as room,
                         COALESCE(GROUP_CONCAT(DISTINCT ch.notes ORDER BY ch.notes SEPARATOR '; '), 'Available for consultation') as notes,
-                        ta.scan_time,
-                        ta.last_activity
+                        NOW() as scan_time,
+                        NOW() as last_activity
                        FROM faculty f 
-                       INNER JOIN teacher_availability ta ON f.id = ta.teacher_id
                        LEFT JOIN consultation_hours ch ON f.id = ch.teacher_id 
                            AND ch.day_of_week = ? 
                            AND ch.is_active = 1
                            " . ($active_semester ? "AND ch.semester = ?" : "") . "
                            " . ($active_academic_year ? "AND ch.academic_year = ?" : "") . "
+                       LEFT JOIN teacher_availability ta ON f.id = ta.teacher_id AND ta.availability_date = CURDATE()
                        WHERE f.is_active = 1 
                        AND f.department LIKE ?
                        AND f.id NOT IN (
@@ -210,10 +204,9 @@ if (empty($teachers)) {
                            FROM consultation_leave 
                            WHERE leave_date = CURDATE()
                        )
-                       AND ta.availability_date = CURDATE()
                        AND ta.status = 'available'
-                       GROUP BY f.id, f.first_name, f.last_name, f.department, f.position, f.email, f.bio, f.image_url, f.is_active, ta.scan_time, ta.last_activity
-                       ORDER BY ta.scan_time DESC, f.first_name, f.last_name";
+                       GROUP BY f.id, f.first_name, f.last_name, f.department, f.position, f.email, f.bio, f.image_url, f.is_active
+                       ORDER BY f.first_name, f.last_name";
     
     $partial_stmt = mysqli_prepare($conn, $partial_query);
     if ($partial_stmt) {
@@ -263,10 +256,9 @@ if (empty($teachers) && empty($selected_department)) {
                         COALESCE(MAX(ch.end_time), '17:00:00') as end_time,
                         COALESCE(GROUP_CONCAT(DISTINCT ch.room ORDER BY ch.room SEPARATOR ', '), 'Available') as room,
                         COALESCE(GROUP_CONCAT(DISTINCT ch.notes ORDER BY ch.notes SEPARATOR '; '), 'Available for consultation') as notes,
-                        ta.scan_time,
-                        ta.last_activity
+                        NOW() as scan_time,
+                        NOW() as last_activity
                        FROM faculty f 
-                       INNER JOIN teacher_availability ta ON f.id = ta.teacher_id
                        LEFT JOIN consultation_hours ch ON f.id = ch.teacher_id 
                            AND ch.day_of_week = ? 
                            AND ch.is_active = 1
@@ -278,10 +270,8 @@ if (empty($teachers) && empty($selected_department)) {
                            FROM consultation_leave 
                            WHERE leave_date = CURDATE()
                        )
-                       AND ta.availability_date = CURDATE()
-                       AND ta.status = 'available'
-                       GROUP BY f.id, f.first_name, f.last_name, f.department, f.position, f.email, f.bio, f.image_url, f.is_active, ta.scan_time, ta.last_activity
-                       ORDER BY ta.scan_time DESC, f.department, f.first_name, f.last_name";
+                       GROUP BY f.id, f.first_name, f.last_name, f.department, f.position, f.email, f.bio, f.image_url, f.is_active
+                       ORDER BY f.department, f.first_name, f.last_name";
     
     $fallback_stmt = mysqli_prepare($conn, $fallback_query);
     if ($fallback_stmt) {
@@ -348,18 +338,17 @@ if (empty($teachers) && empty($selected_department)) {
             pointer-events: none;
         }
 
-        /* Standby Mode Background Video Styles */
+        /* Background Video Styles */
         .standby-video-container {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 9999;
-            background: rgba(0, 0, 0, 0.8);
-            display: none;
-            opacity: 0;
-            transition: opacity 1s ease-in-out;
+            z-index: -1;
+            background: rgba(0, 0, 0, 0.3);
+            display: flex;
+            opacity: 1;
         }
         
         .standby-video-container.active {
@@ -441,52 +430,6 @@ if (empty($teachers) && empty($selected_department)) {
             opacity: 1;
         }
         
-        .fullscreen-btn {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 50%;
-            cursor: pointer;
-            z-index: 10001;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 48px;
-            height: 48px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        .fullscreen-btn:hover {
-            background: rgba(0, 0, 0, 0.9);
-            transform: scale(1.1);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        }
-        
-        .fullscreen-btn:active {
-            transform: scale(0.95);
-        }
-        
-        .fullscreen-btn i {
-            font-size: 18px;
-            transition: all 0.3s ease;
-        }
-        
-        .fullscreen-btn.fullscreen i {
-            transform: rotate(180deg);
-        }
-        
-        /* Fullscreen button always visible on student screen */
-        .fullscreen-btn {
-            opacity: 1;
-            pointer-events: auto;
-            transform: scale(1);
-        }
         
         /* Enhanced Teacher Card Styling with Animations */
         .teacher-card {
@@ -496,7 +439,36 @@ if (empty($teachers) && empty($selected_department)) {
             overflow: hidden;
             background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
             border: 1px solid #e2e8f0;
+            opacity: 0;
+            transform: translateY(50px);
+            animation: slideInFromBottom 0.6s ease-out forwards;
         }
+        
+        /* Animation for teacher cards appearing one by one */
+        @keyframes slideInFromBottom {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Staggered animation delays for each teacher card */
+        .teacher-card:nth-child(1) { animation-delay: 0.1s; }
+        .teacher-card:nth-child(2) { animation-delay: 0.2s; }
+        .teacher-card:nth-child(3) { animation-delay: 0.3s; }
+        .teacher-card:nth-child(4) { animation-delay: 0.4s; }
+        .teacher-card:nth-child(5) { animation-delay: 0.5s; }
+        .teacher-card:nth-child(6) { animation-delay: 0.6s; }
+        .teacher-card:nth-child(7) { animation-delay: 0.7s; }
+        .teacher-card:nth-child(8) { animation-delay: 0.8s; }
+        .teacher-card:nth-child(9) { animation-delay: 0.9s; }
+        .teacher-card:nth-child(10) { animation-delay: 1.0s; }
+        .teacher-card:nth-child(11) { animation-delay: 1.1s; }
+        .teacher-card:nth-child(12) { animation-delay: 1.2s; }
         
         /* Card hover animations */
         .teacher-card:hover {
@@ -523,42 +495,59 @@ if (empty($teachers) && empty($selected_department)) {
         /* Enhanced focus styles for student ID input */
         #studentIdInput:focus {
             outline: none;
-            border-color: #10B981;
-            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1), 0 0 0 1px rgba(16, 185, 129, 0.2);
-            transform: scale(1.02);
+            border-color: transparent;
+            box-shadow: none;
+            transform: none;
             transition: all 0.2s ease;
+        }
+        
+        /* Transparent QR input styling */
+        #studentIdInput::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+        
+        #studentIdInput:-ms-input-placeholder {
+            color: rgba(255, 255, 255, 0.7);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+        
+        #studentIdInput::-ms-input-placeholder {
+            color: rgba(255, 255, 255, 0.7);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
         }
         
 
         
         #studentIdInput {
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            caret-color: transparent; /* Hide the text cursor */
         }
         
         #studentIdInput:focus {
-            animation: inputGlow 2s ease-in-out infinite;
+            animation: none;
         }
         
         @keyframes inputGlow {
             0%, 100% {
-                box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1), 0 0 0 1px rgba(16, 185, 129, 0.2);
+                box-shadow: none;
             }
             50% {
-                box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2), 0 0 0 1px rgba(16, 185, 129, 0.4);
+                box-shadow: none;
             }
         }
         
         /* Pulsing animation for focused input */
         #studentIdInput:focus {
-            animation: inputPulse 2s infinite;
+            animation: none;
         }
         
         @keyframes inputPulse {
             0%, 100% {
-                box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1), 0 0 0 1px rgba(16, 185, 129, 0.2);
+                box-shadow: none;
             }
             50% {
-                box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2), 0 0 0 1px rgba(16, 185, 129, 0.4);
+                box-shadow: none;
             }
         }
 
@@ -736,14 +725,14 @@ if (empty($teachers) && empty($selected_department)) {
         }
 
         .time-display-card {
-            background: linear-gradient(135deg, #ff6b35 0%, #ea580c 100%);
-            box-shadow: 0 10px 25px rgba(255, 107, 53, 0.3);
+            background: transparent;
+            box-shadow: none;
             transition: all 0.3s ease;
         }
 
         .time-display-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 15px 35px rgba(255, 107, 53, 0.4);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
         }
 
         .live-indicator {
@@ -800,6 +789,114 @@ if (empty($teachers) && empty($selected_department)) {
             align-items: center;
             justify-content: center;
             padding: 1rem;
+        }
+        
+        /* Modal Components */
+        .modal-backdrop {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            z-index: 2;
+            position: relative;
+        }
+        
+        .modal-header {
+            padding: 1.5rem 1.5rem 0 1.5rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .modal-body {
+            padding: 1.5rem;
+        }
+        
+        .modal-footer {
+            padding: 0 1.5rem 1.5rem 1.5rem;
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+        }
+        
+        /* Button Styles */
+        .btn-primary {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            min-width: 120px;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .btn-primary:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .btn-secondary {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            border: 2px solid #d1d5db;
+            background: white;
+            color: #374151;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            min-width: 120px;
+        }
+        
+        .btn-secondary:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-secondary:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .btn-secondary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
         }
 
         .ultra-simple-content {
@@ -1352,26 +1449,6 @@ if (empty($teachers) && empty($selected_department)) {
             -webkit-backdrop-filter: blur(16px);
         }
         
-        /* Enhanced cancel button styling */
-        #floatingCancelButton {
-            position: fixed !important;
-            bottom: 2rem !important;
-            left: 50% !important;
-            transform: translateX(-50%) !important;
-            z-index: 50 !important;
-        }
-        
-        #floatingCancelButton button {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-            border: 2px solid rgba(255, 255, 255, 0.2) !important;
-            box-shadow: 0 10px 25px rgba(239, 68, 68, 0.4) !important;
-        }
-        
-        #floatingCancelButton button:hover {
-            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
-            border-color: rgba(255, 255, 255, 0.4) !important;
-            box-shadow: 0 15px 35px rgba(239, 68, 68, 0.6) !important;
-        }
         
         /* Black background for teacher selection focus */
         #teacherSelectionOverlay {
@@ -1428,9 +1505,68 @@ if (empty($teachers) && empty($selected_department)) {
         ::-webkit-scrollbar-thumb:hover {
             background: linear-gradient(135deg, #E55A2B, #D4491B);
         }
+        
+        /* Fullscreen Button Styling */
+        #fullscreenToggle {
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        #fullscreenToggle:hover {
+            background: rgba(255, 107, 53, 0.2);
+            border: 1px solid rgba(255, 107, 53, 0.3);
+            box-shadow: 0 4px 15px rgba(255, 107, 53, 0.2);
+            transform: scale(1.1) translateY(-2px);
+        }
+        
+        #fullscreenToggle:active {
+            transform: scale(0.95);
+            background: rgba(255, 107, 53, 0.3);
+        }
+        
+        /* Fullscreen mode adjustments */
+        :fullscreen #fullscreenToggle {
+            top: 1rem;
+            right: 1rem;
+        }
+        
+        /* Mobile responsive adjustments */
+        @media (max-width: 768px) {
+            #fullscreenToggle {
+                top: 0.75rem;
+                right: 0.75rem;
+                padding: 0.75rem;
+            }
+            
+            #fullscreenToggle i {
+                font-size: 1rem;
+            }
+        }
+        
+        /* Animation for fullscreen button */
+        @keyframes pulse-fullscreen {
+            0% { 
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                background: rgba(255, 255, 255, 0.05);
+            }
+            50% { 
+                box-shadow: 0 4px 15px rgba(255, 107, 53, 0.2);
+                background: rgba(255, 107, 53, 0.15);
+            }
+            100% { 
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                background: rgba(255, 255, 255, 0.05);
+            }
+        }
+        
+        #fullscreenToggle:hover {
+            animation: pulse-fullscreen 2s infinite;
+        }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen flex flex-col">
+<body class="min-h-screen flex flex-col" style="background: transparent;">
     <!-- Canvas Background Animation -->
     <canvas id="canvas"></canvas>
     <!-- Standby Mode Background Video -->
@@ -1451,57 +1587,16 @@ if (empty($teachers) && empty($selected_department)) {
                                     <i class="fas fa-clock mr-1"></i>Standby in <span id="countdownTimer">30</span>s
     </div>
     
-    <!-- No Teachers Available Modal -->
-    <div id="noTeachersModal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-50 hidden">
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-3xl shadow-2xl border-4 border-orange-500 p-8 max-w-md w-full transform scale-95 opacity-0 transition-all duration-300">
-                <!-- Modal Header -->
-                <div class="text-center mb-6">
-                    <div class="w-20 h-20 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 shadow-lg mb-4 mx-auto flex items-center justify-center">
-                        <i class="fas fa-user-slash text-white text-2xl"></i>
-                    </div>
-                    <h3 class="text-2xl font-bold text-gray-800 mb-2">No Teachers Available</h3>
-                    <div class="w-24 h-1 bg-gradient-to-r from-orange-500 to-orange-600 rounded-full mx-auto"></div>
-                </div>
-                
-                <!-- Modal Content -->
-                <div class="text-center mb-8">
-                    <p class="text-gray-700 mb-4">
-                        <i class="fas fa-info-circle text-orange-500 mr-2"></i>
-                        No teachers are currently available for consultation at this time.
-                    </p>
-                    <div class="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-4">
-                        <p class="text-orange-800 text-sm">
-                            <i class="fas fa-clock mr-2"></i>
-                            Teachers only appear when they have scheduled consultation hours for the current day and time.
-                        </p>
-                    </div>
-                    <p class="text-sm text-gray-600">
-                        Please try again later or check with your department for available consultation schedules.
-                    </p>
-                </div>
-                
-                <!-- Modal Buttons -->
-                <div class="flex space-x-3">
-                    <button onclick="closeNoTeachersModal()" class="flex-1 bg-gradient-to-r from-gray-400 to-gray-500 text-white px-6 py-3 rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl font-bold text-lg border-2 border-gray-300 hover:border-gray-400">
-                        <i class="fas fa-times mr-2"></i>Close
-                    </button>
-                    <button onclick="refreshTeachersList()" class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-3 rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl font-bold text-lg border-2 border-orange-400 hover:border-orange-500">
-                        <i class="fas fa-sync-alt mr-2"></i>Refresh
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Fullscreen Button -->
-    <button id="fullscreenBtn" class="fullscreen-btn" title="Toggle Fullscreen">
-        <i class="fas fa-expand"></i>
-    </button>
-
 
     <!-- Main Content -->
-    <main class="flex-1 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 main-content">
+    <main class="flex-1 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 main-content relative">
+        <!-- Fullscreen Toggle Button -->
+        <button id="fullscreenToggle" 
+                class="fixed top-4 right-4 z-40 bg-transparent hover:bg-orange-500/20 text-white p-3 rounded-full shadow-lg transition-all duration-300 transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:ring-offset-2"
+                title="Toggle Fullscreen"
+                onclick="toggleFullscreen()">
+            <i id="fullscreenIcon" class="fas fa-expand text-lg"></i>
+        </button>
         <!-- Error Message -->
         <?php if (isset($_GET['error']) && $_GET['error'] === 'request_not_accepted'): ?>
         <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6" role="alert">
@@ -1513,92 +1608,48 @@ if (empty($teachers) && empty($selected_department)) {
         </div>
         <?php endif; ?>
 
-                <!-- Enhanced Page Header Card -->
-        <div id="todaysDateSection"  class="enhanced-card enhanced-header-card rounded-xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6 border-l-4 border-orange-500">
-            <div class="enhanced-header-layout">
-                <!-- Left Section: Main Content -->
-               
-                
-                <!-- Right Section: Enhanced Time Display -->
-                <div cass="flex-shrink-0 w-full lg:w-auto lg:min-w-[240px]">
-                    <div class="time-display-card rounded-xl p-3 sm:p-4 text-white shadow-lg border border-orange-400">
-                        <div class="text-center">
-                            <!-- Date Display -->
-                            <div class="mb-2">
-                                <p class="text-xs text-orange-100 mb-1 font-medium">Today's Date</p>
-                                <p class="text-sm sm:text-base font-bold text-white">
-                                    <?php echo getCorrectDateTime('l, F j'); ?>
-                                </p>
-                            </div>
-                            
-                            <!-- Time Display -->
-                            <div class="mb-2">
-                                <p class="text-xs text-orange-100 mb-1 font-medium flex items-center justify-center">
-                                    <span>Current Time (<?php echo date_default_timezone_get(); ?>)</span>
-                                </p>
-                                <p id="liveTime" class="text-lg sm:text-xl lg:text-2xl font-bold text-white live-time">
-                                    <?php echo getCorrectDateTime('g:i:s A'); ?>
-                                </p>
-                            </div>
-                            
-                            <!-- Status Indicator -->
-                            <div class="flex items-center justify-center space-x-2">
-                                <div class="w-2 h-2 bg-green-400 rounded-full live-indicator"></div>
-                                <span class="text-xs font-medium text-orange-100">Live Clock</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+       
+      
 
         <!-- Student ID QR Scanner Section -->
-        <div id="qrCodeScannerSection"  class="enhanced-card rounded-xl shadow-lg p-3 sm:p-4 mb-3 sm:mb-4 border-l-4 border-green-500">
+        <div id="qrCodeScannerSection" class="rounded-xl p-3 sm:p-4 mt-6 mb-3 sm:mb-4" style="background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.1);">
             <div class="flex items-center mb-3">
-                <div class="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                    <i class="fas fa-qrcode text-white text-sm"></i>
-                </div>
-                <div class="flex-1">
-                    <h3 class="text-lg sm:text-xl font-bold text-gray-800">🔑 QR Code Scanner - Teachers & Students</h3>
-                </div>
+                
+            
                 <!-- Real-time Update Indicator -->
-                <div id="realtimeIndicator" class="hidden items-center space-x-2 text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full border border-green-200 animate-pulse">
-                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <div id="realtimeIndicator" class="hidden items-center space-x-2 text-xs text-white px-2 py-1 rounded-full animate-pulse" style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(5px); border: 1px solid rgba(255, 255, 255, 0.2); text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
+                    <div class="w-2 h-2 bg-white rounded-full animate-pulse" style="box-shadow: 0 0 8px rgba(255,255,255,0.6);"></div>
                     <span class="font-medium">Live Updates</span>
                 </div>
             </div>
             
             <!-- QR Scanner Input -->
-            <div class="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-lg p-3">
+            <div class="rounded-lg p-3" style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2);">
                 <div class="flex items-center space-x-3">
                     <div class="flex-1">
-                        <label for="studentIdInput" class="block text-xs font-medium text-gray-700 mb-1">
-                            <i class="fas fa-qrcode mr-1 text-green-600"></i>QR Code Scanner (Teacher/Student)
-                        </label>
-                        <div class="relative">
-                            <input type="text" 
-                                   id="studentIdInput" 
-                                   name="student_id" 
-                                   placeholder="🔍 Scan Teacher QR (to mark available) or Student QR (to request consultation)" 
-                                   class="w-full px-3 py-2 border border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-base text-center pr-10"
-                                   autocomplete="off"
-                                   inputmode="text"
-                                   autofocus
-                                   required>
-                            <div class="absolute inset-y-0 right-0 flex items-center pr-2">
-                                <div class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                        <form id="qrCodeForm" class="w-full">
+    
+                            <div class="relative">
+                                <input type="text" 
+                                       id="studentIdInput" 
+                                       name="qr_code" 
+                                       placeholder="" 
+                                       class="w-full px-3 py-2 border border-transparent rounded-lg focus:outline-none focus:ring-0 focus:border-transparent text-base text-center"
+                                       style="background: transparent; color: white; text-shadow: 1px 1px 2px black;"
+                                       autocomplete="off"
+                                       inputmode="text"
+                                       autofocus
+                                       required>
                             </div>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1">
-                            <i class="fas fa-info-circle mr-1"></i>Teacher QR → Mark available & accept requests | Student QR → Start consultation request
-                        </p>
+                        </form>
+                        
                     </div>
                 </div>
                 
                 <!-- Student Info Display -->
-                <div id="studentInfoDisplay" class="mt-3 p-3 bg-white rounded-lg border border-green-200 hidden">
+                <div id="studentInfoDisplay" class="mt-3 p-3 rounded-lg border hidden" style="background: rgba(0, 0, 0, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(0, 0, 0, 0.2);">
                     <div class="flex items-center space-x-3">
-                        <div class="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center">
+                        <div class="w-8 h-8 bg-gradient-to-br from-gray-800 to-black rounded-full flex items-center justify-center">
                             <i class="fas fa-user text-white text-sm"></i>
                         </div>
                         <div>
@@ -1607,7 +1658,7 @@ if (empty($teachers) && empty($selected_department)) {
                             <p class="text-xs text-gray-500" id="studentDeptDisplay">Department</p>
                         </div>
                         <div class="ml-auto">
-                            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                            <div class="w-2 h-2 bg-black rounded-full animate-pulse"></div>
                         </div>
                     </div>
                 </div>
@@ -1674,37 +1725,24 @@ if (empty($teachers) && empty($selected_department)) {
         </div>
         <?php endif; ?>
 
-        <!-- QR Code Required Notice -->
-        <div  id="studentIdRequiredNotice" class="col-span-full bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center mb-6">
-            <div class="flex items-center justify-center space-x-3 mb-4">
-                <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-qrcode text-yellow-600 text-xl"></i>
-                </div>
-                <div>
-                    <h3 class="text-lg font-semibold text-yellow-800">QR Code Required</h3>
-                    <p class="text-yellow-700">Please scan a QR code above to proceed</p>
-                </div>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                <div class="flex items-center justify-center space-x-2 text-yellow-600 bg-yellow-100 rounded-lg p-3">
-                    <i class="fas fa-user-tie"></i>
-                    <span><strong>Teacher QR:</strong> Mark as available</span>
-                </div>
-                <div class="flex items-center justify-center space-x-2 text-yellow-600 bg-yellow-100 rounded-lg p-3">
-                    <i class="fas fa-user-graduate"></i>
-                    <span><strong>Student QR:</strong> Request consultation</span>
-                </div>
-            </div>
-        </div>
+      
 
 
 
         <!-- Teachers Section (Hidden until student ID is scanned) -->
         <div id="teachersSection" class="hidden">
+            <!-- Cancel Button -->
+            <div class="mb-4 flex justify-center">
+                <button onclick="cancelTeacherSelection()" 
+                        class="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-2">
+                    <span>Cancel</span>
+                </button>
+            </div>
+            
             <!-- Teachers Grid -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
                 <?php if (empty($teachers)): ?>
-                    <div class="col-span-full bg-white rounded-lg shadow-md p-8 text-center">
+                    <div class="col-span-full bg-white bg-opacity-80 backdrop-blur-sm rounded-lg shadow-md p-8 text-center">
                         <i class="fas fa-user-slash text-gray-400 text-4xl mb-4"></i>
                         <h3 class="text-xl font-semibold text-gray-600 mb-2">No Teachers Available Today</h3>
                         <p class="text-gray-500 mb-4">
@@ -1714,7 +1752,7 @@ if (empty($teachers) && empty($selected_department)) {
                                 No teachers have scheduled consultation hours for today (<?php echo getCorrectDateTime('l, F j, Y'); ?>).
                             <?php endif; ?>
                         </p>
-                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                        <div class="bg-yellow-50 bg-opacity-80 border border-yellow-200 rounded-lg p-4 mb-4">
                             <p class="text-yellow-800 text-sm">
                                 <i class="fas fa-info-circle mr-2"></i>
                                 Teachers only appear when they have scheduled consultation hours for the current day and time.
@@ -1723,10 +1761,6 @@ if (empty($teachers) && empty($selected_department)) {
                         <?php if (empty($selected_department)): ?>
                             <a href="index.php" class="bg-seait-orange text-white px-6 py-2 rounded-lg hover:bg-seait-dark transition-colors">
                                 Try Different Department
-                            </a>
-                        <?php else: ?>
-                            <a href="student-screen.php" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors">
-                                <i class="fas fa-arrow-left mr-2"></i>Back to All Departments
                             </a>
                         <?php endif; ?>
                     </div>
@@ -1771,7 +1805,7 @@ if (empty($teachers) && empty($selected_department)) {
                             <div class="px-4 sm:px-6 py-4 bg-gradient-to-r from-orange-50 to-orange-100 rounded-b-xl">
                                 <div class="flex items-center justify-center">
                                     <div class="text-center">
-                                        <div class="text-xs sm:text-sm text-orange-700 font-medium mb-2">Tap to start consultation</div>
+                        
                                         <div class="flex items-center justify-center space-x-1 sm:space-x-2">
                                             <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-orange-500 rounded-full animate-pulse"></div>
                                             <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-orange-500 rounded-full animate-pulse" style="animation-delay: 0.2s;"></div>
@@ -1809,30 +1843,6 @@ if (empty($teachers) && empty($selected_department)) {
         </div>
     </div>
 
-    <!-- Floating Action Button -->
-    <div id="floatingActionButton" class="fixed bottom-6 right-6 z-40">
-        <button id="fabButton" class="fab-button">
-            <i class="fas fa-users"></i>
-        </button>
-    </div>
-
-    <!-- Floating Action Modal -->
-    <div id="fabModal" class="fab-modal">
-            <div class="fab-modal-overlay" id="fabModalOverlay"></div>
-            <div class="fab-modal-content">
-                <div class="fab-modal-header">
-                    <h3 id="fabModalTitle">Available Teachers</h3>
-                    <button id="fabModalClose" class="fab-modal-close">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="fab-modal-body">
-                    <div id="fabTeachersGrid" class="fab-teachers-grid">
-                        <!-- Teachers will be loaded here -->
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- Enhanced Loading State -->
         <div id="loadingState" class="loading fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 backdrop-blur-sm" style="display: none;">
@@ -1856,61 +1866,13 @@ if (empty($teachers) && empty($selected_department)) {
         <!-- Notifications removed for cleaner interface -->
     </main>
 
-    <!-- Footer -->
-    <footer class="footer-gradient text-white py-8 sm:py-12 mt-auto">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center">
-                <div class="flex flex-col sm:flex-row items-center justify-center mb-4 space-y-2 sm:space-y-0">
-                    <img src="../assets/images/seait-logo.png" alt="SEAIT Logo" class="h-6 sm:h-8 w-auto mr-0 sm:mr-3">
-                    <h3 class="text-lg sm:text-xl font-bold">SEAIT Consultation Portal</h3>
-                </div>
-                <p class="text-gray-300 mb-2 text-sm sm:text-base">&copy; <?php echo date('Y'); ?> SEAIT. All rights reserved.</p>
-                <p class="text-gray-400 text-xs sm:text-sm">Student Consultation Portal - Connecting Students with Teachers</p>
-                <div class="flex flex-col sm:flex-row items-center justify-center mt-4 space-y-2 sm:space-y-0 sm:space-x-6 text-xs sm:text-sm text-gray-400">
-                    <span class="flex items-center">
-                        <i class="fas fa-shield-alt mr-1 sm:mr-2"></i>
-                        Secure & Private
-                    </span>
-                    <span class="flex items-center">
-                        <i class="fas fa-clock mr-1 sm:mr-2"></i>
-                        Real-time Updates
-                    </span>
-                    <span class="flex items-center">
-                        <i class="fas fa-users mr-1 sm:mr-2"></i>
-                        Easy Communication
-                    </span>
-                </div>
-            </div>
-        </div>
-    </footer>
 
     <script src="fab-script.js"></script>
     <script>
-        // Global functions for modal handling
-        function closeNoTeachersModal() {
-            const modal = document.getElementById('noTeachersModal');
-            if (modal) {
-                const modalContent = modal.querySelector('.bg-white');
-                if (modalContent) {
-                    modalContent.classList.remove('scale-100', 'opacity-100');
-                    modalContent.classList.add('scale-95', 'opacity-0');
-                }
-                
-                setTimeout(() => {
-                    modal.classList.add('hidden');
-                    modal.style.display = 'none';
-                }, 300);
-            }
-        }
         
         function refreshTeachersList() {
-            // Close the modal first
-            closeNoTeachersModal();
-            
             // Reload the page to refresh the teachers list
-            setTimeout(() => {
-                window.location.reload();
-            }, 350);
+            window.location.reload();
         }
         
         // Global variables for real-time updates
@@ -1962,66 +1924,100 @@ if (empty($teachers) && empty($selected_department)) {
                 console.log('QR code type:', typeof qrCode);
                 console.log('QR code length:', qrCode.length);
                 
-                // Process QR code through the differentiation API
-                processQRCode(qrCode);
+                // Process QR code through the differentiation API using AJAX
+                processQRCodeWithAJAX(qrCode);
             }
             
-            // Process QR code to determine if it's teacher or student
-            function processQRCode(qrCode) {
-                console.log('Processing QR code:', qrCode);
+            // Process QR code using AJAX form submission
+            function processQRCodeWithAJAX(qrCode) {
+                //console.log('Processing QR code with AJAX:', qrCode);
                 
-                // Log QR processing (no visual notification)
-                console.log('Processing QR code...');
-                
-                // Send QR code to processing API
+                // Create FormData for AJAX submission
                 const formData = new FormData();
                 formData.append('qr_code', qrCode);
                 
-                fetch('../api/process-qr-scan.php', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    console.log('QR processing response:', data);
-                    
-                    if (data.success) {
-                        if (data.type === 'teacher') {
-                            // Handle teacher QR code
-                            handleTeacherQRCode(data);
-                        } else if (data.type === 'student') {
-                            // Handle student QR code
-                            handleStudentQRCode(data);
+                // Show loading notification
+                //showNotification('Processing QR code...', 'info');
+                
+                // Use XMLHttpRequest for better AJAX control
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', '../api/process-qr-scan.php', true);
+                xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4) {
+                        if (xhr.status === 200) {
+                            try {
+                                const data = JSON.parse(xhr.responseText);
+                                console.log('QR processing response:', data);
+                                
+                                if (data.success) {
+                                    if (data.type === 'teacher') {
+                                        // Handle teacher QR code
+                                        handleTeacherQRCode(data);
+                                    } else if (data.type === 'student') {
+                                        // Handle student QR code
+                                        handleStudentQRCode(data);
+                                    }
+                                } else {
+                                    console.error('QR processing failed:', data.error);
+                                    showNotification(data.error || 'QR code not recognized', 'error');
+                                    // Clear the input field
+                                    if (studentIdInput) {
+                                        studentIdInput.value = '';
+                                    }
+                                    hideStudentInfo();
+                                }
+                            } catch (e) {
+                                console.error('Error parsing response:', e);
+                                showNotification('Error processing QR code', 'error');
+                                if (studentIdInput) {
+                                    studentIdInput.value = '';
+                                }
+                                hideStudentInfo();
+                            }
+                        } else {
+                            console.error('AJAX request failed:', xhr.status, xhr.statusText);
+                            showNotification('Network error. Please try again.', 'error');
+                            if (studentIdInput) {
+                                studentIdInput.value = '';
+                            }
+                            hideStudentInfo();
                         }
-                    } else {
-                        console.error('QR processing failed:', data.error);
-                        // Clear the input field
-                        if (studentIdInput) {
-                            studentIdInput.value = '';
-                        }
-                        hideStudentInfo();
                     }
-                })
-                .catch(error => {
-                    console.error('QR processing error:', error);
-                    // Clear the input field
+                };
+                
+                xhr.onerror = function() {
+                    console.error('AJAX request error');
+                    showNotification('Network error. Please check your connection.', 'error');
                     if (studentIdInput) {
                         studentIdInput.value = '';
                     }
                     hideStudentInfo();
-                });
+                };
+                
+                // Send the request
+                xhr.send(formData);
+            }
+            
+            // Legacy function for backward compatibility
+            function processQRCode(qrCode) {
+                processQRCodeWithAJAX(qrCode);
             }
             
             // Handle teacher QR code scan
             function handleTeacherQRCode(data) {
                 console.log('Teacher QR code detected:', data.teacher.name);
+                console.log('Current status:', data.current_status);
+                console.log('Action type:', data.action_type);
+                console.log('Has active consultation:', data.has_active_consultation);
                 
-                if (data.requires_confirmation) {
-                    // Show teacher confirmation modal
-                    showTeacherConfirmationModal(data);
+                if (data.action_type === 'mark_unavailable') {
+                    // Show unavailable modal (teacher is currently available)
+                    showTeacherUnavailableModal(data);
                 } else {
-                    // Show teacher availability modal (for backward compatibility)
-                    showTeacherAvailabilityModal(data);
+                    // Show available modal (teacher is currently unavailable or no status)
+                    showTeacherAvailableModal(data);
                 }
                 
                 // Clear the input field for next scan
@@ -2030,11 +2026,132 @@ if (empty($teachers) && empty($selected_department)) {
                 }
             }
             
+            // Show teacher unavailable modal (when teacher has active consultation)
+            function showTeacherUnavailableModal(data) {
+                console.log('Showing teacher unavailable modal for:', data.teacher.name);
+                
+                const modal = document.createElement('div');
+                modal.id = 'teacherUnavailableModal';
+                modal.className = 'ultra-simple-modal';
+                modal.innerHTML = `
+                    <div class="modal-backdrop" style="background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(25px);"></div>
+                    <div class="modal-content" style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.2);">
+                        <div class="modal-header" style="background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px); border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-user-times text-white text-xl"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-semibold text-white" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">Mark Teacher Unavailable</h3>
+                                    <p class="text-sm text-white" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">${data.teacher.name} - ${data.message}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-body">
+                            <div class="text-center py-4">
+                                <div class="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <i class="fas fa-exclamation-triangle text-white text-2xl"></i>
+                                </div>
+                                <h4 class="text-lg font-medium text-white mb-2" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">Current Status: ${data.current_status || 'Not Set'}</h4>
+                                <p class="text-white mb-4" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
+                                    ${data.message}
+                                </p>
+                                <div class="rounded-lg p-3 mb-4" style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(5px); border: 1px solid rgba(255, 255, 255, 0.2);">
+                                    <p class="text-sm text-white" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        This will mark the teacher as unavailable for new consultations.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer" style="background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px); border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 1.5rem;">
+                            <button onclick="markTeacherUnavailable(${data.teacher.id})" 
+                                    class="btn-primary bg-red-600 hover:bg-red-700 text-white">
+                                <i class="fas fa-user-times mr-2"></i>Mark as Unavailable
+                            </button>
+                            <button onclick="closeTeacherUnavailableModal()" 
+                                    class="btn-secondary bg-gray-600 hover:bg-gray-700 text-white">
+                                <i class="fas fa-times mr-2"></i>Cancel
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                document.body.style.overflow = 'hidden';
+                
+                // Show modal with animation
+                setTimeout(() => {
+                    modal.classList.add('show');
+                }, 10);
+            }
+            
+            // Show teacher available modal (when teacher is available)
+            function showTeacherAvailableModal(data) {
+                console.log('Showing teacher available modal for:', data.teacher.name);
+                
+                const modal = document.createElement('div');
+                modal.id = 'teacherAvailableModal';
+                modal.className = 'ultra-simple-modal';
+                modal.innerHTML = `
+                    <div class="modal-backdrop" style="background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(25px);"></div>
+                    <div class="modal-content" style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.2);">
+                        <div class="modal-header" style="background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px); border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-user-check text-white text-xl"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-semibold text-white" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">Mark Teacher Available</h3>
+                                    <p class="text-sm text-white" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">${data.teacher.name} - ${data.message}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-body">
+                            <div class="text-center py-4">
+                                <div class="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <i class="fas fa-check-circle text-white text-2xl"></i>
+                                </div>
+                                <h4 class="text-lg font-medium text-white mb-2" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">Current Status: ${data.current_status || 'Not Set'}</h4>
+                                <p class="text-white mb-4" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
+                                    ${data.message}
+                                </p>
+                                <div class="rounded-lg p-3 mb-4" style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(5px); border: 1px solid rgba(255, 255, 255, 0.2);">
+                                    <p class="text-sm text-white" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        This will make them visible to students for consultation requests.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer" style="background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px); border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 1.5rem;">
+                            <button onclick="markTeacherAvailable(${data.teacher.id})" 
+                                    class="btn-primary bg-orange-500 hover:bg-orange-600 text-white">
+                                <i class="fas fa-user-check mr-2"></i>Confirm Available
+                            </button>
+                            <button onclick="closeTeacherAvailableModal()" 
+                                    class="btn-secondary bg-gray-600 hover:bg-gray-700 text-white">
+                                <i class="fas fa-times mr-2"></i>Cancel
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                document.body.style.overflow = 'hidden';
+                
+                // Show modal with animation
+                setTimeout(() => {
+                    modal.classList.add('show');
+                }, 10);
+            }
+            
+            
             // Handle student QR code scan
             function handleStudentQRCode(data) {
-                console.log('Student QR code detected:', data.student.id);
+                console.log('Student QR code detected:', data.student.student_id);
                 
-                const studentId = data.student.id;
+                const studentId = data.student.student_id;
                 
                 // Store the student ID exactly as received
                 currentStudentId = studentId;
@@ -2047,6 +2164,9 @@ if (empty($teachers) && empty($selected_department)) {
                     department: data.student.department,
                     id: studentId
                 });
+                
+                // Show available teachers for consultation
+                showAvailableTeachersForStudent();
                 
                 // Store in session storage for use in consultation requests
                 sessionStorage.setItem('currentStudentId', studentId);
@@ -2092,6 +2212,43 @@ if (empty($teachers) && empty($selected_department)) {
             hideTeachersSection();
         }
         
+        // Show available teachers for student consultation
+        function showAvailableTeachersForStudent() {
+            //console.log('Showing available teachers for student consultation');
+            
+            // Hide the QR code required notice
+            const qrNotice = document.getElementById('studentIdRequiredNotice');
+            if (qrNotice) {
+                qrNotice.classList.add('hidden');
+            }
+            
+            // Show the teachers section
+            const teachersSection = document.getElementById('teachersSection');
+            if (teachersSection) {
+                teachersSection.classList.remove('hidden');
+                
+                // Trigger animation for teacher cards
+                setTimeout(() => {
+                    const teacherCards = teachersSection.querySelectorAll('.teacher-card');
+                    teacherCards.forEach((card, index) => {
+                        // Reset animation state
+                        card.style.opacity = '0';
+                        card.style.transform = 'translateY(50px)';
+                        
+                        // Apply animation with staggered delay
+                        setTimeout(() => {
+                            card.style.opacity = '1';
+                            card.style.transform = 'translateY(0)';
+                            card.style.transition = 'all 0.6s ease-out';
+                        }, (index + 1) * 100); // 100ms delay between each card
+                    });
+                }, 100); // Small delay to ensure the section is visible
+            }
+            
+            // Show notification
+            //showNotification('Available teachers displayed. You can now request consultations.', 'success');
+        }
+        
         // Clear student ID field and reset everything
         function clearStudentIdField() {
             console.log('Clearing student ID field and resetting student info');
@@ -2113,31 +2270,47 @@ if (empty($teachers) && empty($selected_department)) {
             }, 100);
         }
             
+            // Form submission handling for QR code
+            const qrCodeForm = document.getElementById('qrCodeForm');
+            if (qrCodeForm) {
+                qrCodeForm.addEventListener('submit', function(e) {
+                    e.preventDefault(); // Prevent default form submission
+                    
+                    const qrCode = studentIdInput.value.trim();
+                    if (!qrCode) {
+                        showNotification('Please enter a QR code', 'error');
+                        return;
+                    }
+                    
+                    // Show loading state
+                    const submitBtn = document.getElementById('submitQRBtn');
+                    if (submitBtn) {
+                        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin text-lg"></i>';
+                        submitBtn.disabled = true;
+                    }
+                    
+                    // Process QR code
+                    handleStudentIdInput(qrCode);
+                    
+                    // Reset button after processing
+                    setTimeout(() => {
+                        if (submitBtn) {
+                            submitBtn.innerHTML = '<i class="fas fa-paper-plane text-lg"></i>';
+                            submitBtn.disabled = false;
+                        }
+                    }, 1000);
+                });
+            }
+            
             // Event listeners for student ID input
             if (studentIdInput) {
-                // Handle manual input
-                studentIdInput.addEventListener('input', function(e) {
-                    const value = e.target.value;
-                    if (value.length >= 8) { // Minimum length for student ID
-                        handleStudentIdInput(value);
-                    } else {
-                        hideStudentInfo();
-                    }
-                });
-                
-                // Handle Enter key
-                studentIdInput.addEventListener('keypress', function(e) {
-                    if (e.key === 'Enter') {
-                        handleStudentIdInput(this.value);
-                    }
-                });
-                
                 // Prevent losing focus
                 studentIdInput.addEventListener('blur', function(e) {
-                    // Only allow blur if clicking on QR scan button or clear button
+                    // Only allow blur if clicking on QR scan button, submit button, or clear button
                     const relatedTarget = e.relatedTarget;
                     if (!relatedTarget || 
                         (!relatedTarget.id.includes('scanQR') && 
+                         !relatedTarget.id.includes('submitQR') &&
                          !relatedTarget.id.includes('clearStudentId') &&
                          !relatedTarget.closest('#qrScannerModal'))) {
                         // Refocus after a short delay
@@ -2243,11 +2416,6 @@ if (empty($teachers) && empty($selected_department)) {
             window.openQRScanner = openQRScanner;
             window.closeQRScannerModal = closeQRScannerModal;
             
-            // Simple notification function (disabled - no notifications)
-            function showNotification(message, type = 'info') {
-                // Notifications disabled for student screen
-                console.log(`Notification (${type}): ${message}`);
-            }
             
             // Clear button functionality
             if (clearStudentIdBtn) {
@@ -2325,60 +2493,12 @@ if (empty($teachers) && empty($selected_department)) {
                 if (teachersSection) {
                     const teacherCards = teachersSection.querySelectorAll('.teacher-card');
                     if (teacherCards.length === 0) {
-                        // No teachers available, show modal
-                        showNoTeachersModal();
+                        // No teachers available
+                        console.log('No teachers available');
                     }
                 }
             }
             
-            // Show no teachers available modal
-            function showNoTeachersModal() {
-                const modal = document.getElementById('noTeachersModal');
-                if (modal) {
-                    modal.classList.remove('hidden');
-                    modal.style.display = 'block';
-                    
-                    // Add animation
-                    setTimeout(() => {
-                        const modalContent = modal.querySelector('.bg-white');
-                        if (modalContent) {
-                            modalContent.classList.remove('scale-95', 'opacity-0');
-                            modalContent.classList.add('scale-100', 'opacity-100');
-                        }
-                    }, 10);
-                }
-                
-                // Clear the QR input field when no teachers are available
-                const studentIdInput = document.getElementById('studentIdInput');
-                if (studentIdInput) {
-                    studentIdInput.value = '';
-                    // Also clear session storage
-                    sessionStorage.removeItem('currentStudentId');
-                    sessionStorage.removeItem('currentStudentName');
-                    sessionStorage.removeItem('currentStudentDept');
-                    // Hide student info display
-                    const studentInfoDisplay = document.getElementById('studentInfoDisplay');
-                    if (studentInfoDisplay) {
-                        studentInfoDisplay.classList.add('hidden');
-                    }
-                }
-            }
-            
-            // Hide no teachers modal
-            function hideNoTeachersModal() {
-                const modal = document.getElementById('noTeachersModal');
-                if (modal) {
-                    modal.classList.add('hidden');
-                    modal.style.display = 'none';
-                    
-                    // Remove animation classes
-                    const modalContent = modal.querySelector('.bg-white');
-                    if (modalContent) {
-                        modalContent.classList.add('scale-95', 'opacity-0');
-                        modalContent.classList.remove('scale-100', 'opacity-100');
-                    }
-                }
-            }
 
             
             function hideTeachersSection() {
@@ -2569,7 +2689,7 @@ if (empty($teachers) && empty($selected_department)) {
                     
                     updateTeachersDisplay(data.teachers);
                     lastTeacherUpdate = data.last_update;
-                    console.log(`Updated teachers list: ${data.count} teachers available`);
+                    console.log(`Updated teachers list: ${data.teachers ? data.teachers.length : 0} teachers available`);
                 } else {
                     console.error('Failed to fetch teachers:', data.error);
                     
@@ -2604,9 +2724,9 @@ if (empty($teachers) && empty($selected_department)) {
             // Store new teachers list
             currentTeachers = newTeachers;
             
-            // If we now have teachers, hide the no teachers modal
+            // If we now have teachers, log it
             if (newTeachers.length > 0) {
-                hideNoTeachersModal();
+                console.log('Teachers are now available');
             }
             
             // Show notification for newly available teachers
@@ -2640,7 +2760,7 @@ if (empty($teachers) && empty($selected_department)) {
                             </p>
                         </div>
                         <div class="flex items-center justify-center space-x-2 text-sm text-gray-500">
-                            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                            <div class="w-2 h-2 bg-black rounded-full animate-pulse"></div>
                             <span>Checking for updates every 5 seconds...</span>
                         </div>
                     </div>
@@ -2703,7 +2823,7 @@ if (empty($teachers) && empty($selected_department)) {
                 <div class="px-4 sm:px-6 py-4 relative z-10">
                     <div class="flex items-center justify-center">
                         <div class="text-center">
-                            <div class="text-xs sm:text-sm text-orange-300 font-medium mb-2">Tap to start consultation</div>
+        
                             <div class="flex items-center justify-center space-x-1 sm:space-x-2">
                                 <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-orange-400 rounded-full animate-pulse"></div>
                                 <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-orange-500 rounded-full animate-pulse" style="animation-delay: 0.2s;"></div>
@@ -2968,21 +3088,19 @@ if (empty($teachers) && empty($selected_department)) {
             modal.id = 'confirmationModal';
             
             const modalContent = `
-                <div class="ultra-simple-content" id="confirmationModalContent">
+                <div class="modal-backdrop" style="background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(25px);"></div>
+                <div class="modal-content" style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.2);" id="confirmationModalContent">
                     <!-- Enhanced Modal Header -->
-                    <div class="flex items-center justify-between p-4 sm:p-6 border-b border-orange-200 bg-gradient-to-r from-orange-50 to-orange-100 rounded-t-2xl">
-                        <div class="flex items-center space-x-3">
+                    <div class="modal-header" style="background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px); border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
+                        <div class="flex items-center justify-center space-x-3">
                             <div class="w-12 h-12 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center shadow-lg">
                                 <i class="fas fa-question-circle text-white text-xl"></i>
                             </div>
                             <div>
-                                <h3 class="text-lg sm:text-xl font-bold text-gray-800">Confirm Consultation Request</h3>
-                                <p class="text-xs sm:text-sm text-orange-600 font-medium">Ready to Send</p>
+                                <h3 class="text-lg sm:text-xl font-bold text-white" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">Confirm Consultation Request</h3>
+                                <p class="text-xs sm:text-sm text-orange-300 font-medium" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">Ready to Send</p>
                             </div>
                         </div>
-                        <button onclick="closeConfirmationModal()" class="text-gray-400 hover:text-gray-600 transition-colors duration-200 p-2 rounded-full hover:bg-gray-100">
-                            <i class="fas fa-times text-lg sm:text-xl"></i>
-                        </button>
                     </div>
 
                     <!-- Enhanced Modal Body -->
@@ -2992,20 +3110,20 @@ if (empty($teachers) && empty($selected_department)) {
                                 <div class="w-20 h-20 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg animate-pulse">
                                     <i class="fas fa-user-tie text-white text-3xl"></i>
                                 </div>
-                                <h4 class="text-xl sm:text-2xl font-bold text-gray-800 mb-3">Request Consultation?</h4>
-                                <p class="text-sm sm:text-base text-gray-600 leading-relaxed mb-4">
+                                <h4 class="text-xl sm:text-2xl font-bold text-white mb-3" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">Request Consultation?</h4>
+                                <p class="text-sm sm:text-base text-white leading-relaxed mb-4" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
                                     Are you sure you want to request a consultation with <strong>${teacherName}</strong>?
                                 </p>
-                                <div class="bg-gradient-to-r from-orange-50 to-orange-100 border border-orange-200 rounded-xl p-4 mb-4">
+                                <div class="rounded-xl p-4 mb-4" style="background: rgba(255, 107, 53, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255, 107, 53, 0.3);">
                                     <div class="flex items-center justify-center space-x-2 mb-2">
-                                        <i class="fas fa-info-circle text-orange-600"></i>
-                                        <span class="text-sm font-semibold text-orange-800">What Happens Next?</span>
+                                        <i class="fas fa-info-circle text-orange-300"></i>
+                                        <span class="text-sm font-semibold text-white" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">What Happens Next?</span>
                                     </div>
-                                    <p class="text-xs sm:text-sm text-orange-700">
+                                    <p class="text-xs sm:text-sm text-white" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
                                         This will send a notification to the teacher. You'll be notified when they respond with an acceptance or decline.
                                     </p>
                                 </div>
-                                <div class="flex items-center justify-center space-x-4 text-xs sm:text-sm text-gray-500">
+                                <div class="flex items-center justify-center space-x-4 text-xs sm:text-sm text-white" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
                                     <span class="flex items-center">
                                         <i class="fas fa-bell mr-1"></i>
                                         Notification
@@ -3024,7 +3142,7 @@ if (empty($teachers) && empty($selected_department)) {
                     </div>
 
                     <!-- Enhanced Modal Footer -->
-                    <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 p-4 sm:p-6 border-t border-orange-200 bg-gradient-to-r from-orange-50 to-orange-100 rounded-b-2xl">
+                    <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 p-4 sm:p-6 border-t border-white/10" style="background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px);">
                         <button onclick="closeConfirmationModal()"
                                 class="flex-1 bg-gradient-to-r from-gray-500 to-gray-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-gray-600 hover:to-gray-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 shadow-lg transform hover:scale-105">
                             <i class="fas fa-times mr-2"></i>Cancel
@@ -3206,8 +3324,6 @@ if (empty($teachers) && empty($selected_department)) {
                 overlay.style.opacity = '1';
             }, 10);
             
-            // Add floating cancel button
-            addFloatingCancelButton();
         }
         
         function removeBackgroundBlurOverlay() {
@@ -3224,8 +3340,6 @@ if (empty($teachers) && empty($selected_department)) {
             // Remove blur effect from background content
             removeBackgroundBlur();
             
-            // Remove floating cancel button
-            removeFloatingCancelButton();
         }
         
         // Function to apply blur effect to background content
@@ -3275,50 +3389,6 @@ if (empty($teachers) && empty($selected_department)) {
         }
         
         // Add floating cancel button for easy access
-        function addFloatingCancelButton() {
-            // Remove existing floating button if any
-            const existingButton = document.getElementById('floatingCancelButton');
-            if (existingButton) {
-                existingButton.remove();
-            }
-            
-            // Create floating cancel button positioned at lower center
-            const floatingButton = document.createElement('div');
-            floatingButton.id = 'floatingCancelButton';
-            floatingButton.className = 'fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-500';
-            floatingButton.style.opacity = '0';
-            floatingButton.style.transform = 'translateY(20px) translateX(-50%)';
-            
-            floatingButton.innerHTML = `
-                <button onclick="cancelTeacherSelection()" 
-                        class="bg-red-500 hover:bg-red-600 text-white px-6 py-4 rounded-2xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-2xl hover:shadow-3xl border border-red-400 hover:border-red-500 flex items-center space-x-3 backdrop-blur-sm">
-                    <i class="fas fa-times mr-2 text-lg"></i>
-                    <span class="text-base">Cancel Selection</span>
-                </button>
-            `;
-            
-            document.body.appendChild(floatingButton);
-            
-            // Animate in
-            setTimeout(() => {
-                floatingButton.style.opacity = '1';
-                floatingButton.style.transform = 'translateY(0) translateX(-50%)';
-            }, 200);
-        }
-        
-        // Remove floating cancel button
-        function removeFloatingCancelButton() {
-            const floatingButton = document.getElementById('floatingCancelButton');
-            if (floatingButton) {
-                floatingButton.style.opacity = '0';
-                floatingButton.style.transform = 'translateY(20px) translateX(-50%)';
-                setTimeout(() => {
-                    if (floatingButton.parentNode) {
-                        floatingButton.parentNode.removeChild(floatingButton);
-                    }
-                }, 500);
-            }
-        }
         
         function addTeacherSelectionHeader() {
             // Header functionality removed - keeping function for compatibility
@@ -3477,7 +3547,7 @@ if (empty($teachers) && empty($selected_department)) {
             // Set colors based on type
             switch (type) {
                 case 'success':
-                    bgColor = 'green';
+                    bgColor = 'black';
                     icon = 'check-circle';
                     break;
                 case 'warning':
@@ -3539,19 +3609,20 @@ if (empty($teachers) && empty($selected_department)) {
             
             if (response === 'accepted') {
                 modalContent = `
-                    <div class="ultra-simple-content" id="consultationModalContent">
+                    <div class="modal-backdrop" style="background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(25px);"></div>
+                    <div class="modal-content" style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.2);" id="consultationModalContent">
                         <!-- Enhanced Modal Header -->
-                        <div class="flex items-center justify-between p-4 sm:p-6 border-b border-blue-200 bg-gradient-to-r from-blue-50 to-blue-100 rounded-t-2xl">
+                        <div class="modal-header" style="background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px); border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
                             <div class="flex items-center space-x-3">
                                 <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
                                     <i class="fas fa-paper-plane text-white text-xl"></i>
                                 </div>
                                 <div>
-                                    <h3 class="text-lg sm:text-xl font-bold text-gray-800">Request Sent Successfully</h3>
-                                    <p class="text-xs sm:text-sm text-blue-600 font-medium">Waiting for Response</p>
+                                    <h3 class="text-lg sm:text-xl font-bold text-white" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">Request Sent Successfully</h3>
+                                    <p class="text-xs sm:text-sm text-blue-300 font-medium" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">Waiting for Response</p>
                                 </div>
                             </div>
-                            <button onclick="closeConsultationModal()" class="text-gray-400 hover:text-gray-600 transition-colors duration-200 p-2 rounded-full hover:bg-gray-100">
+                            <button onclick="closeConsultationModal()" class="text-white hover:text-blue-300 transition-colors duration-200 p-2 rounded-full hover:bg-white/10">
                                 <i class="fas fa-times text-lg sm:text-xl"></i>
                             </button>
                         </div>
@@ -3563,20 +3634,20 @@ if (empty($teachers) && empty($selected_department)) {
                                     <div class="w-20 h-20 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg animate-pulse">
                                         <i class="fas fa-paper-plane text-white text-3xl"></i>
                                     </div>
-                                    <h4 class="text-xl sm:text-2xl font-bold text-gray-800 mb-3">📤 Request Sent Successfully!</h4>
-                                    <p class="text-sm sm:text-base text-gray-600 leading-relaxed mb-4">
+                                    <h4 class="text-xl sm:text-2xl font-bold text-white mb-3" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">📤 Request Sent Successfully!</h4>
+                                    <p class="text-sm sm:text-base text-white leading-relaxed mb-4" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
                                         Your consultation request has been sent to <strong>${teacherName}</strong>.
                                     </p>
-                                    <div class="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4 mb-4">
+                                    <div class="rounded-xl p-4 mb-4" style="background: rgba(59, 130, 246, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(59, 130, 246, 0.3);">
                                         <div class="flex items-center justify-center space-x-2 mb-2">
-                                            <i class="fas fa-info-circle text-blue-600"></i>
-                                            <span class="text-sm font-semibold text-blue-800">What Happens Next?</span>
+                                            <i class="fas fa-info-circle text-blue-300"></i>
+                                            <span class="text-sm font-semibold text-white" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">What Happens Next?</span>
                                         </div>
-                                        <p class="text-xs sm:text-sm text-blue-700">
+                                        <p class="text-xs sm:text-sm text-white" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
                                             Please wait for the teacher to reach out to you. They will contact you when they are ready to start the consultation session.
                                         </p>
                                     </div>
-                                    <div class="flex items-center justify-center space-x-4 text-xs sm:text-sm text-gray-500">
+                                    <div class="flex items-center justify-center space-x-4 text-xs sm:text-sm text-white" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
                                         <span class="flex items-center">
                                             <i class="fas fa-clock mr-1"></i>
                                             Waiting
@@ -3591,9 +3662,9 @@ if (empty($teachers) && empty($selected_department)) {
                                         </span>
                                     </div>
                                     <div class="mt-4 text-center">
-                                        <div class="text-xs text-gray-500 mb-2">Modal will close and page will reload in <span id="modalCountdownTimer" class="font-bold text-blue-600">10</span> seconds</div>
-                                        <div class="w-full bg-gray-200 rounded-full h-1">
-                                            <div id="modalCountdownProgress" class="bg-blue-500 h-1 rounded-full transition-all duration-1000 ease-linear" style="width: 100%"></div>
+                                        <div class="text-xs text-white mb-2" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">Modal will close and page will reload in <span id="modalCountdownTimer" class="font-bold text-blue-300">10</span> seconds</div>
+                                        <div class="w-full bg-gray-600 rounded-full h-1">
+                                            <div id="modalCountdownProgress" class="bg-blue-400 h-1 rounded-full transition-all duration-1000 ease-linear" style="width: 100%"></div>
                                         </div>
                                     </div>
                                 </div>
@@ -3601,7 +3672,7 @@ if (empty($teachers) && empty($selected_department)) {
                         </div>
 
                         <!-- Enhanced Modal Footer -->
-                        <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 p-4 sm:p-6 border-t border-blue-200 bg-gradient-to-r from-blue-50 to-blue-100 rounded-b-2xl">
+                        <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 p-4 sm:p-6 border-t border-white/10" style="background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px);">
                             <button onclick="stopResponseAudio()"
                                     class="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-red-600 hover:to-red-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 shadow-lg transform hover:scale-105">
                                 <i class="fas fa-volume-mute mr-2"></i>Stop Audio
@@ -3615,19 +3686,20 @@ if (empty($teachers) && empty($selected_department)) {
                 `;
             } else {
                 modalContent = `
-                    <div class="ultra-simple-content" id="consultationModalContent">
+                    <div class="modal-backdrop" style="background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(25px);"></div>
+                    <div class="modal-content" style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.2);" id="consultationModalContent">
                         <!-- Enhanced Modal Header -->
-                        <div class="flex items-center justify-between p-4 sm:p-6 border-b border-red-200 bg-gradient-to-r from-red-50 to-red-100 rounded-t-2xl">
+                        <div class="modal-header" style="background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px); border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
                             <div class="flex items-center space-x-3">
                                 <div class="w-12 h-12 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center shadow-lg">
                                     <i class="fas fa-times-circle text-white text-xl"></i>
                                 </div>
                                 <div>
-                                    <h3 class="text-lg sm:text-xl font-bold text-gray-800">Consultation Declined</h3>
-                                    <p class="text-xs sm:text-sm text-red-600 font-medium">Not Available</p>
+                                    <h3 class="text-lg sm:text-xl font-bold text-white" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">Consultation Declined</h3>
+                                    <p class="text-xs sm:text-sm text-red-300 font-medium" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">Not Available</p>
                                 </div>
                             </div>
-                            <button onclick="closeConsultationModal()" class="text-gray-400 hover:text-gray-600 transition-colors duration-200 p-2 rounded-full hover:bg-gray-100">
+                            <button onclick="closeConsultationModal()" class="text-white hover:text-red-300 transition-colors duration-200 p-2 rounded-full hover:bg-white/10">
                                 <i class="fas fa-times text-lg sm:text-xl"></i>
                             </button>
                         </div>
@@ -3639,29 +3711,29 @@ if (empty($teachers) && empty($selected_department)) {
                                     <div class="w-20 h-20 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg animate-pulse">
                                         <i class="fas fa-times-circle text-white text-3xl"></i>
                                     </div>
-                                    <h4 class="text-xl sm:text-2xl font-bold text-gray-800 mb-3">❌ Consultation Declined</h4>
-                                    <p class="text-sm sm:text-base text-gray-600 leading-relaxed mb-4">
+                                    <h4 class="text-xl sm:text-2xl font-bold text-white mb-3" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">❌ Consultation Declined</h4>
+                                    <p class="text-sm sm:text-base text-white leading-relaxed mb-4" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
                                         <strong>${teacherName}</strong> has declined your consultation request.
                                     </p>
                                     ${data.decline_reason ? `
-                                    <div class="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                                    <div class="rounded-lg p-3 mb-4" style="background: rgba(239, 68, 68, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(239, 68, 68, 0.3);">
                                         <div class="flex items-center mb-2">
-                                            <i class="fas fa-info-circle text-red-600 mr-2"></i>
-                                            <span class="text-sm font-semibold text-red-800">Reason:</span>
+                                            <i class="fas fa-info-circle text-red-300 mr-2"></i>
+                                            <span class="text-sm font-semibold text-white" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">Reason:</span>
                                         </div>
-                                        <p class="text-sm text-red-700">${data.decline_reason}</p>
+                                        <p class="text-sm text-white" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">${data.decline_reason}</p>
                                     </div>
                                     ` : ''}
-                                    <div class="bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-4 mb-4">
+                                    <div class="rounded-xl p-4 mb-4" style="background: rgba(239, 68, 68, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(239, 68, 68, 0.3);">
                                         <div class="flex items-center justify-center space-x-2 mb-2">
-                                            <i class="fas fa-info-circle text-red-600"></i>
-                                            <span class="text-sm font-semibold text-red-800">What's Next?</span>
+                                            <i class="fas fa-info-circle text-red-300"></i>
+                                            <span class="text-sm font-semibold text-white" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">What's Next?</span>
                                         </div>
-                                        <p class="text-xs sm:text-sm text-red-700">
+                                        <p class="text-xs sm:text-sm text-white" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
                                             Don't worry! You can try requesting another teacher or try again later. There are many other teachers available.
                                         </p>
                                     </div>
-                                    <div class="flex items-center justify-center space-x-4 text-xs sm:text-sm text-gray-500">
+                                    <div class="flex items-center justify-center space-x-4 text-xs sm:text-sm text-white" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
                                         <span class="flex items-center">
                                             <i class="fas fa-search mr-1"></i>
                                             Find Others
@@ -3680,7 +3752,7 @@ if (empty($teachers) && empty($selected_department)) {
                         </div>
 
                         <!-- Enhanced Modal Footer -->
-                        <div class="flex flex-col space-y-2 p-4 sm:p-6 border-t border-red-200 bg-gradient-to-r from-red-50 to-red-100 rounded-b-2xl">
+                        <div class="flex flex-col space-y-2 p-4 sm:p-6 border-t border-white/10" style="background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px);">
                             <button onclick="stopResponseAudio()"
                                     class="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-red-600 hover:to-red-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 shadow-lg transform hover:scale-105">
                                 <i class="fas fa-volume-mute mr-2"></i>Stop Audio
@@ -4071,14 +4143,14 @@ if (empty($teachers) && empty($selected_department)) {
             let modalContent = `
                 <div class="ultra-simple-content" id="teacherAvailabilityModalContent">
                     <!-- Enhanced Modal Header -->
-                    <div class="flex items-center justify-between p-4 sm:p-6 border-b border-green-200 bg-gradient-to-r from-green-50 to-green-100 rounded-t-2xl">
+                    <div class="flex items-center justify-between p-4 sm:p-6 border-b rounded-t-2xl" style="background: rgba(0, 0, 0, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(0, 0, 0, 0.2);">
                         <div class="flex items-center space-x-3">
-                            <div class="w-12 h-12 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center shadow-lg">
+                            <div class="w-12 h-12 bg-gradient-to-br from-gray-800 to-black rounded-full flex items-center justify-center shadow-lg">
                                 <i class="fas fa-user-check text-white text-xl"></i>
                             </div>
                             <div>
                                 <h3 class="text-lg sm:text-xl font-bold text-gray-800">Teacher Available</h3>
-                                <p class="text-xs sm:text-sm text-green-600 font-medium">QR Code Processed</p>
+                                <p class="text-xs sm:text-sm text-gray-600 font-medium">QR Code Processed</p>
                             </div>
                         </div>
                         <button onclick="closeTeacherAvailabilityModal()" class="text-gray-400 hover:text-gray-600 transition-colors duration-200 p-2 rounded-full hover:bg-gray-100">
@@ -4090,7 +4162,7 @@ if (empty($teachers) && empty($selected_department)) {
                     <div class="p-4 sm:p-6">
                         <div class="text-center">
                             <div class="mb-6">
-                                <div class="w-20 h-20 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg animate-pulse">
+                                <div class="w-20 h-20 bg-gradient-to-br from-gray-800 to-black rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg animate-pulse">
                                     <i class="fas fa-user-check text-white text-3xl"></i>
                                 </div>
                                 <h4 class="text-xl sm:text-2xl font-bold text-gray-800 mb-3">✅ Teacher Now Available</h4>
@@ -4110,12 +4182,12 @@ if (empty($teachers) && empty($selected_department)) {
                                 </div>
                                 ` : ''}
                                 
-                                <div class="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-xl p-4 mb-4">
+                                <div class="rounded-xl p-4 mb-4" style="background: rgba(0, 0, 0, 0.1); backdrop-filter: blur(5px); border: 1px solid rgba(0, 0, 0, 0.2);">
                                     <div class="flex items-center justify-center space-x-2 mb-2">
-                                        <i class="fas fa-info-circle text-green-600"></i>
-                                        <span class="text-sm font-semibold text-green-800">System Update</span>
+                                        <i class="fas fa-info-circle text-gray-600"></i>
+                                        <span class="text-sm font-semibold text-gray-800">System Update</span>
                                     </div>
-                                    <p class="text-xs sm:text-sm text-green-700">
+                                    <p class="text-xs sm:text-sm text-gray-700">
                                         Teacher status has been updated to "Available for Consultation" and will appear in the student consultation system.
                                     </p>
                                 </div>
@@ -4139,9 +4211,9 @@ if (empty($teachers) && empty($selected_department)) {
                     </div>
 
                     <!-- Enhanced Modal Footer -->
-                    <div class="flex flex-col space-y-2 p-4 sm:p-6 border-t border-green-200 bg-gradient-to-r from-green-50 to-green-100 rounded-b-2xl">
+                    <div class="flex flex-col space-y-2 p-4 sm:p-6 border-t rounded-b-2xl" style="background: rgba(0, 0, 0, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(0, 0, 0, 0.2);">
                         <button onclick="closeTeacherAvailabilityModal()"
-                                class="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-green-600 hover:to-green-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 shadow-lg transform hover:scale-105">
+                                class="w-full bg-gradient-to-r from-black to-gray-800 text-white py-3 px-4 rounded-xl font-semibold hover:from-gray-800 hover:to-black transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 shadow-lg transform hover:scale-105">
                             <i class="fas fa-check mr-2"></i>Continue
                         </button>
                         
@@ -4249,7 +4321,7 @@ if (empty($teachers) && empty($selected_department)) {
                         <span class="text-sm font-semibold text-gray-800">Current Status</span>
                     </div>
                     <div class="text-center">
-                        <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full ${data.current_status === 'available' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                        <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full ${data.current_status === 'available' ? 'bg-gray-800 text-white' : 'bg-red-100 text-red-800'}">
                             <i class="fas fa-${data.current_status === 'available' ? 'check-circle' : 'times-circle'}"></i>
                             <span class="font-semibold">${data.current_status === 'available' ? 'Available' : 'Not Available'}</span>
                         </div>
@@ -4292,7 +4364,7 @@ if (empty($teachers) && empty($selected_department)) {
             
             const yesButtonText = isMarkingAvailable ? 'Yes, I\'m Available' : 'Yes, Make Me Unavailable';
             const noButtonText = isMarkingAvailable ? 'No, Stay Unavailable' : 'No, Stay Available';
-            const yesButtonColor = isMarkingAvailable ? 'green' : 'red';
+            const yesButtonColor = isMarkingAvailable ? 'black' : 'red';
             
             let modalContent = `
                 <div class="ultra-simple-content" id="teacherConfirmationModalContent">
@@ -4504,7 +4576,8 @@ if (empty($teachers) && empty($selected_department)) {
             
             const pendingIndicator = document.createElement('div');
             pendingIndicator.id = 'pendingRequestIndicator';
-            pendingIndicator.className = 'fixed bottom-6 right-6 z-50 p-6 rounded-2xl shadow-2xl bg-gradient-to-r from-blue-500 to-blue-600 text-white animate-pulse border border-blue-400 max-w-sm';
+            pendingIndicator.className = 'fixed bottom-6 right-6 z-50 p-6 rounded-2xl shadow-2xl text-white animate-pulse max-w-sm';
+            pendingIndicator.style.cssText = 'background: rgba(255, 107, 53, 0.1); backdrop-filter: blur(20px); border: 1px solid rgba(255, 107, 53, 0.3);';
             pendingIndicator.innerHTML = `
                 <div class="flex items-start space-x-4">
                     <div class="flex-shrink-0">
@@ -4514,9 +4587,9 @@ if (empty($teachers) && empty($selected_department)) {
                     </div>
                     <div class="flex-1">
                         <h4 class="font-bold text-lg mb-1">📤 Request Sent Successfully</h4>
-                        <p class="text-sm text-blue-100 mb-3">Your consultation request has been sent to <strong>${teacherName}</strong>. Please wait for them to reach out to you.</p>
+                        <p class="text-sm text-white mb-3" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">Your consultation request has been sent to <strong>${teacherName}</strong>. Please wait for them to reach out to you.</p>
                         <div class="flex items-center justify-between mb-2">
-                            <span class="text-xs text-blue-100">Waiting for teacher response...</span>
+                            <span class="text-xs text-white" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">Waiting for teacher response...</span>
                             <div class="flex space-x-1">
                                 <div class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
                                 <div class="w-1.5 h-1.5 bg-white rounded-full animate-pulse" style="animation-delay: 0.1s;"></div>
@@ -4525,12 +4598,12 @@ if (empty($teachers) && empty($selected_department)) {
                                 <div class="w-1.5 h-1.5 bg-white rounded-full animate-pulse" style="animation-delay: 0.4s;"></div>
                             </div>
                         </div>
-                        <div class="text-xs text-blue-100">
+                        <div class="text-xs text-white" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
                             <i class="fas fa-info-circle mr-1"></i>Teacher will contact you when ready
                         </div>
                         <div class="mt-3 text-center">
-                            <div class="text-xs text-blue-100 mb-1">Page will reload in <span id="countdownTimer" class="font-bold">10</span> seconds</div>
-                            <div class="w-full bg-blue-400 bg-opacity-30 rounded-full h-1">
+                            <div class="text-xs text-white mb-1" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">Page will reload in <span id="countdownTimer" class="font-bold">10</span> seconds</div>
+                            <div class="w-full bg-white bg-opacity-20 rounded-full h-1">
                                 <div id="countdownProgress" class="bg-white h-1 rounded-full transition-all duration-1000 ease-linear" style="width: 100%"></div>
                             </div>
                         </div>
@@ -4746,6 +4819,206 @@ if (empty($teachers) && empty($selected_department)) {
             }
         });
 
+        // Global functions for teacher availability
+        function markTeacherUnavailable(teacherId) {
+            console.log('Marking teacher as unavailable:', teacherId);
+            
+            // Show loading state
+            const modal = document.getElementById('teacherUnavailableModal');
+            const buttons = modal.querySelectorAll('button');
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+            });
+            
+            // Make API call to update teacher availability
+            const formData = new FormData();
+            formData.append('teacher_id', teacherId);
+            formData.append('status', 'unavailable');
+            formData.append('notes', 'Teacher marked as unavailable via QR scan');
+            
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '../api/update-teacher-availability.php', true);
+            
+            xhr.onload = function() {
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    
+                    if (response.success) {
+                        showNotification('Teacher marked as unavailable successfully!', 'success');
+                        closeTeacherUnavailableModal();
+                        
+                        // Refresh the page to show updated status
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        showNotification('Failed to update availability: ' + response.error, 'error');
+                        
+                        // Restore button states
+                        buttons.forEach(btn => {
+                            btn.disabled = false;
+                            if (btn.onclick && btn.onclick.toString().includes('markTeacherUnavailable')) {
+                                btn.innerHTML = '<i class="fas fa-user-times mr-2"></i>Mark as Unavailable';
+                            } else {
+                                btn.innerHTML = '<i class="fas fa-times mr-2"></i>Cancel';
+                            }
+                        });
+                    }
+                } catch (e) {
+                    console.error('Error parsing response:', e);
+                    showNotification('Error processing response', 'error');
+                    
+                    // Restore button states
+                    buttons.forEach(btn => {
+                        btn.disabled = false;
+                        if (btn.onclick && btn.onclick.toString().includes('markTeacherUnavailable')) {
+                            btn.innerHTML = '<i class="fas fa-user-times mr-2"></i>Mark as Unavailable';
+                        } else {
+                            btn.innerHTML = '<i class="fas fa-times mr-2"></i>Cancel';
+                        }
+                    });
+                }
+            };
+            
+            xhr.onerror = function() {
+                console.error('Network error');
+                showNotification('Network error. Please try again.', 'error');
+                
+                // Restore button states
+                buttons.forEach(btn => {
+                    btn.disabled = false;
+                    if (btn.onclick && btn.onclick.toString().includes('markTeacherUnavailable')) {
+                        btn.innerHTML = '<i class="fas fa-user-times mr-2"></i>Mark as Unavailable';
+                    } else {
+                        btn.innerHTML = '<i class="fas fa-times mr-2"></i>Cancel';
+                    }
+                });
+            };
+            
+            xhr.send(formData);
+        }
+        
+        function markTeacherAvailable(teacherId) {
+            console.log('Marking teacher as available:', teacherId);
+            
+            // Show loading state
+            const modal = document.getElementById('teacherAvailableModal');
+            const buttons = modal.querySelectorAll('button');
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+            });
+            
+            // Make API call to update teacher availability
+            const formData = new FormData();
+            formData.append('teacher_id', teacherId);
+            formData.append('status', 'available');
+            formData.append('notes', 'Teacher marked as available via QR scan');
+            
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '../api/update-teacher-availability.php', true);
+            
+            xhr.onload = function() {
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    
+                    if (response.success) {
+                        showNotification('Teacher marked as available successfully!', 'success');
+                        closeTeacherAvailableModal();
+                        
+                        // Refresh the page to show updated status
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        showNotification('Failed to update availability: ' + response.error, 'error');
+                        
+                        // Restore button states
+                        buttons.forEach(btn => {
+                            btn.disabled = false;
+                            if (btn.onclick && btn.onclick.toString().includes('markTeacherAvailable')) {
+                                btn.innerHTML = '<i class="fas fa-check mr-2"></i>Yes, Available';
+                            } else {
+                                btn.innerHTML = '<i class="fas fa-times mr-2"></i>Cancel';
+                            }
+                        });
+                    }
+                } catch (e) {
+                    console.error('Error parsing response:', e);
+                    showNotification('Error processing response', 'error');
+                    
+                    // Restore button states
+                    buttons.forEach(btn => {
+                        btn.disabled = false;
+                        if (btn.onclick && btn.onclick.toString().includes('markTeacherAvailable')) {
+                            btn.innerHTML = '<i class="fas fa-check mr-2"></i>Yes, Available';
+                        } else {
+                            btn.innerHTML = '<i class="fas fa-times mr-2"></i>Cancel';
+                        }
+                    });
+                }
+            };
+            
+            xhr.onerror = function() {
+                console.error('Network error');
+                showNotification('Network error. Please try again.', 'error');
+                
+                // Restore button states
+                buttons.forEach(btn => {
+                    btn.disabled = false;
+                    if (btn.onclick && btn.onclick.toString().includes('markTeacherAvailable')) {
+                        btn.innerHTML = '<i class="fas fa-check mr-2"></i>Yes, Available';
+                    } else {
+                        btn.innerHTML = '<i class="fas fa-times mr-2"></i>Cancel';
+                    }
+                });
+            };
+            
+            xhr.send(formData);
+        }
+        
+        function closeTeacherUnavailableModal() {
+            const modal = document.getElementById('teacherUnavailableModal');
+            if (modal) {
+                modal.remove();
+                document.body.style.overflow = '';
+            }
+        }
+        
+        function closeTeacherAvailableModal() {
+            const modal = document.getElementById('teacherAvailableModal');
+            if (modal) {
+                modal.remove();
+                document.body.style.overflow = '';
+            }
+        }
+        
+        // Simple notification function
+        function showNotification(message, type = 'info') {
+            // Notifications disabled for student screen - just log to console
+            console.log(`Notification (${type}): ${message}`);
+            
+            // Optional: Create a simple toast notification if needed
+            // This is a basic implementation - can be enhanced later
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 px-4 py-2 rounded-lg text-white z-50 ${
+                type === 'success' ? 'bg-black' : 
+                type === 'error' ? 'bg-red-500' : 
+                type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'
+            }`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            // Auto-remove after 3 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 3000);
+        }
+
         // Standby Mode Functionality
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Initializing Standby Mode');
@@ -4755,14 +5028,13 @@ if (empty($teachers) && empty($selected_department)) {
             const standbyIndicator = document.getElementById('standbyIndicator');
             const standbyCountdown = document.getElementById('standbyCountdown');
             const countdownTimer = document.getElementById('countdownTimer');
-            const fullscreenBtn = document.getElementById('fullscreenBtn');
             const studentIdInput = document.getElementById('studentIdInput');
             
-            let standbyTimeout;
-            let countdownInterval;
-            let isStandbyActive = false;
-            let lastActivityTime = Date.now();
-            const STANDBY_DELAY = 30000; // 30 seconds of inactivity
+             let standbyTimeout;
+             let countdownInterval;
+             let isStandbyActive = false;
+             let lastActivityTime = Date.now();
+             const STANDBY_DELAY = 30000; // 30 seconds of inactivity - DISABLED
             
             // Function to start standby mode
             function startStandbyMode() {
@@ -4820,45 +5092,45 @@ if (empty($teachers) && empty($selected_department)) {
                 }
             }
             
-            // Function to reset activity timer
-            function resetActivityTimer() {
-                lastActivityTime = Date.now();
-                
-                // Clear existing timeout and countdown
-                if (standbyTimeout) {
-                    clearTimeout(standbyTimeout);
-                }
-                if (countdownInterval) {
-                    clearInterval(countdownInterval);
-                }
-                
-                // Hide countdown
-                standbyCountdown.classList.remove('active');
-                
-                // Stop standby mode if active
-                if (isStandbyActive) {
-                    stopStandbyMode();
-                }
-                
-                // Ensure student ID input has focus when activity is detected
-                if (studentIdInput) {
-                    setTimeout(() => {
-                        studentIdInput.focus();
-                    }, 50);
-                }
-                
-                // Set new timeout
-                standbyTimeout = setTimeout(() => {
-                    startStandbyMode();
-                }, STANDBY_DELAY);
-                
-                // Start countdown 5 seconds before standby
-                setTimeout(() => {
-                    if (!isStandbyActive) {
-                        startCountdown();
-                    }
-                }, STANDBY_DELAY - 5000);
-            }
+             // Function to reset activity timer - DISABLED
+             function resetActivityTimer() {
+                 lastActivityTime = Date.now();
+                 
+                 // Clear existing timeout and countdown
+                 if (standbyTimeout) {
+                     clearTimeout(standbyTimeout);
+                 }
+                 if (countdownInterval) {
+                     clearInterval(countdownInterval);
+                 }
+                 
+                 // Hide countdown
+                 standbyCountdown.classList.remove('active');
+                 
+                 // Stop standby mode if active
+                 if (isStandbyActive) {
+                     stopStandbyMode();
+                 }
+                 
+                 // Ensure student ID input has focus when activity is detected
+                 if (studentIdInput) {
+                     setTimeout(() => {
+                         studentIdInput.focus();
+                     }, 50);
+                 }
+                 
+                 // DISABLED: Automatic standby mode activation
+                 // standbyTimeout = setTimeout(() => {
+                 //     startStandbyMode();
+                 // }, STANDBY_DELAY);
+                 
+                 // DISABLED: Automatic countdown before standby
+                 // setTimeout(() => {
+                 //     if (!isStandbyActive) {
+                 //         startCountdown();
+                 //     }
+                 // }, STANDBY_DELAY - 5000);
+             }
             
             // Function to start countdown
             function startCountdown() {
@@ -4879,27 +5151,27 @@ if (empty($teachers) && empty($selected_department)) {
                 }, 1000);
             }
             
-            // Event listeners for user activity
-            const activityEvents = [
-                'mousemove',
-                'mousedown',
-                'mouseup',
-                'click',
-                'touchstart',
-                'touchend',
-                'touchmove',
-                'keydown',
-                'keyup',
-                'scroll',
-                'wheel'
-            ];
-            
-            activityEvents.forEach(eventType => {
-                document.addEventListener(eventType, resetActivityTimer, { passive: true });
-            });
-            
-            // Start activity timer
-            resetActivityTimer();
+             // DISABLED: Event listeners for user activity (standby mode disabled)
+             // const activityEvents = [
+             //     'mousemove',
+             //     'mousedown',
+             //     'mouseup',
+             //     'click',
+             //     'touchstart',
+             //     'touchend',
+             //     'touchmove',
+             //     'keydown',
+             //     'keyup',
+             //     'scroll',
+             //     'wheel'
+             // ];
+             
+             // activityEvents.forEach(eventType => {
+             //     document.addEventListener(eventType, resetActivityTimer, { passive: true });
+             // });
+             
+             // DISABLED: Start activity timer
+             // resetActivityTimer();
             
             // Continuous focus maintenance for student ID input
             function maintainFocus() {
@@ -5247,6 +5519,138 @@ if (empty($teachers) && empty($selected_department)) {
         }
         
         console.log('✅ Student screen fully initialized with automatic status checking');
+        
+        // Auto-fullscreen on page load
+        function autoFullscreen() {
+            // Small delay to ensure page is fully loaded
+            setTimeout(() => {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().then(() => {
+                        console.log('Auto-entered fullscreen mode');
+                        // Update icon to reflect fullscreen state
+                        const fullscreenIcon = document.getElementById('fullscreenIcon');
+                        const fullscreenToggle = document.getElementById('fullscreenToggle');
+                        if (fullscreenIcon && fullscreenToggle) {
+                            fullscreenIcon.className = 'fas fa-compress text-lg';
+                            fullscreenToggle.title = 'Exit Fullscreen';
+                        }
+                    }).catch(err => {
+                        console.log('Auto-fullscreen failed (user interaction required):', err);
+                        // Show a subtle hint to click the fullscreen button
+                        showFullscreenHint();
+                    });
+                }
+            }, 1000); // 1 second delay
+        }
+        
+        // Show fullscreen hint if auto-fullscreen fails
+        function showFullscreenHint() {
+            const fullscreenToggle = document.getElementById('fullscreenToggle');
+            if (fullscreenToggle) {
+                // Add a subtle pulsing animation to draw attention
+                fullscreenToggle.style.animation = 'pulse-fullscreen 1s infinite';
+                
+                // Show tooltip hint
+                fullscreenToggle.title = 'Click to enter fullscreen mode';
+                
+                // Remove hint after 5 seconds
+                setTimeout(() => {
+                    fullscreenToggle.style.animation = '';
+                    fullscreenToggle.title = 'Toggle Fullscreen';
+                }, 5000);
+            }
+        }
+        
+        // Call auto-fullscreen when page loads
+        autoFullscreen();
+        
+        // Fullscreen functionality
+        function toggleFullscreen() {
+            const fullscreenIcon = document.getElementById('fullscreenIcon');
+            const fullscreenToggle = document.getElementById('fullscreenToggle');
+            
+            if (!document.fullscreenElement) {
+                // Enter fullscreen
+                document.documentElement.requestFullscreen().then(() => {
+                    fullscreenIcon.className = 'fas fa-compress text-lg';
+                    fullscreenToggle.title = 'Exit Fullscreen';
+                    console.log('Entered fullscreen mode');
+                }).catch(err => {
+                    console.error('Error entering fullscreen:', err);
+                });
+            } else {
+                // Exit fullscreen
+                document.exitFullscreen().then(() => {
+                    fullscreenIcon.className = 'fas fa-expand text-lg';
+                    fullscreenToggle.title = 'Toggle Fullscreen';
+                    console.log('Exited fullscreen mode');
+                }).catch(err => {
+                    console.error('Error exiting fullscreen:', err);
+                });
+            }
+        }
+        
+        // Listen for fullscreen changes to update icon
+        document.addEventListener('fullscreenchange', function() {
+            const fullscreenIcon = document.getElementById('fullscreenIcon');
+            const fullscreenToggle = document.getElementById('fullscreenToggle');
+            
+            if (document.fullscreenElement) {
+                fullscreenIcon.className = 'fas fa-compress text-lg';
+                fullscreenToggle.title = 'Exit Fullscreen';
+            } else {
+                fullscreenIcon.className = 'fas fa-expand text-lg';
+                fullscreenToggle.title = 'Toggle Fullscreen';
+            }
+        });
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'F11') {
+                e.preventDefault();
+                toggleFullscreen();
+            } else if (e.ctrlKey && e.key === 'b') {
+                // Close any open teacher modals when Ctrl+B is pressed
+                e.preventDefault();
+                closeAllTeacherModals();
+            } else if (e.key === 'Escape' && !document.fullscreenElement) {
+                // Only close modals with ESC when NOT in fullscreen mode
+                closeAllTeacherModals();
+            }
+        });
+        
+        // Function to close all teacher-related modals
+        function closeAllTeacherModals() {
+            // No modals to close
+            
+            // Close Teacher Unavailable Modal
+            const teacherUnavailableModal = document.getElementById('teacherUnavailableModal');
+            if (teacherUnavailableModal) {
+                closeTeacherUnavailableModal();
+                return;
+            }
+            
+            // Close Teacher Available Modal
+            const teacherAvailableModal = document.getElementById('teacherAvailableModal');
+            if (teacherAvailableModal) {
+                closeTeacherAvailableModal();
+                return;
+            }
+            
+            // Close Teacher Availability Modal
+            const teacherAvailabilityModal = document.getElementById('teacherAvailabilityModal');
+            if (teacherAvailabilityModal) {
+                closeTeacherAvailabilityModal();
+                return;
+            }
+            
+            // Close Teacher Confirmation Modal
+            const teacherConfirmationModal = document.getElementById('teacherConfirmationModal');
+            if (teacherConfirmationModal) {
+                closeTeacherConfirmationModal();
+                return;
+            }
+        }
     </script>
 </body>
 </html>

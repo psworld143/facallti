@@ -46,7 +46,7 @@ if ($stmt) {
         if (password_verify($password, $user['password'])) {
             $user_found = true;
             $user_data = $user;
-            $user_role = $user['role'];
+            $user_role = $user['user_type'];
         }
     }
     mysqli_stmt_close($stmt);
@@ -164,13 +164,13 @@ if ($user_found && $user_data) {
         $_SESSION['user_id'] = (int)$user_data['id'];
         $_SESSION['username'] = (string)$user_data['username'];
         $_SESSION['email'] = (string)$user_data['email'];
-        $_SESSION['role'] = (string)$user_data['role'];
+        $_SESSION['role'] = (string)$user_data['user_type'];
         $_SESSION['first_name'] = (string)$user_data['first_name'];
         $_SESSION['last_name'] = (string)$user_data['last_name'];
         $_SESSION['profile_photo'] = isset($user_data['profile_photo']) ? (string)$user_data['profile_photo'] : '';
 
         // Redirect based on role using absolute URLs
-        switch($user_data['role']) {
+        switch($user_data['user_type']) {
             case 'admin':
                 $redirect_url = $base_url . '/admin/dashboard.php';
                 echo json_encode([

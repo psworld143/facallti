@@ -1,7 +1,8 @@
 <?php
 session_start();
-// error_reporting(E_ALL);
-// ini_set('display_errors', 1);
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 require_once '../config/database.php';
 require_once '../includes/functions.php';
 require_once '../includes/id_encryption.php';
@@ -89,91 +90,20 @@ if (!$faculty) {
     exit();
 }
 
-// Get evaluation statistics
-$eval_query = "SELECT 
-    COUNT(*) as total_evaluations,
-    COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_evaluations,
-    COUNT(CASE WHEN status = 'draft' THEN 1 END) as pending_evaluations,
-    (SELECT AVG(er.rating_value) 
-     FROM evaluation_responses er 
-     JOIN evaluation_sessions es2 ON er.evaluation_session_id = es2.id 
-     WHERE es2.evaluatee_id = es.evaluatee_id 
-     AND es2.evaluatee_type = 'teacher' 
-     AND es2.evaluator_id = ? 
-     AND es2.evaluator_type = 'head' 
-     AND es2.status = 'completed' 
-     AND er.rating_value IS NOT NULL) as average_rating
-    FROM evaluation_sessions es
-    WHERE es.evaluatee_id = ? AND es.evaluatee_type = 'teacher' AND es.evaluator_id = ? AND es.evaluator_type = 'head'";
+// Since evaluation tables were removed during FaCallTi cleanup,
+// set evaluation statistics to default values
+$evaluation_stats = [
+    'total_evaluations' => 0,
+    'completed_evaluations' => 0,
+    'pending_evaluations' => 0,
+    'average_rating' => 0
+];
 
-$eval_stmt = mysqli_prepare($conn, $eval_query);
-if (!$eval_stmt) {
-    die("Error preparing evaluation statement: " . mysqli_error($conn));
-}
-
-mysqli_stmt_bind_param($eval_stmt, "iii", $user_id, $faculty_id, $user_id);
-if (!mysqli_stmt_execute($eval_stmt)) {
-    die("Error executing evaluation statement: " . mysqli_stmt_error($eval_stmt));
-}
-
-$eval_result = mysqli_stmt_get_result($eval_stmt);
-if (!$eval_result) {
-    die("Error getting evaluation result: " . mysqli_stmt_error($eval_stmt));
-}
-
-$evaluation_stats = mysqli_fetch_assoc($eval_result);
-
-// Get recent evaluations
-$recent_eval_query = "SELECT es.*, 
-    DATE_FORMAT(es.created_at, '%M %d, %Y') as formatted_date,
-    (SELECT AVG(er.rating_value) 
-     FROM evaluation_responses er 
-     WHERE er.evaluation_session_id = es.id 
-     AND er.rating_value IS NOT NULL) as overall_rating,
-    CASE 
-        WHEN (SELECT AVG(er.rating_value) 
-              FROM evaluation_responses er 
-              WHERE er.evaluation_session_id = es.id 
-              AND er.rating_value IS NOT NULL) >= 4.5 THEN 'Excellent'
-        WHEN (SELECT AVG(er.rating_value) 
-              FROM evaluation_responses er 
-              WHERE er.evaluation_session_id = es.id 
-              AND er.rating_value IS NOT NULL) >= 3.5 THEN 'Very Good'
-        WHEN (SELECT AVG(er.rating_value) 
-              FROM evaluation_responses er 
-              WHERE er.evaluation_session_id = es.id 
-              AND er.rating_value IS NOT NULL) >= 2.5 THEN 'Good'
-        WHEN (SELECT AVG(er.rating_value) 
-              FROM evaluation_responses er 
-              WHERE er.evaluation_session_id = es.id 
-              AND er.rating_value IS NOT NULL) >= 1.5 THEN 'Fair'
-        ELSE 'Poor'
-    END as rating_label
-    FROM evaluation_sessions es 
-    WHERE es.evaluatee_id = ? AND es.evaluatee_type = 'teacher' 
-    AND es.evaluator_id = ? AND es.evaluator_type = 'head'
-    ORDER BY es.created_at DESC 
-    LIMIT 5";
-
-$recent_eval_stmt = mysqli_prepare($conn, $recent_eval_query);
-if (!$recent_eval_stmt) {
-    die("Error preparing recent evaluation statement: " . mysqli_error($conn));
-}
-
-mysqli_stmt_bind_param($recent_eval_stmt, "ii", $faculty_id, $user_id);
-if (!mysqli_stmt_execute($recent_eval_stmt)) {
-    die("Error executing recent evaluation statement: " . mysqli_stmt_error($recent_eval_stmt));
-}
-
-$recent_eval_result = mysqli_stmt_get_result($recent_eval_stmt);
-if (!$recent_eval_result) {
-    die("Error getting recent evaluation result: " . mysqli_stmt_error($recent_eval_stmt));
-}
+// Since evaluation tables were removed during FaCallTi cleanup,
+// set recent evaluations to empty array
+$recent_eval_result = false;
 
 $recent_evaluations = [];
-while ($row = mysqli_fetch_assoc($recent_eval_result)) {
-    $recent_evaluations[] = $row;
-}
 
 // Set page title
 $page_title = 'Teacher Profile - ' . $faculty['first_name'] . ' ' . $faculty['last_name'];

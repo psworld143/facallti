@@ -1,6 +1,10 @@
 <?php
 // This file contains the shared responsive header for all Head pages
 // Include this file at the top of each page after session_start() and database connection
+
+// Get school logo and abbreviation from database
+$school_logo = get_school_logo($conn);
+$school_abbreviation = get_school_abbreviation($conn);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -9,13 +13,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo isset($page_title) ? $page_title . ' - Head Dashboard' : 'Head Dashboard'; ?></title>
     <!-- Favicon Configuration -->
-    <link rel="icon" type="image/x-icon" href="../assets/images/favicon.ico">
-    <link rel="icon" type="image/png" href="../assets/images/seait-logo.png">
-    <link rel="shortcut icon" type="image/x-icon" href="../assets/images/favicon.ico">
-    <link rel="shortcut icon" type="image/png" href="../assets/images/seait-logo.png">
-    <link rel="apple-touch-icon" type="image/png" href="../assets/images/seait-logo.png">
-    <link rel="apple-touch-icon-precomposed" type="image/png" href="../assets/images/seait-logo.png">
-    <meta name="msapplication-TileImage" content="../assets/images/seait-logo.png">
+    <?php echo generate_favicon_tags($conn, '../'); ?>
     <meta name="msapplication-TileColor" content="#FF6B35">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -228,8 +226,14 @@
             <!-- Sidebar Header -->
             <div class="sidebar-header flex items-center justify-center p-4 border-b border-gray-700 bg-gradient-to-r from-gray-800 to-gray-700">
                 <div class="flex items-center transform transition-transform duration-200 hover:scale-105">
-                    <img src="../assets/images/seait-logo.png" alt="SEAIT Logo" class="h-8 w-auto mr-2 transition-all duration-200 hover:rotate-12">
-                    <span class="text-white font-semibold">Head Dashboard</span>
+                    <?php if (!empty($school_logo)): ?>
+                        <img src="../<?php echo htmlspecialchars($school_logo); ?>" alt="School Logo" class="h-8 w-auto mr-2 transition-all duration-200 hover:rotate-12">
+                    <?php else: ?>
+                        <div class="h-8 w-8 bg-seait-orange rounded-full flex items-center justify-center mr-2 transition-all duration-200 hover:rotate-12">
+                            <i class="fas fa-university text-white text-sm"></i>
+                        </div>
+                    <?php endif; ?>
+                    <span class="text-white font-semibold"><?php echo htmlspecialchars($school_abbreviation); ?> Head</span>
                 </div>
             </div>
 
@@ -267,19 +271,19 @@
                     <!-- Dashboard Section -->
                     <div class="animate-fadeInUp" style="animation-delay: 0.1s;">
                         <a href="dashboard.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'dashboard.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
-                            <i class="fas fa-tachometer-alt mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i><span class="text-sm">Dashboard</span>
+                            <i class="fas fa-tachometer-alt mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Dashboard
                         </a>
                     </div>
 
                     <!-- Teacher Management Section -->
                     <div class="animate-fadeInUp" style="animation-delay: 0.2s;">
-                        <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Teacher Management</h3>
+                        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Teacher Management</h3>
                         <div class="space-y-1">
                             <a href="teachers.php" class="flex items-center <?php echo (basename($_SERVER['PHP_SELF']) === 'teachers.php' || basename($_SERVER['PHP_SELF']) === 'edit-faculty.php') ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
-                                <i class="fas fa-chalkboard-teacher mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i><span class="text-sm">My Teachers</span>
+                                <i class="fas fa-chalkboard-teacher mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>My Teachers
                             </a>
                             <a href="consultation-hours.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'consultation-hours.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
-                                <i class="fas fa-clock mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i><span class="text-sm">FaCallTI</span>
+                                <i class="fas fa-clock mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>FaCallTI
                             </a>
                         </div>
                     </div>
@@ -289,56 +293,26 @@
                         <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Schedule Management</h3>
                         <div class="space-y-1">
                             <a href="schedule-management.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'schedule-management.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
-                                <i class="fas fa-calendar-alt mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i><span class="text-xs">Assign Schedules</span>
+                                <i class="fas fa-calendar-alt mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Assign Schedules
                                 <span class="ml-auto text-xs bg-yellow-600 text-white px-2 py-1 rounded-full">Soon</span>
                             </a>
                         </div>
                     </div>
 
-                    <!-- LMS Monitoring Section -->
-                    <div class="animate-fadeInUp" style="animation-delay: 0.3s;">
-                        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">LMS Monitoring</h3>
-                        <div class="space-y-1">
-                            <a href="lms-monitoring.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'lms-monitoring.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
-                                <i class="fas fa-chalkboard-teacher mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i><span class="text-xs">Teacher LMS Activities</span>
-                                <span class="ml-auto text-xs bg-yellow-600 text-white px-2 py-1 rounded-full">Soon</span>
-                            </a>
-                        </div>
-                    </div>
 
-                    <!-- Reports & Analytics Section -->
-                    <div class="animate-fadeInUp" style="animation-delay: 0.4s;">
-                        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Reports & Analytics</h3>
-                        <div class="space-y-1">
-                            <a href="reports.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'reports.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
-                                <i class="fas fa-chart-bar mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i><span class="text-xs">Evaluation Reports</span>
-                            </a>
-                        </div>
-                    </div>
 
-                    <!-- Leave Management Section -->
-                    <div class="animate-fadeInUp" style="animation-delay: 0.45s;">
-                        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Leave Management</h3>
-                        <div class="space-y-1">
-                            <a href="leave-requests.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'leave-requests.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
-                                <i class="fas fa-calendar-check mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i><span class="text-xs">Leave Requests</span>
-                            </a>
-                            <a href="leave-approvals.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'leave-approvals.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
-                                <i class="fas fa-thumbs-up mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i><span class="text-xs">My Approvals</span>
-                            </a>
-                        </div>
-                    </div>
+
 
                     <!-- System Section -->
                     <div class="animate-fadeInUp" style="animation-delay: 0.55s;">
                         <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">System</h3>
                         <div class="space-y-1">
                             <a href="profile.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'profile.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
-                                <i class="fas fa-user-edit mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i><span class="text-xs">Profile Settings</span>
+                                <i class="fas fa-user-edit mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Profile Settings
                             </a>
                             <?php if (function_exists('is_head_evaluation_active') && is_head_evaluation_active()): ?>
                                 <a href="evaluate-faculty.php" class="flex items-center <?php echo basename($_SERVER['PHP_SELF']) === 'evaluate-faculty.php' ? 'bg-seait-orange text-white shadow-lg' : 'text-gray-300 hover:bg-gray-700 hover:text-white'; ?> px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md">
-                                    <i class="fas fa-clipboard-check mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i><span class="text-xs">Evaluate Faculty</span>
+                                    <i class="fas fa-clipboard-check mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Evaluate Faculty
                                 </a>
                             <?php endif; ?>
                         </div>
@@ -349,7 +323,7 @@
             <!-- Sidebar Footer -->
             <div class="sidebar-footer p-4 border-t border-gray-700 bg-gradient-to-r from-gray-800 to-gray-700">
                 <a href="logout.php" class="flex items-center bg-red-600 text-white hover:bg-red-700 px-3 py-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg">
-                    <i class="fas fa-sign-out-alt mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i><span class="text-xs">Logout</span>
+                    <i class="fas fa-sign-out-alt mr-3 w-5 text-center transition-transform duration-200 hover:rotate-12"></i>Logout
                 </a>
             </div>
         </div>
@@ -367,7 +341,7 @@
 
                         <div>
                             <h1 class="text-lg sm:text-xl font-bold text-seait-dark">Head Dashboard</h1>
-                            <p class="text-xs sm:text-sm text-gray-600">Department Head Management</p>
+                            <p class="text-xs sm:text-sm text-gray-600">Department Head Management Portal</p>
                         </div>
                     </div>
 

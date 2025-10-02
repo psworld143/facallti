@@ -1,5 +1,11 @@
 <?php
 session_start();
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 require_once '../config/database.php';
 
 // Set page title
@@ -326,32 +332,6 @@ $available_screens = [
             </div>
         </div>
 
-        <!-- Access Options -->
-        <div class="bg-white rounded-lg shadow-md p-8 mb-12">
-            <h3 class="text-2xl font-bold text-seait-dark mb-6 text-center">Quick Access</h3>
-            <div class="grid md:grid-cols-2 gap-8">
-                <div class="text-center p-6 border-2 border-gray-200 rounded-lg hover:border-seait-orange transition-colors">
-                    <div class="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-                        <i class="fas fa-user-graduate text-green-600 text-xl"></i>
-                    </div>
-                    <h4 class="text-xl font-semibold text-seait-dark mb-2">Student Access</h4>
-                    <p class="text-gray-600 mb-4">Browse available teachers and start consultations</p>
-                    <a href="student-screen.php" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors">
-                        Student Portal
-                    </a>
-                </div>
-                <div class="text-center p-6 border-2 border-gray-200 rounded-lg hover:border-seait-orange transition-colors">
-                    <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
-                        <i class="fas fa-user-tie text-blue-600 text-xl"></i>
-                    </div>
-                    <h4 class="text-xl font-semibold text-seait-dark mb-2">Teacher Access</h4>
-                    <p class="text-gray-600 mb-4">Office standby screen for receiving consultation requests</p>
-                    <a href="teacher-screen.php" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors">
-                        Teacher Portal
-                    </a>
-                </div>
-            </div>
-        </div>
     </main>
 
     <!-- Selection Modal -->

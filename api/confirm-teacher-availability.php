@@ -1,201 +1,139 @@
 <?php
-session_start();
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
+
+// Handle preflight OPTIONS request
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
+
+// Only allow POST requests
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['success' => false, 'error' => 'Method not allowed']);
+    exit();
+}
+
 require_once '../config/database.php';
 
-header('Content-Type: application/json');
+// Get POST data
+$teacher_id = $_POST['teacher_id'] ?? null;
+$confirmed = $_POST['confirmed'] ?? null;
+$action_type = $_POST['action_type'] ?? null;
 
-// Set timezone
-date_default_timezone_set('Asia/Manila');
-
-// Get the request data
-$teacherId = $_POST['teacher_id'] ?? '';
-$confirmed = $_POST['confirmed'] ?? '';
-$actionType = $_POST['action_type'] ?? '';
-
-if (empty($teacherId)) {
+// Validate required parameters
+if (!$teacher_id || $confirmed === null || !$action_type) {
     echo json_encode([
-        'success' => false,
-        'error' => 'Teacher ID is required'
+        'success' => false, 
+        'error' => 'Missing required parameters: teacher_id, confirmed, and action_type'
     ]);
-    exit;
+    exit();
 }
 
-if ($confirmed !== 'true' && $confirmed !== 'false') {
-    echo json_encode([
-        'success' => false,
-        'error' => 'Confirmation status is required'
-    ]);
-    exit;
-}
-
-if (empty($actionType) || !in_array($actionType, ['mark_available', 'mark_unavailable'])) {
-    echo json_encode([
-        'success' => false,
-        'error' => 'Valid action type is required (mark_available or mark_unavailable)'
-    ]);
-    exit;
-}
-
-$teacherId = intval($teacherId);
-$isConfirmed = ($confirmed === 'true');
+// Convert confirmed to boolean
+$confirmed = filter_var($confirmed, FILTER_VALIDATE_BOOLEAN);
 
 try {
-    // Verify teacher exists and is active
-    $teacherQuery = "SELECT id, first_name, last_name, email, department, position, qrcode 
-                     FROM faculty 
-                     WHERE id = ? AND is_active = 1";
+    $conn->autocommit(FALSE); // Start transaction
     
-    $teacherStmt = mysqli_prepare($conn, $teacherQuery);
-    mysqli_stmt_bind_param($teacherStmt, "i", $teacherId);
-    mysqli_stmt_execute($teacherStmt);
-    $teacherResult = mysqli_stmt_get_result($teacherStmt);
+    $today = date('Y-m-d');
     
-    if (mysqli_num_rows($teacherResult) == 0) {
-        echo json_encode([
-            'success' => false,
-            'error' => 'Teacher not found or inactive'
-        ]);
-        exit;
+    // Check if teacher exists and is active
+    $teacher_check_query = "SELECT id, first_name, last_name FROM faculty WHERE id = ? AND is_active = 1";
+    $teacher_stmt = mysqli_prepare($conn, $teacher_check_query);
+    mysqli_stmt_bind_param($teacher_stmt, "i", $teacher_id);
+    mysqli_stmt_execute($teacher_stmt);
+    $teacher_result = mysqli_stmt_get_result($teacher_stmt);
+    
+    if (mysqli_num_rows($teacher_result) === 0) {
+        throw new Exception('Teacher not found or inactive');
     }
     
-    $teacher = mysqli_fetch_assoc($teacherResult);
+    $teacher = mysqli_fetch_assoc($teacher_result);
     
-    if ($isConfirmed) {
-        if ($actionType === 'mark_available') {
-            // Mark teacher as available
-            $markAvailableQuery = "INSERT INTO teacher_availability (teacher_id, availability_date, status, notes, last_activity)
-                                  VALUES (?, CURDATE(), 'available', 'QR Code Scanned - Confirmed Available', NOW())
-                                  ON DUPLICATE KEY UPDATE
-                                      status = 'available',
-                                      scan_time = NOW(),
-                                      last_activity = NOW(),
-                                      notes = 'QR Code Scanned - Confirmed Available',
-                                      updated_at = NOW()";
+    if ($confirmed) {
+        // Teacher confirmed the action - update availability
+        $status = ($action_type === 'mark_available') ? 'available' : 'unavailable';
+        $notes = "Teacher confirmed via QR scan - {$action_type}";
+        
+        // Check if availability record exists for today
+        $check_query = "SELECT id, status FROM teacher_availability 
+                       WHERE teacher_id = ? AND availability_date = ?";
+        $check_stmt = mysqli_prepare($conn, $check_query);
+        mysqli_stmt_bind_param($check_stmt, "is", $teacher_id, $today);
+        mysqli_stmt_execute($check_stmt);
+        $check_result = mysqli_stmt_get_result($check_stmt);
+        
+        if (mysqli_num_rows($check_result) > 0) {
+            // Update existing record
+            $existing_record = mysqli_fetch_assoc($check_result);
             
-            $markStmt = mysqli_prepare($conn, $markAvailableQuery);
-            mysqli_stmt_bind_param($markStmt, "i", $teacherId);
+            $update_query = "UPDATE teacher_availability 
+                            SET status = ?, last_activity = NOW(), notes = ?, updated_at = NOW()
+                            WHERE id = ?";
+            $update_stmt = mysqli_prepare($conn, $update_query);
+            mysqli_stmt_bind_param($update_stmt, "ssi", $status, $notes, $existing_record['id']);
             
-            if (!mysqli_stmt_execute($markStmt)) {
-                throw new Exception('Failed to mark teacher as available: ' . mysqli_stmt_error($markStmt));
+            if (!mysqli_stmt_execute($update_stmt)) {
+                throw new Exception('Failed to update teacher availability');
             }
             
-            // Check for pending consultation requests and auto-accept them
-            $pendingQuery = "SELECT id, session_id, student_name, student_dept, student_id, request_time
-                            FROM consultation_requests 
-                            WHERE teacher_id = ? AND status = 'pending' 
-                            AND request_time > DATE_SUB(NOW(), INTERVAL 30 MINUTE)
-                            ORDER BY request_time ASC";
+            $action = 'updated';
+        } else {
+            // Insert new record
+            $insert_query = "INSERT INTO teacher_availability 
+                            (teacher_id, availability_date, scan_time, status, notes, created_at, updated_at) 
+                            VALUES (?, ?, NOW(), ?, ?, NOW(), NOW())";
+            $insert_stmt = mysqli_prepare($conn, $insert_query);
+            mysqli_stmt_bind_param($insert_stmt, "isss", $teacher_id, $today, $status, $notes);
             
-            $pendingStmt = mysqli_prepare($conn, $pendingQuery);
-            mysqli_stmt_bind_param($pendingStmt, "i", $teacherId);
-            mysqli_stmt_execute($pendingStmt);
-            $pendingResult = mysqli_stmt_get_result($pendingStmt);
-            
-            $acceptedRequests = [];
-            $autoAcceptedCount = 0;
-            
-            while ($pendingRequest = mysqli_fetch_assoc($pendingResult)) {
-                // Auto-accept the pending request
-                $acceptQuery = "UPDATE consultation_requests 
-                               SET status = 'accepted', 
-                                   response_time = NOW(),
-                                   response_duration_seconds = TIMESTAMPDIFF(SECOND, request_time, NOW()),
-                                   updated_at = NOW()
-                               WHERE id = ? AND status = 'pending'";
-                
-                $acceptStmt = mysqli_prepare($conn, $acceptQuery);
-                mysqli_stmt_bind_param($acceptStmt, "i", $pendingRequest['id']);
-                
-                if (mysqli_stmt_execute($acceptStmt)) {
-                    $acceptedRequests[] = $pendingRequest;
-                    $autoAcceptedCount++;
-                }
+            if (!mysqli_stmt_execute($insert_stmt)) {
+                throw new Exception('Failed to insert teacher availability');
             }
             
-            // Log the successful confirmation
-            error_log("Teacher marked as available: " . $teacher['first_name'] . " " . $teacher['last_name'] . " (ID: " . $teacherId . ") - " . $autoAcceptedCount . " requests auto-accepted");
-            
-            echo json_encode([
-                'success' => true,
-                'confirmed' => true,
-                'action_type' => 'mark_available',
-                'teacher' => [
-                    'id' => $teacher['id'],
-                    'name' => $teacher['first_name'] . ' ' . $teacher['last_name'],
-                    'department' => $teacher['department'],
-                    'position' => $teacher['position'],
-                    'qrcode' => $teacher['qrcode']
-                ],
-                'marked_available' => true,
-                'accepted_requests' => $acceptedRequests,
-                'auto_accepted_count' => $autoAcceptedCount,
-                'message' => $autoAcceptedCount > 0 ? 
-                    "Teacher marked as available! {$autoAcceptedCount} pending consultation request(s) auto-accepted." : 
-                    'Teacher marked as available for consultation!'
-            ]);
-            
-        } else if ($actionType === 'mark_unavailable') {
-            // Mark teacher as unavailable by deleting the availability record
-            $deleteAvailabilityQuery = "DELETE FROM teacher_availability 
-                                        WHERE teacher_id = ? AND availability_date = CURDATE()";
-            
-            $deleteStmt = mysqli_prepare($conn, $deleteAvailabilityQuery);
-            mysqli_stmt_bind_param($deleteStmt, "i", $teacherId);
-            
-            if (!mysqli_stmt_execute($deleteStmt)) {
-                throw new Exception('Failed to mark teacher as unavailable: ' . mysqli_stmt_error($deleteStmt));
-            }
-            
-            $deletedRecords = mysqli_affected_rows($conn);
-            
-            // Log the successful unavailability
-            error_log("Teacher marked as unavailable: " . $teacher['first_name'] . " " . $teacher['last_name'] . " (ID: " . $teacherId . ") - availability record deleted");
-            
-            echo json_encode([
-                'success' => true,
-                'confirmed' => true,
-                'action_type' => 'mark_unavailable',
-                'teacher' => [
-                    'id' => $teacher['id'],
-                    'name' => $teacher['first_name'] . ' ' . $teacher['last_name'],
-                    'department' => $teacher['department'],
-                    'position' => $teacher['position'],
-                    'qrcode' => $teacher['qrcode']
-                ],
-                'marked_available' => false,
-                'records_deleted' => $deletedRecords,
-                'message' => $deletedRecords > 0 ? 
-                    'Teacher marked as unavailable! Availability record removed.' : 
-                    'Teacher was already unavailable.'
-            ]);
+            $action = 'created';
         }
         
+        $message = "Teacher availability {$action} successfully";
     } else {
-        // Teacher declined the action
-        $actionText = $actionType === 'mark_available' ? 'become available' : 'become unavailable';
-        error_log("Teacher declined action: " . $teacher['first_name'] . " " . $teacher['last_name'] . " (ID: " . $teacherId . ") - declined to " . $actionText);
-        
-        echo json_encode([
-            'success' => true,
-            'confirmed' => false,
-            'action_type' => $actionType,
-            'teacher' => [
-                'id' => $teacher['id'],
-                'name' => $teacher['first_name'] . ' ' . $teacher['last_name'],
-                'department' => $teacher['department'],
-                'position' => $teacher['position'],
-                'qrcode' => $teacher['qrcode']
-            ],
-            'marked_available' => null,
-            'message' => "Teacher chose not to {$actionText} at this time."
-        ]);
+        // Teacher cancelled - no action taken
+        $action = 'cancelled';
+        $message = "Teacher availability update cancelled";
     }
     
+    // Commit transaction
+    $conn->commit();
+    
+    // Log the action
+    error_log("Teacher availability confirmation: Teacher ID {$teacher_id} ({$teacher['first_name']} {$teacher['last_name']}) - Action: {$action_type}, Confirmed: " . ($confirmed ? 'Yes' : 'No') . " on {$today}");
+    
+    echo json_encode([
+        'success' => true,
+        'message' => $message,
+        'data' => [
+            'teacher_id' => $teacher_id,
+            'teacher_name' => $teacher['first_name'] . ' ' . $teacher['last_name'],
+            'action_type' => $action_type,
+            'confirmed' => $confirmed,
+            'action' => $action,
+            'date' => $today
+        ]
+    ]);
+    
 } catch (Exception $e) {
-    error_log("Teacher Availability Confirmation Error: " . $e->getMessage());
+    // Rollback transaction on error
+    $conn->rollback();
+    
+    error_log("Teacher availability confirmation error: " . $e->getMessage());
+    
     echo json_encode([
         'success' => false,
-        'error' => 'Failed to process teacher availability confirmation: ' . $e->getMessage()
+        'error' => $e->getMessage()
     ]);
+} finally {
+    $conn->autocommit(TRUE); // Restore autocommit
 }
 ?>

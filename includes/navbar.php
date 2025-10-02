@@ -1,6 +1,10 @@
 <?php
 // Navbar component for SEAIT website
 // This file should be included in all pages for consistent navigation
+
+// Get school logo and abbreviation from database
+$school_logo = get_school_logo($conn);
+$school_abbreviation = get_school_abbreviation($conn);
 ?>
 <!-- Navigation -->
 <nav class="bg-transparent dark:bg-transparent sticky top-0 z-40">
@@ -8,9 +12,15 @@
         <div class="flex items-center justify-between py-3 md:py-4">
             <!-- Logo and Brand - Leftmost Position -->
             <div class="flex items-center space-x-2 md:space-x-4 flex-shrink-0">
-                <img src="assets/images/seait-logo.png" alt="SEAIT Logo" class="h-6 sm:h-8 md:h-12 w-auto">
+                <?php if (!empty($school_logo)): ?>
+                    <img src="<?php echo htmlspecialchars($school_logo); ?>" alt="SEAIT Logo" class="h-6 sm:h-8 md:h-12 w-auto object-contain">
+                <?php else: ?>
+                    <div class="h-6 sm:h-8 md:h-12 w-6 sm:w-8 md:w-12 bg-seait-orange rounded-full flex items-center justify-center">
+                        <i class="fas fa-university text-white text-xs sm:text-sm md:text-base"></i>
+                    </div>
+                <?php endif; ?>
                 <div class="min-w-0">
-                    <h1 class="text-sm sm:text-lg md:text-2xl font-bold text-seait-dark truncate">SEAIT</h1>
+                    <h1 class="text-sm sm:text-lg md:text-2xl font-bold text-seait-dark truncate"><?php echo htmlspecialchars($school_abbreviation); ?></h1>
                     <!-- <p class="text-xs md:text-sm text-gray-600 hidden sm:block truncate">South East Asian Institute of Technology, Inc.</p> -->
                 </div>
             </div>
@@ -185,8 +195,14 @@
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto overflow-hidden relative">
         <!-- Modal Header with Gradient and Logo -->
         <div class="flex flex-col items-center justify-center p-6 border-b border-gray-200 bg-gradient-to-r from-seait-orange to-orange-400 relative">
-            <img src="assets/images/seait-logo.png" alt="SEAIT Logo" class="h-12 w-12 rounded-full shadow-lg mb-2 border-4 border-white bg-white">
-            <h3 class="text-xl font-bold text-white drop-shadow">Login to SEAIT</h3>
+            <?php if (!empty($school_logo)): ?>
+                <img src="<?php echo htmlspecialchars($school_logo); ?>" alt="SEAIT Logo" class="h-12 w-12 rounded-full shadow-lg mb-2 border-4 border-white bg-white object-contain">
+            <?php else: ?>
+                <div class="h-12 w-12 bg-white rounded-full shadow-lg mb-2 border-4 border-white flex items-center justify-center">
+                    <i class="fas fa-university text-seait-orange text-xl"></i>
+                </div>
+            <?php endif; ?>
+            <h3 class="text-xl font-bold text-white drop-shadow">Login to <?php echo htmlspecialchars($school_abbreviation); ?></h3>
             <button onclick="closeLoginModal()" class="absolute top-4 right-4 text-white hover:text-orange-100 transition text-2xl focus:outline-none">
                 <i class="fas fa-times"></i>
             </button>

@@ -4,6 +4,8 @@ ini_set('memory_limit', '256M');
 ini_set('max_execution_time', 120);
 
 session_start();
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 require_once '../config/database.php';
 require_once '../includes/functions.php';
 require_once '../includes/id_encryption.php';
@@ -48,11 +50,8 @@ try {
     exit();
 }
 
-// Get faculty information with details
-$faculty_query = "SELECT f.*, fd.middle_name, fd.phone, fd.address 
-                  FROM faculty f 
-                  LEFT JOIN faculty_details fd ON f.id = fd.faculty_id 
-                  WHERE f.id = ? AND f.department = ?";
+// Get faculty information (faculty_details table was removed during FaCallTi cleanup)
+$faculty_query = "SELECT f.* FROM faculty f WHERE f.id = ? AND f.department = ?";
 $faculty_stmt = mysqli_prepare($conn, $faculty_query);
 mysqli_stmt_bind_param($faculty_stmt, "is", $faculty_id, $head_info['department']);
 mysqli_stmt_execute($faculty_stmt);
@@ -217,7 +216,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         
                         // Update faculty table
                         $update_faculty_query = "UPDATE faculty SET 
-                                                first_name = ?, last_name = ?, email = ?, position = ?, image_url = ?
+                                                first_name = ?, last_name = ?, middle_name = ?, email = ?, phone = ?, address = ?, position = ?, image_url = ?
                                                 WHERE id = ? AND department = ?";
                         $update_faculty_stmt = mysqli_prepare($conn, $update_faculty_query);
                         
@@ -225,55 +224,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             throw new Exception("Error preparing faculty update statement: " . mysqli_error($conn));
                         }
                         
-                        mysqli_stmt_bind_param($update_faculty_stmt, "sssssis", 
-                            $first_name, $last_name, $email, $position, $photo_path, $faculty_id, $head_info['department']);
+                        mysqli_stmt_bind_param($update_faculty_stmt, "ssssssssis", 
+                            $first_name, $last_name, $middle_name, $email, $phone, $address, $position, $photo_path, $faculty_id, $head_info['department']);
                         
                         if (!mysqli_stmt_execute($update_faculty_stmt)) {
                             throw new Exception("Error updating faculty: " . mysqli_stmt_error($update_faculty_stmt));
                         }
                         
-                        // Update or insert faculty_details
-                        $details_check_query = "SELECT faculty_id FROM faculty_details WHERE faculty_id = ?";
-                        $details_check_stmt = mysqli_prepare($conn, $details_check_query);
-                        mysqli_stmt_bind_param($details_check_stmt, "i", $faculty_id);
-                        mysqli_stmt_execute($details_check_stmt);
-                        $details_check_result = mysqli_stmt_get_result($details_check_stmt);
-                        
-                        if (mysqli_num_rows($details_check_result) > 0) {
-                            // Update existing details
-                            $update_details_query = "UPDATE faculty_details SET 
-                                                    middle_name = ?, phone = ?, address = ?
-                                                    WHERE faculty_id = ?";
-                            $update_details_stmt = mysqli_prepare($conn, $update_details_query);
-                            
-                            if (!$update_details_stmt) {
-                                throw new Exception("Error preparing faculty details update statement: " . mysqli_error($conn));
-                            }
-                            
-                            mysqli_stmt_bind_param($update_details_stmt, "sssi", 
-                                $middle_name, $phone, $address, $faculty_id);
-                            
-                            if (!mysqli_stmt_execute($update_details_stmt)) {
-                                throw new Exception("Error updating faculty details: " . mysqli_stmt_error($update_details_stmt));
-                            }
-                        } else {
-                            // Insert new details
-                            $insert_details_query = "INSERT INTO faculty_details 
-                                                    (faculty_id, middle_name, phone, address) 
-                                                    VALUES (?, ?, ?, ?)";
-                            $insert_details_stmt = mysqli_prepare($conn, $insert_details_query);
-                            
-                            if (!$insert_details_stmt) {
-                                throw new Exception("Error preparing faculty details insert statement: " . mysqli_error($conn));
-                            }
-                            
-                            mysqli_stmt_bind_param($insert_details_stmt, "isss", 
-                                $faculty_id, $middle_name, $phone, $address);
-                            
-                            if (!mysqli_stmt_execute($insert_details_stmt)) {
-                                throw new Exception("Error inserting faculty details: " . mysqli_stmt_error($insert_details_stmt));
-                            }
-                        }
+                        // Note: faculty_details table was removed during FaCallTi cleanup
+                        // Only basic faculty information is updated in the faculty table
                         
                         // Commit transaction
                         mysqli_commit($conn);

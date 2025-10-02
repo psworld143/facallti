@@ -4,6 +4,10 @@ require_once 'config/database.php';
 require_once 'includes/functions.php';
 require_once 'includes/id_encryption.php';
 
+// Get school logo and abbreviation from database
+$school_logo = get_school_logo($conn);
+$school_abbreviation = get_school_abbreviation($conn);
+
 // Get events
 $events_query = "SELECT * FROM posts WHERE status = 'approved' AND type = 'event' ORDER BY created_at ASC";
 $events_result = mysqli_query($conn, $events_query);
@@ -51,15 +55,9 @@ while ($event = mysqli_fetch_assoc($yearly_events_result)) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>School Calendar - SEAIT</title>
+    <title>School Calendar - <?php echo htmlspecialchars($school_abbreviation); ?></title>
     <!-- Favicon Configuration -->
-    <link rel="icon" type="image/x-icon" href="assets/images/favicon.ico">
-    <link rel="icon" type="image/png" href="assets/images/seait-logo.png">
-    <link rel="shortcut icon" type="image/x-icon" href="assets/images/favicon.ico">
-    <link rel="shortcut icon" type="image/png" href="assets/images/seait-logo.png">
-    <link rel="apple-touch-icon" type="image/png" href="assets/images/seait-logo.png">
-    <link rel="apple-touch-icon-precomposed" type="image/png" href="assets/images/seait-logo.png">
-    <meta name="msapplication-TileImage" content="assets/images/seait-logo.png">
+    <?php echo generate_favicon_tags($conn); ?>
     <meta name="msapplication-TileColor" content="#FF6B35">
 
 

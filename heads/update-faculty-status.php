@@ -77,38 +77,61 @@ try {
         exit();
     }
     
-    // Determine new status
-    $new_status = ($action === 'deactivate') ? 0 : 1;
-    
-    // Check if status change is needed
-    if ($faculty['is_active'] == $new_status) {
-        $status_text = $new_status ? 'active' : 'inactive';
-        header('Location: teachers.php?error=already_' . $status_text . '&name=' . urlencode($faculty_name));
-        exit();
-    }
-    
-    // Update faculty status
-    $update_query = "UPDATE faculty SET is_active = ? WHERE id = ?";
-    $update_stmt = mysqli_prepare($conn, $update_query);
-    
-    if (!$update_stmt) {
-        throw new Exception("Error preparing update statement: " . mysqli_error($conn));
-    }
-    
-    mysqli_stmt_bind_param($update_stmt, "ii", $new_status, $faculty_id);
-    
-    if (!mysqli_stmt_execute($update_stmt)) {
-        throw new Exception("Error executing update statement: " . mysqli_stmt_error($update_stmt));
-    }
-    
-    // Check if update was successful
-    if (mysqli_affected_rows($conn) > 0) {
-        // Success - redirect with success message
-        $success_action = ($action === 'deactivate') ? 'faculty_deactivated' : 'faculty_reactivated';
-        header('Location: teachers.php?success=' . $success_action . '&name=' . urlencode($faculty_name));
-        exit();
+    if ($action === 'deactivate') {
+        // Delete the teacher from the database
+        $delete_query = "DELETE FROM faculty WHERE id = ?";
+        $delete_stmt = mysqli_prepare($conn, $delete_query);
+        
+        if (!$delete_stmt) {
+            throw new Exception("Error preparing delete statement: " . mysqli_error($conn));
+        }
+        
+        mysqli_stmt_bind_param($delete_stmt, "i", $faculty_id);
+        
+        if (!mysqli_stmt_execute($delete_stmt)) {
+            throw new Exception("Error executing delete statement: " . mysqli_stmt_error($delete_stmt));
+        }
+        
+        // Check if deletion was successful
+        if (mysqli_affected_rows($conn) > 0) {
+            // Success - redirect with success message
+            header('Location: teachers.php?success=faculty_deleted&name=' . urlencode($faculty_name));
+            exit();
+        } else {
+            throw new Exception("No rows affected during deletion");
+        }
     } else {
-        throw new Exception("No rows affected during update");
+        // Reactivate functionality (set is_active to 1)
+        $new_status = 1;
+        
+        // Check if already active
+        if ($faculty['is_active'] == $new_status) {
+            header('Location: teachers.php?error=already_active&name=' . urlencode($faculty_name));
+            exit();
+        }
+        
+        // Update faculty status
+        $update_query = "UPDATE faculty SET is_active = ? WHERE id = ?";
+        $update_stmt = mysqli_prepare($conn, $update_query);
+        
+        if (!$update_stmt) {
+            throw new Exception("Error preparing update statement: " . mysqli_error($conn));
+        }
+        
+        mysqli_stmt_bind_param($update_stmt, "ii", $new_status, $faculty_id);
+        
+        if (!mysqli_stmt_execute($update_stmt)) {
+            throw new Exception("Error executing update statement: " . mysqli_stmt_error($update_stmt));
+        }
+        
+        // Check if update was successful
+        if (mysqli_affected_rows($conn) > 0) {
+            // Success - redirect with success message
+            header('Location: teachers.php?success=faculty_reactivated&name=' . urlencode($faculty_name));
+            exit();
+        } else {
+            throw new Exception("No rows affected during update");
+        }
     }
     
 } catch (Exception $e) {

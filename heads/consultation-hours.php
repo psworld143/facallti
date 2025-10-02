@@ -1,5 +1,7 @@
 <?php
 session_start();
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 require_once '../config/database.php';
 require_once '../includes/functions.php';
 
@@ -148,10 +150,12 @@ if ($head_info) {
     }
 }
 
-// Get active semester
-$active_semester_query = "SELECT name, academic_year FROM semesters WHERE status = 'active' LIMIT 1";
-$active_semester_result = mysqli_query($conn, $active_semester_query);
-$active_semester = mysqli_fetch_assoc($active_semester_result);
+// Since semesters table was removed during FaCallTi cleanup,
+// set default semester values
+$active_semester = [
+    'name' => 'First Semester',
+    'academic_year' => date('Y') . '-' . (date('Y') + 1)
+];
 
 // Get search parameters
 $search_query = isset($_GET['search']) ? sanitize_input($_GET['search']) : '';

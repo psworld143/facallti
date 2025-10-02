@@ -2,6 +2,9 @@
 session_start();
 // error_reporting(E_ALL);
 // ini_set('display_errors', 1);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 require_once '../config/database.php';
 require_once '../includes/functions.php';
 require_once '../includes/id_encryption.php';
@@ -79,10 +82,10 @@ if ($status_filter) {
 
 $where_clause = 'WHERE ' . implode(' AND ', $where_conditions);
 
-// Get teachers
+// Get teachers (simplified query without evaluation data since evaluation_sessions table was removed)
 $teachers_query = "SELECT f.*, 
-                   (SELECT COUNT(*) FROM evaluation_sessions es WHERE es.evaluatee_id = f.id AND es.evaluatee_type = 'teacher' AND es.evaluator_id = ? AND es.evaluator_type = 'head') as evaluation_count,
-                   (SELECT COUNT(*) FROM evaluation_sessions es WHERE es.evaluatee_id = f.id AND es.evaluatee_type = 'teacher' AND es.evaluator_id = ? AND es.evaluator_type = 'head' AND es.status = 'completed') as completed_evaluations
+                   0 as evaluation_count,
+                   0 as completed_evaluations
                    FROM faculty f
                    $where_clause
                    ORDER BY f.last_name, f.first_name";
@@ -94,11 +97,8 @@ if (!$teachers_stmt) {
     die("Error preparing statement: " . mysqli_error($conn));
 }
 
-// Fix parameter binding order: user_id parameters first (for subqueries), then department parameters
-$all_params = array_merge([$user_id, $user_id], $params);
-$all_param_types = "ii" . $param_types;
-
-mysqli_stmt_bind_param($teachers_stmt, $all_param_types, ...$all_params);
+// Bind parameters for the simplified query
+mysqli_stmt_bind_param($teachers_stmt, $param_types, ...$params);
 
 if (!mysqli_stmt_execute($teachers_stmt)) {
     die("Error executing statement: " . mysqli_stmt_error($teachers_stmt));
@@ -158,9 +158,9 @@ if (isset($_GET['error'])) {
             $message = "You are not authorized to perform this action.";
             $message_type = 'error';
             break;
-        case 'faculty_deactivated':
+        case 'faculty_deleted':
             $faculty_name = isset($_GET['name']) ? htmlspecialchars($_GET['name']) : 'Faculty member';
-            $message = "Faculty member '{$faculty_name}' has been deactivated successfully.";
+            $message = "Faculty member '{$faculty_name}' has been deleted successfully.";
             $message_type = 'success';
             break;
         case 'faculty_reactivated':
@@ -196,6 +196,10 @@ if (isset($_GET['error'])) {
             break;
         case 'faculty_not_found':
             $message = "Faculty member not found or you don't have permission to edit them.";
+            $message_type = 'error';
+            break;
+        case 'add_failed':
+            $message = isset($_GET['message']) ? htmlspecialchars($_GET['message']) : "There was an error adding the faculty member. Please try again.";
             $message_type = 'error';
             break;
     }
@@ -254,127 +258,114 @@ include 'includes/header.php';
     </form>
 </div>
 
-<!-- Teachers Table -->
-<div class="bg-white rounded-lg shadow-sm overflow-hidden">
-    <div class="px-6 py-4 border-b border-gray-200">
+<!-- Teachers Grid -->
+<div class="bg-white rounded-lg shadow-sm p-6">
+    <div class="mb-6">
         <h3 class="text-lg font-medium text-gray-900">Teachers (<?php echo count($teachers); ?> found)</h3>
     </div>
-    <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teacher</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">QR Code</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Evaluations</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-                <?php if (empty($teachers)): ?>
-                    <tr>
-                        <td colspan="7" class="px-6 py-4 text-center text-gray-500">No teachers found</td>
-                    </tr>
-                <?php else: ?>
-                    <?php foreach ($teachers as $teacher): ?>
-                        <tr>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="flex items-center">
-                                    <div class="flex-shrink-0 h-10 w-10">
-                                        <?php if (!empty($teacher['image_url']) && file_exists('../' . $teacher['image_url'])): ?>
-                                            <img class="h-10 w-10 rounded-full object-cover" 
-                                                 src="../<?php echo htmlspecialchars($teacher['image_url']); ?>" 
-                                                 alt="<?php echo htmlspecialchars($teacher['first_name'] . ' ' . $teacher['last_name']); ?>">
-                                        <?php else: ?>
-                                            <div class="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                                                <span class="text-sm font-medium text-gray-700">
-                                                    <?php echo strtoupper(substr($teacher['first_name'], 0, 1) . substr($teacher['last_name'], 0, 1)); ?>
-                                                </span>
-                                            </div>
-                                        <?php endif; ?>
-                                    </div>
-                                    <div class="ml-4">
-                                        <div class="text-sm font-medium text-gray-900">
-                                            <?php echo $teacher['first_name'] . ' ' . $teacher['last_name']; ?>
-                                        </div>
-                                        <div class="text-sm text-gray-500"><?php echo $teacher['email']; ?></div>
-                                    </div>
+    
+    <?php if (empty($teachers)): ?>
+        <div class="text-center py-12">
+            <div class="text-gray-400 text-6xl mb-4">
+                <i class="fas fa-users"></i>
+            </div>
+            <h3 class="text-lg font-medium text-gray-900 mb-2">No teachers found</h3>
+            <p class="text-gray-500">Try adjusting your search criteria or add new faculty members.</p>
+        </div>
+    <?php else: ?>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <?php foreach ($teachers as $teacher): ?>
+                <div class="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 p-4">
+                    <!-- Teacher Photo and Basic Info -->
+                    <div class="flex items-center space-x-3 mb-4">
+                        <div class="flex-shrink-0">
+                            <?php if (!empty($teacher['image_url']) && file_exists('../' . $teacher['image_url'])): ?>
+                                <img class="h-12 w-12 rounded-full object-cover border-2 border-gray-200" 
+                                     src="../<?php echo htmlspecialchars($teacher['image_url']); ?>" 
+                                     alt="<?php echo htmlspecialchars($teacher['first_name'] . ' ' . $teacher['last_name']); ?>">
+                            <?php else: ?>
+                                <div class="h-12 w-12 rounded-full bg-gray-300 flex items-center justify-center border-2 border-gray-200">
+                                    <span class="text-sm font-medium text-gray-700">
+                                        <?php echo strtoupper(substr($teacher['first_name'], 0, 1) . substr($teacher['last_name'], 0, 1)); ?>
+                                    </span>
                                 </div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                <?php echo $teacher['position']; ?>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <?php if (!empty($teacher['qrcode'])): ?>
-                                    <div class="flex items-center space-x-2">
-                                        <span class="text-sm font-mono text-gray-900 bg-gray-100 px-2 py-1 rounded">
-                                            <?php echo htmlspecialchars($teacher['qrcode']); ?>
-                                        </span>
-                                        <a href="../generate-teacher-qr.php?id=<?php echo $teacher['id']; ?>" 
-                                           target="_blank" 
-                                           class="text-seait-orange hover:text-orange-600" 
-                                           title="View QR Code">
-                                            <i class="fas fa-qrcode"></i>
-                                        </a>
-                                    </div>
-                                <?php else: ?>
-                                    <span class="text-sm text-gray-400">No QR Code</span>
-                                <?php endif; ?>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <?php echo $teacher['email']; ?>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm text-gray-900">
-                                    <span class="font-medium"><?php echo $teacher['evaluation_count']; ?></span> total
-                                </div>
-                                <div class="text-sm text-gray-500">
-                                    <?php echo $teacher['completed_evaluations']; ?> completed
-                                </div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="px-2 py-1 text-xs rounded-full <?php echo $teacher['is_active'] ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'; ?>">
-                                    <?php echo $teacher['is_active'] ? 'Active' : 'Inactive'; ?>
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <div class="flex space-x-3">
-                                    <a href="view-teacher-profile.php?faculty_id=<?php echo IDEncryption::encrypt($teacher['id']); ?>" 
-                                       class="inline-flex items-center justify-center w-10 h-10 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-all duration-200 transform hover:scale-105"
-                                       title="View Teacher Profile">
-                                        <i class="fas fa-eye text-lg font-bold"></i>
-                                    </a>
-                                    
-                                    <a href="edit-faculty.php?id=<?php echo IDEncryption::encrypt($teacher['id']); ?>" 
-                                       class="inline-flex items-center justify-center w-10 h-10 bg-yellow-50 text-yellow-700 rounded-lg hover:bg-yellow-100 transition-all duration-200 transform hover:scale-105"
-                                       title="Edit Faculty">
-                                        <i class="fas fa-edit text-lg font-bold"></i>
-                                    </a>
-                                    
+                            <?php endif; ?>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-sm font-medium text-gray-900 truncate">
+                                <?php echo $teacher['first_name'] . ' ' . $teacher['last_name']; ?>
+                            </h4>
+                            <p class="text-xs text-gray-500 truncate"><?php echo $teacher['position']; ?></p>
+                        </div>
+                        <div class="flex-shrink-0">
+                            <span class="px-2 py-1 text-xs rounded-full <?php echo $teacher['is_active'] ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'; ?>">
+                                <?php echo $teacher['is_active'] ? 'Active' : 'Inactive'; ?>
+                            </span>
+                        </div>
+                    </div>
 
-                                    <?php if ($teacher['is_active']): ?>
-                                        <button onclick="confirmDeactivate(<?php echo $teacher['id']; ?>, '<?php echo htmlspecialchars($teacher['first_name'] . ' ' . $teacher['last_name'], ENT_QUOTES); ?>')" 
-                                                class="inline-flex items-center justify-center w-10 h-10 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-all duration-200 transform hover:scale-105"
-                                                title="Deactivate Faculty">
-                                            <i class="fas fa-user-slash text-lg font-bold"></i>
-                                        </button>
-                                    <?php else: ?>
-                                        <button onclick="confirmReactivate(<?php echo $teacher['id']; ?>, '<?php echo htmlspecialchars($teacher['first_name'] . ' ' . $teacher['last_name'], ENT_QUOTES); ?>')" 
-                                                class="inline-flex items-center justify-center w-10 h-10 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-all duration-200 transform hover:scale-105"
-                                                title="Reactivate Faculty">
-                                            <i class="fas fa-user-check text-lg font-bold"></i>
-                                        </button>
-                                    <?php endif; ?>
-                                </div>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </tbody>
-        </table>
-    </div>
+                    <!-- Teacher Details -->
+                    <div class="space-y-2 mb-4">
+                        <div class="flex items-center text-xs text-gray-600">
+                            <i class="fas fa-envelope w-3 mr-2"></i>
+                            <span class="truncate"><?php echo $teacher['email']; ?></span>
+                        </div>
+                        
+                        <?php if (!empty($teacher['qrcode'])): ?>
+                            <div class="flex items-center text-xs text-gray-600">
+                                <i class="fas fa-qrcode w-3 mr-2"></i>
+                                <span class="font-mono bg-gray-100 px-2 py-1 rounded text-xs">
+                                    <?php echo htmlspecialchars($teacher['qrcode']); ?>
+                                </span>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex justify-between items-center pt-3 border-t border-gray-100">
+                        <div class="flex space-x-2">
+                            <a href="view-teacher-profile.php?faculty_id=<?php echo IDEncryption::encrypt($teacher['id']); ?>" 
+                               class="inline-flex items-center justify-center w-8 h-8 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-all duration-200 transform hover:scale-105"
+                               title="View Profile">
+                                <i class="fas fa-eye text-sm"></i>
+                            </a>
+                            
+                            <a href="edit-faculty.php?id=<?php echo IDEncryption::encrypt($teacher['id']); ?>" 
+                               class="inline-flex items-center justify-center w-8 h-8 bg-yellow-50 text-yellow-700 rounded-lg hover:bg-yellow-100 transition-all duration-200 transform hover:scale-105"
+                               title="Edit Faculty">
+                                <i class="fas fa-edit text-sm"></i>
+                            </a>
+                        </div>
+                        
+                        <div class="flex space-x-2">
+                            <?php if (!empty($teacher['qrcode'])): ?>
+                                <a href="../generate-teacher-qr.php?id=<?php echo $teacher['id']; ?>" 
+                                   target="_blank" 
+                                   class="inline-flex items-center justify-center w-8 h-8 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-all duration-200 transform hover:scale-105"
+                                   title="View QR Code">
+                                    <i class="fas fa-qrcode text-sm"></i>
+                                </a>
+                            <?php endif; ?>
+                            
+                            <?php if ($teacher['is_active']): ?>
+                                <button onclick="confirmDeactivate(<?php echo $teacher['id']; ?>, '<?php echo htmlspecialchars($teacher['first_name'] . ' ' . $teacher['last_name'], ENT_QUOTES); ?>')" 
+                                        class="inline-flex items-center justify-center w-8 h-8 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-all duration-200 transform hover:scale-105"
+                                        title="Delete Faculty">
+                                    <i class="fas fa-trash text-sm"></i>
+                                </button>
+                            <?php else: ?>
+                                <button onclick="confirmReactivate(<?php echo $teacher['id']; ?>, '<?php echo htmlspecialchars($teacher['first_name'] . ' ' . $teacher['last_name'], ENT_QUOTES); ?>')" 
+                                        class="inline-flex items-center justify-center w-8 h-8 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-all duration-200 transform hover:scale-105"
+                                        title="Reactivate Faculty">
+                                    <i class="fas fa-user-check text-sm"></i>
+                                </button>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
 </div>
 
 <!-- Add Faculty Modal -->
@@ -480,17 +471,15 @@ include 'includes/header.php';
                            placeholder="Enter middle name (optional)">
                 </div>
                 
+                <div>
+                    <label for="position" class="block text-sm font-medium text-gray-700 mb-2">Position *</label>
+                    <input type="text" id="position" name="position" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-seait-orange focus:border-transparent transition-all duration-200"
+                           placeholder="Enter position (e.g., Instructor, Professor, etc.)">
+                </div>
 
             </div>
             
-            <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <div class="flex items-start">
-                    <i class="fas fa-info-circle text-blue-600 mt-0.5 mr-2 text-sm"></i>
-                    <div class="text-xs text-blue-700">
-                        <p><strong>Note:</strong> New faculty members will be created with the default password <strong>Seait123</strong>. They should change this password upon their first login.</p>
-                    </div>
-                </div>
-            </div>
             
             <div class="flex justify-end space-x-3 mt-6">
                 <button type="button" onclick="closeAddFacultyModal()" 
@@ -888,11 +877,11 @@ document.getElementById('addFacultyForm').addEventListener('submit', function(e)
 // Faculty status management functions
 function confirmDeactivate(facultyId, facultyName) {
     showConfirmationModal({
-        title: 'Deactivate Faculty',
-        message: `Are you sure you want to deactivate <strong>${facultyName}</strong>? This will set their status to inactive and they will no longer appear in active faculty lists.`,
+        title: 'Delete Faculty',
+        message: `Are you sure you want to delete <strong>${facultyName}</strong>? This action cannot be undone and will permanently remove the faculty member from the database.`,
         icon: 'fas fa-exclamation-triangle',
         iconColor: 'bg-red-100 text-red-600',
-        actionText: 'Deactivate',
+        actionText: 'Delete',
         actionColor: 'bg-red-600 hover:bg-red-700',
         actionIcon: 'fas fa-trash',
         onConfirm: () => updateFacultyStatus(facultyId, 'deactivate', facultyName)

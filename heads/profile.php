@@ -190,17 +190,7 @@ if ($user && isset($user['profile_photo']) && !empty($user['profile_photo'])) {
     $_SESSION['profile_photo'] = $user['profile_photo'];
 }
 
-// Get head statistics (placeholder for now)
-$stats = [
-    'total_teachers' => 0,
-    'evaluations_pending' => 0,
-    'evaluations_completed' => 0,
-    'leave_requests' => 0,
-    'leave_approved' => 0
-];
-
-// Get recent activity (placeholder for now)
-$activity_result = null;
+// Note: Statistics and activity features removed as they are not part of FaCallTi
 ?>
 
 <?php
@@ -425,32 +415,6 @@ include 'includes/header.php';
 
                 <!-- Sidebar -->
                 <div class="space-y-6">
-                    <!-- Account Statistics -->
-                    <div class="bg-white rounded-lg shadow-md p-6">
-                        <h3 class="text-lg font-semibold text-seait-dark mb-4">Department Head Statistics</h3>
-                        <div class="space-y-3">
-                            <div class="flex justify-between">
-                                <span class="text-gray-600 text-base">Total Teachers</span>
-                                <span class="font-semibold text-base"><?php echo $stats['total_teachers']; ?></span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-600 text-base">Evaluations Pending</span>
-                                <span class="font-semibold text-base text-yellow-600"><?php echo $stats['evaluations_pending']; ?></span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-600 text-base">Evaluations Completed</span>
-                                <span class="font-semibold text-base text-green-600"><?php echo $stats['evaluations_completed']; ?></span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-600 text-base">Leave Requests</span>
-                                <span class="font-semibold text-base text-blue-600"><?php echo $stats['leave_requests']; ?></span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-600 text-base">Leave Approved</span>
-                                <span class="font-semibold text-base text-green-600"><?php echo $stats['leave_approved']; ?></span>
-                            </div>
-                        </div>
-                    </div>
 
                     <!-- Account Information -->
                     <div class="bg-white rounded-lg shadow-md p-6">
@@ -479,32 +443,6 @@ include 'includes/header.php';
                         </div>
                     </div>
 
-                    <!-- Recent Activity -->
-                    <div class="bg-white rounded-lg shadow-md p-6">
-                        <h3 class="text-lg font-semibold text-seait-dark mb-4">Recent Activity</h3>
-                        <?php if ($activity_result && mysqli_num_rows($activity_result) > 0): ?>
-                            <div class="space-y-3">
-                                <?php while($activity = mysqli_fetch_assoc($activity_result)): ?>
-                                <div class="border-l-2 border-seait-orange pl-3">
-                                    <p class="text-base font-medium"><?php echo htmlspecialchars($activity['title']); ?></p>
-                                    <p class="text-sm text-gray-500">
-                                        <?php echo ucfirst($activity['type']); ?> •
-                                        <?php echo date('M d, Y', strtotime($activity['created_at'])); ?>
-                                    </p>
-                                    <span class="inline-block px-2 py-1 text-sm rounded-full mt-1 <?php
-                                        echo $activity['status'] == 'approved' ? 'bg-green-100 text-green-800' :
-                                            ($activity['status'] == 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                            ($activity['status'] == 'rejected' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'));
-                                    ?>">
-                                        <?php echo ucfirst($activity['status']); ?>
-                                    </span>
-                                </div>
-                                <?php endwhile; ?>
-                            </div>
-                        <?php else: ?>
-                            <p class="text-gray-500 text-base">No recent activity</p>
-                        <?php endif; ?>
-                    </div>
                 </div>
             </div>
         </div>

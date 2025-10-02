@@ -12,15 +12,14 @@
         SetEnv PHP_VALUE "upload_max_filesize=128M\npost_max_size=128M\nmemory_limit=256M\nmax_execution_time=180\nmax_input_time=180"
     </IfModule>
 </IfModule>
-# Enable URL rewriting
-RewriteEngine On
+# URL rewriting disabled
 
 # Handle 404 errors - redirect to custom 404 page
-ErrorDocument 404 /seait/404.php
+ErrorDocument 404 /facallti/404.php
 
 # Handle other common errors
-ErrorDocument 403 /seait/404.php
-ErrorDocument 500 /seait/404.php
+ErrorDocument 403 /facallti/404.php
+ErrorDocument 500 /facallti/404.php
 
 # Security headers
 <IfModule mod_headers.c>
@@ -71,21 +70,4 @@ ErrorDocument 500 /seait/404.php
     ExpiresByType application/x-shockwave-flash "access plus 1 month"
 </IfModule>
 
-# Remove trailing slashes
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteCond %{REQUEST_URI} (.+)/$
-RewriteRule ^ %1 [R=301,L]
-
-# Force HTTPS (uncomment if you have SSL)
-# RewriteCond %{HTTPS} off
-# RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
-
-# Custom 404 handling for specific file types
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule \.(php|html|htm)$ /seait/404.php [L]
-
-# Handle missing directories
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ /seait/404.php [L]
+# All rewrite rules removed

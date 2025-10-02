@@ -44,10 +44,11 @@ $qrcode = sanitize_input($_POST['qrcode']);
 $first_name = sanitize_input($_POST['first_name']);
 $last_name = sanitize_input($_POST['last_name']);
 $middle_name = sanitize_input($_POST['middle_name']);
+$position = sanitize_input($_POST['position']);
 $department = sanitize_input($_POST['department']);
 
 // Validate required fields
-if (empty($qrcode) || empty($first_name) || empty($last_name)) {
+if (empty($qrcode) || empty($first_name) || empty($last_name) || empty($position)) {
     header('Location: teachers.php?error=missing_fields');
     exit();
 }
@@ -182,7 +183,6 @@ error_log("Final photo_path value: " . ($photo_path ?: 'NULL'));
 error_log("=== END PHOTO DEBUG ===");
 
 // Sample data for new faculty
-$sample_position = 'Instructor'; // Default position
 $sample_bio = 'Faculty member in the ' . $department . ' department. Profile to be updated by HR.';
 
 // Default password for new faculty
@@ -204,7 +204,7 @@ try {
     error_log("About to save faculty with photo_path: " . ($photo_path ?: 'NULL'));
     
     mysqli_stmt_bind_param($faculty_stmt, "sssssssss", 
-        $first_name, $last_name, $email, $sample_position, $department, $sample_bio, $photo_path, $qrcode, $default_password);
+        $first_name, $last_name, $email, $position, $department, $sample_bio, $photo_path, $qrcode, $default_password);
     
     if (!mysqli_stmt_execute($faculty_stmt)) {
         throw new Exception("Error inserting faculty: " . mysqli_stmt_error($faculty_stmt));
@@ -212,31 +212,8 @@ try {
     
     $faculty_id = mysqli_insert_id($conn);
     
-    // Insert into faculty_details table with sample data
-    $details_query = "INSERT INTO faculty_details (
-        faculty_id, middle_name, gender, civil_status, nationality, religion, 
-        phone, address, employee_id, date_of_hire, employment_type, 
-        basic_salary, salary_grade, pay_schedule, highest_education, 
-        field_of_study, school_university, created_at
-    ) VALUES (?, ?, 'Male', 'Single', 'Filipino', 'Catholic', 
-        '+63 900 000 0000', 'Sample Address, Philippines', ?, NOW(), 'Full-time', 
-        25000.00, 'SG-11', 'Monthly', 'Bachelor''s Degree', 
-        'Sample Field', 'Sample University', NOW())";
-    
-    $details_stmt = mysqli_prepare($conn, $details_query);
-    
-    if (!$details_stmt) {
-        throw new Exception("Error preparing details statement: " . mysqli_error($conn));
-    }
-    
-    // Generate employee ID based on QR code
-    $employee_id = 'EMP-' . $qrcode;
-    
-    mysqli_stmt_bind_param($details_stmt, "iss", $faculty_id, $middle_name, $employee_id);
-    
-    if (!mysqli_stmt_execute($details_stmt)) {
-        throw new Exception("Error inserting faculty details: " . mysqli_stmt_error($details_stmt));
-    }
+    // Note: faculty_details table was removed during FaCallTi cleanup
+    // Only basic faculty information is stored in the faculty table
     
     // Commit transaction
     mysqli_commit($conn);

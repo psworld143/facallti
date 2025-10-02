@@ -1,20 +1,20 @@
 <?php
 // Database configuration
-$host = 'localhost';
-$dbname = 'seaitedu_seait_website';
-$username = 'seaitedu_seait_website';
-$password = '020894Website';
+$host = 'seait-edu.ph';
+$dbname = 'seaitedu_facallti';
+$username = 'seaitedu_facallti';
+$password = '020894FaCallTi';
 
-// Create connection
-$conn = mysqli_connect($host, $username, $password, $dbname);
+// Create connection with socket path
+$conn = mysqli_connect($host, $username, $password, $dbname, 3306, '/Applications/XAMPP/xamppfiles/var/mysql/mysql.sock');
 
 // Check connection
 if (!$conn) {
     die("Connection failed: " . mysqli_connect_error());
 }
 
-// Set charset to utf8
-mysqli_set_charset($conn, "utf8");
+// Set charset to utf8mb4 to support 4-byte UTF-8 characters (emojis)
+mysqli_set_charset($conn, "utf8mb4");
 
 // Set timezone to Philippines
 date_default_timezone_set('Asia/Manila');
