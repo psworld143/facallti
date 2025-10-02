@@ -55,15 +55,6 @@ $department_query = "SELECT DISTINCT
                    AND ch.start_time <= ?
                    AND ch.end_time >= ?";
 
-// Add semester condition if active_semester is set
-if ($active_semester) {
-    $department_query .= " AND ch.semester = ?";
-}
-
-// Add academic year condition if active_academic_year is set
-if ($active_academic_year) {
-    $department_query .= " AND ch.academic_year = ?";
-}
 
 $department_query .= " AND f.id NOT IN (
                        SELECT teacher_id 
@@ -79,14 +70,6 @@ if ($department_stmt) {
     $param_types = "ssss";
     $param_values = [$selected_department, $current_day, $current_time, $current_time];
     
-    if ($active_semester) {
-        $param_types .= "s";
-        $param_values[] = $active_semester;
-    }
-    if ($active_academic_year) {
-        $param_types .= "s";
-        $param_values[] = $active_academic_year;
-    }
     
     mysqli_stmt_bind_param($department_stmt, $param_types, ...$param_values);
     mysqli_stmt_execute($department_stmt);

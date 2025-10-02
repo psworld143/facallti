@@ -122,8 +122,6 @@ $teachers_query = "SELECT
                    LEFT JOIN consultation_hours ch ON f.id = ch.teacher_id 
                        AND ch.day_of_week = ? 
                        AND ch.is_active = 1
-                       " . ($active_semester ? "AND ch.semester = ?" : "") . "
-                       " . ($active_academic_year ? "AND ch.academic_year = ?" : "") . "
                    LEFT JOIN teacher_availability ta ON f.id = ta.teacher_id AND ta.availability_date = CURDATE()
                    WHERE f.is_active = 1 
                    AND f.department = ?
@@ -142,14 +140,6 @@ if ($teachers_stmt) {
     $param_types = "s";
     $param_values = [$current_day];
     
-    if ($active_semester) {
-        $param_types .= "s";
-        $param_values[] = $active_semester;
-    }
-    if ($active_academic_year) {
-        $param_types .= "s";
-        $param_values[] = $active_academic_year;
-    }
     
     // Add department parameter at the end
     $param_types .= "s";
@@ -194,8 +184,6 @@ if (empty($teachers)) {
                        LEFT JOIN consultation_hours ch ON f.id = ch.teacher_id 
                            AND ch.day_of_week = ? 
                            AND ch.is_active = 1
-                           " . ($active_semester ? "AND ch.semester = ?" : "") . "
-                           " . ($active_academic_year ? "AND ch.academic_year = ?" : "") . "
                        LEFT JOIN teacher_availability ta ON f.id = ta.teacher_id AND ta.availability_date = CURDATE()
                        WHERE f.is_active = 1 
                        AND f.department LIKE ?
@@ -216,14 +204,6 @@ if (empty($teachers)) {
         $param_types = "s";
         $param_values = [$current_day];
         
-        if ($active_semester) {
-            $param_types .= "s";
-            $param_values[] = $active_semester;
-        }
-        if ($active_academic_year) {
-            $param_types .= "s";
-            $param_values[] = $active_academic_year;
-        }
         
         // Add department search term at the end
         $param_types .= "s";
@@ -262,8 +242,6 @@ if (empty($teachers) && empty($selected_department)) {
                        LEFT JOIN consultation_hours ch ON f.id = ch.teacher_id 
                            AND ch.day_of_week = ? 
                            AND ch.is_active = 1
-                           " . ($active_semester ? "AND ch.semester = ?" : "") . "
-                           " . ($active_academic_year ? "AND ch.academic_year = ?" : "") . "
                        WHERE f.is_active = 1 
                        AND f.id NOT IN (
                            SELECT teacher_id 
@@ -279,14 +257,6 @@ if (empty($teachers) && empty($selected_department)) {
         $param_types = "s";
         $param_values = [$current_day];
         
-        if ($active_semester) {
-            $param_types .= "s";
-            $param_values[] = $active_semester;
-        }
-        if ($active_academic_year) {
-            $param_types .= "s";
-            $param_values[] = $active_academic_year;
-        }
         
         mysqli_stmt_bind_param($fallback_stmt, $param_types, ...$param_values);
         mysqli_stmt_execute($fallback_stmt);
