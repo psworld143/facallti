@@ -128,6 +128,8 @@ CREATE TABLE `consultation_hours` (
   `day_of_week` enum('monday','tuesday','wednesday','thursday','friday','saturday','sunday') NOT NULL,
   `start_time` time NOT NULL,
   `end_time` time NOT NULL,
+  `room` varchar(100) DEFAULT NULL,
+  `notes` text DEFAULT NULL,
   `is_active` tinyint(1) DEFAULT 1,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
