@@ -37,8 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         switch ($_POST['action']) {
             case 'add':
                 $teacher_id = (int)$_POST['teacher_id'];
-                $semester = sanitize_input($_POST['semester']);
-                $academic_year = sanitize_input($_POST['academic_year']);
+                // Semester and academic_year removed for simplified consultation system
                 $day_of_week = sanitize_input($_POST['day_of_week']);
                 $start_time = $_POST['start_time'];
                 $end_time = $_POST['end_time'];
@@ -52,10 +51,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $message = "End time cannot be later than 10:00 PM.";
                     $message_type = "error";
                 } else {
-                    $query = "INSERT INTO consultation_hours (teacher_id, semester, academic_year, day_of_week, start_time, end_time, room, notes, created_by) 
-                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    $query = "INSERT INTO consultation_hours (teacher_id, day_of_week, start_time, end_time, room, notes) 
+                             VALUES (?, ?, ?, ?, ?, ?)";
                     $stmt = mysqli_prepare($conn, $query);
-                    mysqli_stmt_bind_param($stmt, "isssssssi", $teacher_id, $semester, $academic_year, $day_of_week, $start_time, $end_time, $room, $notes, $user_id);
+                    mysqli_stmt_bind_param($stmt, "isssss", $teacher_id, $day_of_week, $start_time, $end_time, $room, $notes);
 
                     if (mysqli_stmt_execute($stmt)) {
                         $message = "Consultation hours added successfully!";
@@ -151,16 +150,8 @@ if ($head_info) {
     }
 }
 
-// Since semesters table was removed during FaCallTi cleanup,
-// set default semester values
-$active_semester = [
-    'name' => 'First Semester',
-    'academic_year' => date('Y') . '-' . (date('Y') + 1)
-];
-
 // Get search parameters
 $search_query = isset($_GET['search']) ? sanitize_input($_GET['search']) : '';
-$semester_filter = isset($_GET['semester']) ? sanitize_input($_GET['semester']) : '';
 $day_filter = isset($_GET['day']) ? sanitize_input($_GET['day']) : '';
 
 // Get consultation hours (filter by active semester by default)
@@ -175,18 +166,7 @@ if ($head_info) {
     $params = [$head_info['department']];
     $param_types = "s";
     
-    // Add semester filter
-    if ($semester_filter) {
-        $consultation_query .= " AND ch.semester = ?";
-        $params[] = $semester_filter;
-        $param_types .= "s";
-    } elseif ($active_semester) {
-        // Default to active semester if no filter is applied
-        $consultation_query .= " AND ch.semester = ? AND ch.academic_year = ?";
-        $params[] = $active_semester['name'];
-        $params[] = $active_semester['academic_year'];
-        $param_types .= "ss";
-    }
+    // Note: Semester filtering removed as consultation_hours table doesn't have semester/academic_year columns
     
     // Add day filter
     if ($day_filter) {
@@ -311,15 +291,7 @@ include 'includes/header.php';
                            placeholder="Search by name, email, room, or notes..."
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-seait-orange">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Semester</label>
-                    <select name="semester" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-seait-orange">
-                        <option value="">All Semesters</option>
-                        <option value="First Semester" <?php echo $semester_filter === 'First Semester' ? 'selected' : ''; ?>>First Semester</option>
-                        <option value="Second Semester" <?php echo $semester_filter === 'Second Semester' ? 'selected' : ''; ?>>Second Semester</option>
-                        <option value="Summer" <?php echo $semester_filter === 'Summer' ? 'selected' : ''; ?>>Summer</option>
-                    </select>
-                </div>
+                <!-- Semester filter removed for simplified consultation system -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Day of Week</label>
                     <select name="day" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-seait-orange">
@@ -355,13 +327,13 @@ include 'includes/header.php';
                             $total_results = mysqli_num_rows($consultation_result);
                             echo $total_results . ' consultation hour' . ($total_results !== 1 ? 's' : '') . ' found';
                             
-                            if ($search_query || $semester_filter || $day_filter) {
+                            if ($search_query || $day_filter) {
                                 echo ' matching your search criteria';
                             }
                             ?>
                         </span>
                     </div>
-                    <?php if ($search_query || $semester_filter || $day_filter): ?>
+                    <?php if ($search_query || $day_filter): ?>
                         <div class="text-sm text-blue-600">
                             <a href="consultation-hours.php" class="hover:text-blue-800 underline">
                                 <i class="fas fa-times mr-1"></i>Clear all filters
@@ -377,7 +349,7 @@ include 'includes/header.php';
                 <thead class="bg-gray-50">
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teacher</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Semester</th>
+                        <!-- Semester header removed for simplified consultation system -->
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Day</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room</th>
@@ -391,7 +363,7 @@ include 'includes/header.php';
                             <td colspan="7" class="px-6 py-4 text-center text-gray-500">
                                 <?php 
                                 if ($consultation_result) {
-                                    if ($search_query || $semester_filter || $day_filter) {
+                                    if ($search_query || $day_filter) {
                                         echo 'No consultation hours found matching your search criteria.';
                                     } else {
                                         echo 'No consultation hours found';
@@ -411,9 +383,7 @@ include 'includes/header.php';
                                     </div>
                                     <div class="text-sm text-gray-500"><?php echo $consultation['email']; ?></div>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    <?php echo $consultation['semester'] . ' (' . $consultation['academic_year'] . ')'; ?>
-                                </td>
+                                <!-- Semester column removed for simplified consultation system -->
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     <?php echo $consultation['day_of_week']; ?>
                                 </td>
@@ -1532,40 +1502,7 @@ include 'includes/header.php';
                                 </div>
                             </div>
 
-                            <!-- Semester & Academic Year -->
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label for="semester" class="block text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                                        <i class="fas fa-calendar mr-2 text-seait-orange"></i>
-                                        Semester *
-                                    </label>
-                                    <div class="relative">
-                                        <select name="semester" required class="w-full border border-gray-300 rounded-lg px-4 py-3 pl-10 focus:outline-none focus:ring-2 focus:ring-seait-orange focus:border-transparent bg-white shadow-sm">
-                                            <option value="">Select semester...</option>
-                                            <option value="First Semester" <?php echo ($active_semester && $active_semester['name'] === 'First Semester') ? 'selected' : ''; ?>>First Semester</option>
-                                            <option value="Second Semester" <?php echo ($active_semester && $active_semester['name'] === 'Second Semester') ? 'selected' : ''; ?>>Second Semester</option>
-                                            <option value="Summer" <?php echo ($active_semester && $active_semester['name'] === 'Summer') ? 'selected' : ''; ?>>Summer</option>
-                                        </select>
-                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <i class="fas fa-calendar-alt text-gray-400"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label for="academic_year" class="block text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                                        <i class="fas fa-graduation-cap mr-2 text-seait-orange"></i>
-                                        Academic Year *
-                                    </label>
-                                    <div class="relative">
-                                        <input type="text" name="academic_year" required placeholder="2024-2025" 
-                                               value="<?php echo $active_semester ? htmlspecialchars($active_semester['academic_year']) : ''; ?>"
-                                               class="w-full border border-gray-300 rounded-lg px-4 py-3 pl-10 focus:outline-none focus:ring-2 focus:ring-seait-orange focus:border-transparent bg-white shadow-sm">
-                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <i class="fas fa-calendar text-gray-400"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            <!-- Semester & Academic Year fields removed for simplified consultation system -->
                         </div>
                     </div>
 
