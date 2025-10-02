@@ -5229,25 +5229,32 @@ if (empty($teachers) && empty($selected_department)) {
                          document.mozFullScreenElement);
             }
             
+            // Get fullscreen button element
+            const fullscreenBtn = document.getElementById('fullscreenToggle');
+            
             // Fullscreen button click handler
-            fullscreenBtn.addEventListener('click', function() {
-                if (isFullscreen()) {
-                    exitFullscreen();
-                } else {
-                    enterFullscreen();
-                }
-            });
+            if (fullscreenBtn) {
+                fullscreenBtn.addEventListener('click', function() {
+                    if (isFullscreen()) {
+                        exitFullscreen();
+                    } else {
+                        enterFullscreen();
+                    }
+                });
+            }
             
             // Update fullscreen button icon and state
             function updateFullscreenButton() {
+                if (!fullscreenBtn) return;
+                
                 const icon = fullscreenBtn.querySelector('i');
                 if (isFullscreen()) {
                     fullscreenBtn.classList.add('fullscreen');
-                    icon.className = 'fas fa-compress';
+                    if (icon) icon.className = 'fas fa-compress';
                     fullscreenBtn.title = 'Exit Fullscreen';
                 } else {
                     fullscreenBtn.classList.remove('fullscreen');
-                    icon.className = 'fas fa-expand';
+                    if (icon) icon.className = 'fas fa-expand';
                     fullscreenBtn.title = 'Enter Fullscreen';
                 }
             }
