@@ -68,8 +68,10 @@ CREATE TABLE `faculty` (
   `is_active` tinyint(1) DEFAULT 1,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `qrcode` varchar(255) DEFAULT NULL, -- QR code for teacher identification
   PRIMARY KEY (`id`),
-  UNIQUE KEY `email` (`email`)
+  UNIQUE KEY `email` (`email`),
+  UNIQUE KEY `qrcode` (`qrcode`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -269,8 +271,8 @@ INSERT INTO `colleges` (`name`, `description`, `color_theme`) VALUES
 INSERT INTO `departments` (`name`, `college_id`, `description`) VALUES
 ('College of Information and Communication Technology', 1, 'All ICT programs and departments');
 
-INSERT INTO `faculty` (`first_name`, `last_name`, `email`, `department`, `position`) VALUES
-('Michael Paul O.', 'Sebando', 'michael.sebando@seait.edu', 'College of Information and Communication Technology', 'Professor');
+INSERT INTO `faculty` (`first_name`, `last_name`, `email`, `department`, `position`, `qrcode`) VALUES
+('Michael Paul O.', 'Sebando', 'michael.sebando@seait.edu', 'College of Information and Communication Technology', 'Professor', 'SEAIT2025-001');
 
 INSERT INTO `heads` (`first_name`, `last_name`, `email`, `department`, `position`) VALUES
 ('Reginald S.', 'Prudente', 'reginald.prudente@seait.edu', 'College of Information and Communication Technology', 'Dean');
