@@ -2400,66 +2400,78 @@ function showListView() {
 }
 
 function showWeekView() {
-    document.getElementById('weekView').classList.remove('hidden');
-    document.getElementById('listView').classList.add('hidden');
-    document.getElementById('logsView').classList.add('hidden');
-    document.getElementById('reportsView').classList.add('hidden');
-    document.getElementById('leavesView').classList.add('hidden');
-    document.getElementById('availableTodayView').classList.add('hidden');
-    document.getElementById('weekViewBtn').classList.remove('bg-gray-300', 'text-gray-700');
-    document.getElementById('weekViewBtn').classList.add('bg-seait-orange', 'text-white');
-    document.getElementById('listViewBtn').classList.remove('bg-seait-orange', 'text-white');
-    document.getElementById('listViewBtn').classList.add('bg-gray-300', 'text-gray-700');
-    document.getElementById('logsViewBtn').classList.remove('bg-seait-orange', 'text-white');
-    document.getElementById('logsViewBtn').classList.add('bg-gray-300', 'text-gray-700');
-    document.getElementById('reportsViewBtn').classList.remove('bg-seait-orange', 'text-white');
-    document.getElementById('reportsViewBtn').classList.add('bg-gray-300', 'text-gray-700');
-    document.getElementById('leavesViewBtn').classList.remove('bg-seait-orange', 'text-white');
-    document.getElementById('leavesViewBtn').classList.add('bg-gray-300', 'text-gray-700');
-    document.getElementById('availableTodayViewBtn').classList.remove('bg-seait-orange', 'text-white');
-    document.getElementById('availableTodayViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+    try {
+        document.getElementById('weekView').classList.remove('hidden');
+        document.getElementById('listView').classList.add('hidden');
+        document.getElementById('logsView').classList.add('hidden');
+        document.getElementById('reportsView').classList.add('hidden');
+        document.getElementById('leavesView').classList.add('hidden');
+        document.getElementById('availableTodayView').classList.add('hidden');
+        document.getElementById('weekViewBtn').classList.remove('bg-gray-300', 'text-gray-700');
+        document.getElementById('weekViewBtn').classList.add('bg-seait-orange', 'text-white');
+        document.getElementById('listViewBtn').classList.remove('bg-seait-orange', 'text-white');
+        document.getElementById('listViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+        document.getElementById('logsViewBtn').classList.remove('bg-seait-orange', 'text-white');
+        document.getElementById('logsViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+        document.getElementById('reportsViewBtn').classList.remove('bg-seait-orange', 'text-white');
+        document.getElementById('reportsViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+        document.getElementById('leavesViewBtn').classList.remove('bg-seait-orange', 'text-white');
+        document.getElementById('leavesViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+        document.getElementById('availableTodayViewBtn').classList.remove('bg-seait-orange', 'text-white');
+        document.getElementById('availableTodayViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+    } catch (error) {
+        console.error('Error in showWeekView:', error);
+    }
 }
 
 function showLogsView() {
-    document.getElementById('logsView').classList.remove('hidden');
-    document.getElementById('listView').classList.add('hidden');
-    document.getElementById('weekView').classList.add('hidden');
-    document.getElementById('reportsView').classList.add('hidden');
-    document.getElementById('leavesView').classList.add('hidden');
-    document.getElementById('availableTodayView').classList.add('hidden');
-    document.getElementById('logsViewBtn').classList.remove('bg-gray-300', 'text-gray-700');
-    document.getElementById('logsViewBtn').classList.add('bg-seait-orange', 'text-white');
-    document.getElementById('listViewBtn').classList.remove('bg-seait-orange', 'text-white');
-    document.getElementById('listViewBtn').classList.add('bg-gray-300', 'text-gray-700');
-    document.getElementById('weekViewBtn').classList.remove('bg-seait-orange', 'text-white');
-    document.getElementById('weekViewBtn').classList.add('bg-gray-300', 'text-gray-700');
-    document.getElementById('reportsViewBtn').classList.remove('bg-seait-orange', 'text-white');
-    document.getElementById('reportsViewBtn').classList.add('bg-gray-300', 'text-gray-700');
-    document.getElementById('leavesViewBtn').classList.remove('bg-seait-orange', 'text-white');
-    document.getElementById('leavesViewBtn').classList.add('bg-gray-300', 'text-gray-700');
-    document.getElementById('availableTodayViewBtn').classList.remove('bg-seait-orange', 'text-white');
-    document.getElementById('availableTodayViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+    try {
+        document.getElementById('logsView').classList.remove('hidden');
+        document.getElementById('listView').classList.add('hidden');
+        document.getElementById('weekView').classList.add('hidden');
+        document.getElementById('reportsView').classList.add('hidden');
+        document.getElementById('leavesView').classList.add('hidden');
+        document.getElementById('availableTodayView').classList.add('hidden');
+        document.getElementById('logsViewBtn').classList.remove('bg-gray-300', 'text-gray-700');
+        document.getElementById('logsViewBtn').classList.add('bg-seait-orange', 'text-white');
+        document.getElementById('listViewBtn').classList.remove('bg-seait-orange', 'text-white');
+        document.getElementById('listViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+        document.getElementById('weekViewBtn').classList.remove('bg-seait-orange', 'text-white');
+        document.getElementById('weekViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+        document.getElementById('reportsViewBtn').classList.remove('bg-seait-orange', 'text-white');
+        document.getElementById('reportsViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+        document.getElementById('leavesViewBtn').classList.remove('bg-seait-orange', 'text-white');
+        document.getElementById('leavesViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+        document.getElementById('availableTodayViewBtn').classList.remove('bg-seait-orange', 'text-white');
+        document.getElementById('availableTodayViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+    } catch (error) {
+        console.error('Error in showLogsView:', error);
+    }
 }
 
 function showReportsView() {
-    document.getElementById('reportsView').classList.remove('hidden');
-    document.getElementById('listView').classList.add('hidden');
-    document.getElementById('weekView').classList.add('hidden');
-    document.getElementById('logsView').classList.add('hidden');
-    document.getElementById('leavesView').classList.add('hidden');
-    document.getElementById('availableTodayView').classList.add('hidden');
-    document.getElementById('reportsViewBtn').classList.remove('bg-gray-300', 'text-gray-700');
-    document.getElementById('reportsViewBtn').classList.add('bg-seait-orange', 'text-white');
-    document.getElementById('listViewBtn').classList.remove('bg-seait-orange', 'text-white');
-    document.getElementById('listViewBtn').classList.add('bg-gray-300', 'text-gray-700');
-    document.getElementById('weekViewBtn').classList.remove('bg-seait-orange', 'text-white');
-    document.getElementById('weekViewBtn').classList.add('bg-gray-300', 'text-gray-700');
-    document.getElementById('logsViewBtn').classList.remove('bg-seait-orange', 'text-white');
-    document.getElementById('logsViewBtn').classList.add('bg-gray-300', 'text-gray-700');
-    document.getElementById('leavesViewBtn').classList.remove('bg-seait-orange', 'text-white');
-    document.getElementById('leavesViewBtn').classList.add('bg-gray-300', 'text-gray-700');
-    document.getElementById('availableTodayViewBtn').classList.remove('bg-seait-orange', 'text-white');
-    document.getElementById('availableTodayViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+    try {
+        document.getElementById('reportsView').classList.remove('hidden');
+        document.getElementById('listView').classList.add('hidden');
+        document.getElementById('weekView').classList.add('hidden');
+        document.getElementById('logsView').classList.add('hidden');
+        document.getElementById('leavesView').classList.add('hidden');
+        document.getElementById('availableTodayView').classList.add('hidden');
+        document.getElementById('reportsViewBtn').classList.remove('bg-gray-300', 'text-gray-700');
+        document.getElementById('reportsViewBtn').classList.add('bg-seait-orange', 'text-white');
+        document.getElementById('listViewBtn').classList.remove('bg-seait-orange', 'text-white');
+        document.getElementById('listViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+        document.getElementById('weekViewBtn').classList.remove('bg-seait-orange', 'text-white');
+        document.getElementById('weekViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+        document.getElementById('logsViewBtn').classList.remove('bg-seait-orange', 'text-white');
+        document.getElementById('logsViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+        document.getElementById('leavesViewBtn').classList.remove('bg-seait-orange', 'text-white');
+        document.getElementById('leavesViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+        document.getElementById('availableTodayViewBtn').classList.remove('bg-seait-orange', 'text-white');
+        document.getElementById('availableTodayViewBtn').classList.add('bg-gray-300', 'text-gray-700');
+    } catch (error) {
+        console.error('Error in showReportsView:', error);
+    }
 }
 
 function showLeavesView() {
