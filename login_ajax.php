@@ -1,5 +1,5 @@
 <?php
-// AJAX login handler
+// AJAX login handler - Head/Dean only
 header('Content-Type: application/json');
 
 // Start session with error handling
@@ -31,10 +31,9 @@ if (empty($username) || empty($password)) {
 
 $user_found = false;
 $user_data = null;
-$user_role = null;
 
-// Step 1: Check users table first
-$query = "SELECT * FROM users WHERE username = ? OR email = ?";
+// Check users table for head role only
+$query = "SELECT * FROM users WHERE (username = ? OR email = ?) AND role = 'head' AND is_active = 1";
 $stmt = mysqli_prepare($conn, $query);
 
 if ($stmt) {
@@ -46,55 +45,12 @@ if ($stmt) {
         if (password_verify($password, $user['password'])) {
             $user_found = true;
             $user_data = $user;
-            $user_role = $user['role'];
         }
     }
     mysqli_stmt_close($stmt);
 }
 
-// Step 2: If not found in users table, check students table
-if (!$user_found) {
-    $query = "SELECT * FROM students WHERE email = ? OR student_id = ?";
-    $stmt = mysqli_prepare($conn, $query);
-
-    if ($stmt) {
-        mysqli_stmt_bind_param($stmt, "ss", $username, $username);
-        mysqli_stmt_execute($stmt);
-        $result = mysqli_stmt_get_result($stmt);
-
-        if ($result && $student = mysqli_fetch_assoc($result)) {
-            if (password_verify($password, $student['password_hash']) && $student['status'] == 'active') {
-                $user_found = true;
-                $user_data = $student;
-                $user_role = 'student';
-            }
-        }
-        mysqli_stmt_close($stmt);
-    }
-}
-
-// Step 3: If not found in students table, check faculty table
-if (!$user_found) {
-    $query = "SELECT * FROM faculty WHERE (email = ? OR qrcode = ?) AND is_active = 1";
-    $stmt = mysqli_prepare($conn, $query);
-
-    if ($stmt) {
-        mysqli_stmt_bind_param($stmt, "ss", $username, $username);
-        mysqli_stmt_execute($stmt);
-        $result = mysqli_stmt_get_result($stmt);
-
-        if ($result && $faculty = mysqli_fetch_assoc($result)) {
-            if (password_verify($password, $faculty['password'])) {
-                $user_found = true;
-                $user_data = $faculty;
-                $user_role = 'teacher';
-            }
-        }
-        mysqli_stmt_close($stmt);
-    }
-}
-
-// Process login if user found
+// Process login if head user found
 if ($user_found && $user_data) {
     // Clear any existing session data
     session_unset();
@@ -109,10 +65,10 @@ if ($user_found && $user_data) {
     // Determine the base URL based on the script location
     if (basename($script_name) === 'login_ajax.php') {
         if (dirname($script_name) === '/') {
-            // Script is at root level (e.g., http://home.seait-edu.ph/login_ajax.php)
+            // Script is at root level
             $base_url = $protocol . '://' . $host;
         } else {
-            // Script is in a subdirectory (e.g., http://localhost/seait/login_ajax.php)
+            // Script is in a subdirectory
             $base_path = dirname($script_name);
             $base_url = $protocol . '://' . $host . $base_path;
         }
@@ -121,132 +77,25 @@ if ($user_found && $user_data) {
         $base_url = $protocol . '://' . $host;
     }
 
-    // Debug logging
-    error_log("Login AJAX - Protocol: $protocol, Host: $host, Script: $script_name, Base URL: $base_url");
+    // Set session data for head user
+    $_SESSION['user_id'] = (int)$user_data['id'];
+    $_SESSION['username'] = (string)$user_data['username'];
+    $_SESSION['email'] = (string)$user_data['email'];
+    $_SESSION['role'] = 'head';
+    $_SESSION['first_name'] = (string)$user_data['first_name'];
+    $_SESSION['last_name'] = (string)$user_data['last_name'];
+    $_SESSION['profile_photo'] = isset($user_data['profile_photo']) ? (string)$user_data['profile_photo'] : '';
 
-    // Set session data based on the table the user was found in
-    if ($user_role == 'student') {
-        // Student from students table
-        $_SESSION['user_id'] = (int)$user_data['id'];
-        $_SESSION['username'] = (string)$user_data['student_id'];
-        $_SESSION['email'] = (string)$user_data['email'];
-        $_SESSION['role'] = 'student';
-        $_SESSION['first_name'] = (string)$user_data['first_name'];
-        $_SESSION['last_name'] = (string)$user_data['last_name'];
-        $_SESSION['student_id'] = (string)$user_data['student_id'];
-
-        $redirect_url = $base_url . '/students/dashboard.php';
-        echo json_encode([
-            'success' => true,
-            'message' => 'Login successful! Redirecting to student dashboard...',
-            'redirect_url' => $redirect_url
-        ]);
-        exit;
-    } elseif ($user_role == 'teacher') {
-        // Faculty from faculty table
-        $_SESSION['user_id'] = (int)$user_data['id'];
-        $_SESSION['username'] = (string)$user_data['email'];
-        $_SESSION['email'] = (string)$user_data['email'];
-        $_SESSION['role'] = 'teacher';
-        $_SESSION['first_name'] = (string)$user_data['first_name'];
-        $_SESSION['last_name'] = (string)$user_data['last_name'];
-        $_SESSION['faculty_id'] = (int)$user_data['id'];
-
-        $redirect_url = $base_url . '/faculty/dashboard.php';
-        echo json_encode([
-            'success' => true,
-            'message' => 'Login successful! Redirecting to faculty dashboard...',
-            'redirect_url' => $redirect_url
-        ]);
-        exit;
-    } else {
-        // User from users table
-        $_SESSION['user_id'] = (int)$user_data['id'];
-        $_SESSION['username'] = (string)$user_data['username'];
-        $_SESSION['email'] = (string)$user_data['email'];
-        $_SESSION['role'] = (string)$user_data['role'];
-        $_SESSION['first_name'] = (string)$user_data['first_name'];
-        $_SESSION['last_name'] = (string)$user_data['last_name'];
-        $_SESSION['profile_photo'] = isset($user_data['profile_photo']) ? (string)$user_data['profile_photo'] : '';
-
-        // Redirect based on role using absolute URLs
-        switch($user_data['role']) {
-            case 'admin':
-                $redirect_url = $base_url . '/admin/dashboard.php';
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Login successful! Redirecting to admin dashboard...',
-                    'redirect_url' => $redirect_url
-                ]);
-                exit;
-                break;
-            case 'social_media_manager':
-                $redirect_url = $base_url . '/social-media/dashboard.php';
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Login successful! Redirecting to social media dashboard...',
-                    'redirect_url' => $redirect_url
-                ]);
-                exit;
-                break;
-            case 'content_creator':
-                $redirect_url = $base_url . '/content-creator/dashboard.php';
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Login successful! Redirecting to content creator dashboard...',
-                    'redirect_url' => $redirect_url
-                ]);
-                exit;
-                break;
-            case 'guidance_officer':
-                $redirect_url = $base_url . '/IntelliEVal/dashboard.php';
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Login successful! Redirecting to guidance dashboard...',
-                    'redirect_url' => $redirect_url
-                ]);
-                exit;
-                break;
-            case 'head':
-                $redirect_url = $base_url . '/heads/dashboard.php';
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Login successful! Redirecting to head dashboard...',
-                    'redirect_url' => $redirect_url
-                ]);
-                exit;
-                break;
-            case 'human_resource':
-                $redirect_url = $base_url . '/human-resource/index.php';
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Login successful! Redirecting to HR dashboard...',
-                    'redirect_url' => $redirect_url
-                ]);
-                exit;
-                break;
-            case 'student':
-                $redirect_url = $base_url . '/students/dashboard.php';
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Login successful! Redirecting to student dashboard...',
-                    'redirect_url' => $redirect_url
-                ]);
-                exit;
-                break;
-            default:
-                $redirect_url = $base_url . '/index.php';
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Login successful! Redirecting...',
-                    'redirect_url' => $redirect_url
-                ]);
-                exit;
-                break;
-        }
-    }
+    // Redirect to head dashboard
+    $redirect_url = $base_url . '/heads/dashboard.php';
+    echo json_encode([
+        'success' => true,
+        'message' => 'Login successful! Redirecting to head dashboard...',
+        'redirect_url' => $redirect_url
+    ]);
+    exit;
 } else {
-    echo json_encode(['success' => false, 'message' => 'Invalid username or password']);
+    echo json_encode(['success' => false, 'message' => 'Invalid username or password. Only head/dean accounts are allowed.']);
     exit;
 }
 
