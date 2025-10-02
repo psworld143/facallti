@@ -50,7 +50,7 @@ try {
                     COALESCE(GROUP_CONCAT(DISTINCT ch.room ORDER BY ch.room SEPARATOR ', '), 'Available') as room,
                     COALESCE(GROUP_CONCAT(DISTINCT ch.notes ORDER BY ch.notes SEPARATOR '; '), 'Available for consultation') as notes,
                     NOW() as scan_time,
-                    COALESCE(ta.status, 'not_scanned') as availability_status,
+                    COALESCE(ta.is_available, 0) as availability_status,
                     NOW() as last_activity
                    FROM faculty f 
                    LEFT JOIN consultation_hours ch ON f.id = ch.teacher_id 
@@ -64,7 +64,7 @@ try {
                        FROM consultation_leave 
                        WHERE leave_date = CURDATE()
                    )
-                   AND ta.status = 'available'
+                   AND ta.is_available = 1
                    GROUP BY f.id, f.first_name, f.last_name, f.department, f.position, f.email, f.bio, f.image_url, f.is_active
                    ORDER BY f.first_name, f.last_name";
     
@@ -111,7 +111,7 @@ try {
                         COALESCE(GROUP_CONCAT(DISTINCT ch.room ORDER BY ch.room SEPARATOR ', '), 'Available') as room,
                         COALESCE(GROUP_CONCAT(DISTINCT ch.notes ORDER BY ch.notes SEPARATOR '; '), 'Available for consultation') as notes,
                         NOW() as scan_time,
-                        COALESCE(ta.status, 'not_scanned') as availability_status,
+                        COALESCE(ta.is_available, 0) as availability_status,
                         NOW() as last_activity
                        FROM faculty f 
                        LEFT JOIN consultation_hours ch ON f.id = ch.teacher_id 
@@ -125,7 +125,7 @@ try {
                            FROM consultation_leave 
                            WHERE leave_date = CURDATE()
                        )
-                       AND ta.status = 'available'
+                       AND ta.is_available = 1
                        GROUP BY f.id, f.first_name, f.last_name, f.department, f.position, f.email, f.bio, f.image_url, f.is_active
                        ORDER BY f.first_name, f.last_name";
         

@@ -45,7 +45,7 @@ $department_query = "SELECT DISTINCT
                     ch.room,
                     ch.notes,
                     ta.scan_time,
-                    ta.status as availability_status,
+                    ta.is_available as availability_status,
                     ta.last_activity
                    FROM faculty f 
                    LEFT JOIN consultation_hours ch ON f.id = ch.teacher_id AND ch.day_of_week = ? AND ch.is_active = 1
@@ -57,8 +57,8 @@ $department_query = "SELECT DISTINCT
                        FROM consultation_leave 
                        WHERE leave_date = CURDATE()
                    )
-                   GROUP BY f.id, f.first_name, f.last_name, f.department, f.position, f.email, f.bio, f.image_url, f.is_active, ta.scan_time, ta.status, ta.last_activity
-                   ORDER BY ta.status DESC, f.first_name, f.last_name";
+                   GROUP BY f.id, f.first_name, f.last_name, f.department, f.position, f.email, f.bio, f.image_url, f.is_active, ta.scan_time, ta.is_available, ta.last_activity
+                   ORDER BY ta.is_available DESC, f.first_name, f.last_name";
 
 
 
@@ -85,12 +85,12 @@ if ($department_stmt) {
                         NULL as room,
                         NULL as notes,
                         ta.scan_time,
-                        ta.status as availability_status,
+                        ta.is_available as availability_status,
                         ta.last_activity
                        FROM faculty f 
                        LEFT JOIN teacher_availability ta ON f.id = ta.teacher_id AND ta.availability_date = CURDATE()
                        WHERE f.department = ? AND f.is_active = 1
-                       ORDER BY ta.status DESC, f.first_name, f.last_name";
+                       ORDER BY ta.is_available DESC, f.first_name, f.last_name";
     
     $fallback_stmt = mysqli_prepare($conn, $fallback_query);
     mysqli_stmt_bind_param($fallback_stmt, "s", $selected_department);

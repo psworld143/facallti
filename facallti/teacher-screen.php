@@ -43,7 +43,7 @@ $department_query = "SELECT DISTINCT
                     ch.room,
                     ch.notes,
                     ta.scan_time,
-                    ta.status as availability_status,
+                    ta.is_available as availability_status,
                     ta.last_activity
                    FROM faculty f 
                    INNER JOIN consultation_hours ch ON f.id = ch.teacher_id
@@ -70,8 +70,8 @@ $department_query .= " AND f.id NOT IN (
                        FROM consultation_leave 
                        WHERE leave_date = CURDATE()
                    )
-                   GROUP BY f.id, f.first_name, f.last_name, f.department, f.position, f.email, f.bio, f.image_url, f.is_active, ta.scan_time, ta.status, ta.last_activity
-                   ORDER BY ta.status DESC, f.first_name, f.last_name";
+                   GROUP BY f.id, f.first_name, f.last_name, f.department, f.position, f.email, f.bio, f.image_url, f.is_active, ta.scan_time, ta.is_available, ta.last_activity
+                   ORDER BY ta.is_available DESC, f.first_name, f.last_name";
 
 $department_stmt = mysqli_prepare($conn, $department_query);
 if ($department_stmt) {
@@ -2161,7 +2161,7 @@ $office_session_id = uniqid('office_', true);
             }
 
             teacherListContainer.innerHTML = teachers.map(teacher => {
-                const is_available = (teacher.availability_status === 'available' && teacher.scan_time);
+                const is_available = (teacher.availability_status == 1 && teacher.scan_time);
                 const card_bg_class = is_available ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-300' : 'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-300';
                 const status_text = is_available ? 'Available' : 'Not Scanned';
                 const status_color = is_available ? 'text-green-700' : 'text-gray-600';
@@ -2223,7 +2223,7 @@ $office_session_id = uniqid('office_', true);
             let not_scanned_count = 0;
             
             teachers.forEach(teacher => {
-                if (teacher.availability_status === 'available' && teacher.scan_time) {
+                if (teacher.availability_status == 1 && teacher.scan_time) {
                     available_count++;
                 } else {
                     not_scanned_count++;

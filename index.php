@@ -81,16 +81,7 @@ $school_abbreviation = get_school_abbreviation($conn);
 </head>
 <body class="min-h-screen flex items-center justify-center">
     <!-- Simple Header -->
-    <div class="absolute top-0 left-0 right-0 p-6">
-        <div class="max-w-7xl mx-auto flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <?php if (!empty($school_logo)): ?>
-                <img src="<?php echo htmlspecialchars($school_logo); ?>" alt="School Logo" class="h-12 w-auto">
-                <?php endif; ?>
-                <h1 class="text-2xl font-bold text-seait-dark"><?php echo htmlspecialchars($school_abbreviation); ?></h1>
-            </div>
-        </div>
-    </div>
+   
 
     <!-- Login Form -->
     <div class="w-full max-w-md mx-auto px-6">
